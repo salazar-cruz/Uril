@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#122a22">
+  <meta name="description" content="Uril de Cabo Verde — jogo tradicional, computador e salas online.">
+  <title>Uril de Cabo Verde</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-island="santiago">
+  <div class="island-background" aria-hidden="true"></div>
+  <div class="page-shell">
+    <header class="topbar">
+      <button class="brand" id="brandHome" type="button" aria-label="Voltar ao início">
+        <span class="brand-mark">U</span>
+        <span><strong>URIL</strong><small>CABO VERDE</small></span>
+      </button>
+      <div class="topbar-actions">
+        <span class="online-pill" id="onlinePill"><i></i><b id="onlineCount">1</b> online</span>
+        <button class="icon-button" id="rulesButton" type="button" title="Regras">?</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="homeScreen" class="screen active">
+        <div class="hero-panel glass">
+          <div class="hero-copy">
+            <span class="eyebrow">VERSÃO ZERO</span>
+            <h1>O jogo tradicional,<br><em>ilha por ilha.</em></h1>
+            <p>Escolhe o teu nome de jogo, a tua ilha e entra numa mesa. Sem conta, sem formulários intermináveis.</p>
+          </div>
+
+          <div class="profile-card">
+            <label for="nickInput">O teu nick</label>
+            <input id="nickInput" maxlength="18" autocomplete="nickname" placeholder="Ex.: Mindelense77">
+            <label for="islandSelect">A tua ilha</label>
+            <select id="islandSelect">
+              <option value="santiago">Santiago</option>
+              <option value="santo-antao">Santo Antão</option>
+              <option value="sao-vicente">São Vicente</option>
+              <option value="sao-nicolau">São Nicolau</option>
+              <option value="sal">Sal</option>
+              <option value="boa-vista">Boa Vista</option>
+              <option value="maio">Maio</option>
+              <option value="fogo">Fogo</option>
+              <option value="brava">Brava</option>
+              <option value="santa-luzia">Santa Luzia</option>
+            </select>
+            <p class="field-note" id="profileHint">O fundo acompanha a ilha escolhida.</p>
+          </div>
+        </div>
+
+        <div class="mode-grid">
+          <article class="mode-card glass featured">
+            <div class="mode-icon">◎</div>
+            <span class="mode-tag">JOGAR JÁ</span>
+            <h2>Contra o computador</h2>
+            <p>Treino individual com quatro níveis de dificuldade.</p>
+            <label for="levelSelect">Nível</label>
+            <select id="levelSelect">
+              <option value="apprentice">Aprendiz</option>
+              <option value="player" selected>Jogador</option>
+              <option value="master">Mestre</option>
+              <option value="grandmaster">Grande Mestre</option>
+            </select>
+            <button class="primary-button" id="startPcButton" type="button">Começar partida</button>
+          </article>
+
+          <article class="mode-card glass">
+            <div class="mode-icon">◉</div>
+            <span class="mode-tag">AO VIVO</span>
+            <h2>Salas online</h2>
+            <p>Cria uma mesa, desafia outro jogador ou entra apenas para assistir.</p>
+            <button class="secondary-button" id="openRoomsButton" type="button">Ver salas</button>
+          </article>
+
+          <article class="mode-card glass">
+            <div class="mode-icon">↔</div>
+            <span class="mode-tag">MESMO ECRÃ</span>
+            <h2>Dois jogadores</h2>
+            <p>Uma partida local, alternando no mesmo dispositivo.</p>
+            <button class="secondary-button" id="startLocalButton" type="button">Jogar localmente</button>
+          </article>
+        </div>
+
+        <section class="rooms-panel glass" id="roomsPanel" hidden>
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">SALAS ABERTAS</span>
+              <h2>Mesas de Uril</h2>
+            </div>
+            <button class="text-button" id="refreshRoomsButton" type="button">Actualizar</button>
+          </div>
+
+          <div class="create-room-row">
+            <input id="roomNameInput" maxlength="28" placeholder="Nome da sala">
+            <button class="primary-button compact" id="createRoomButton" type="button">Criar sala</button>
+          </div>
+
+          <div id="onlineSetupNotice" class="setup-notice" hidden>
+            As salas online ainda não estão ligadas ao Supabase. O jogo contra o computador e o modo local já funcionam. Consulta o ficheiro <strong>GUIA-GITHUB.md</strong> para activar esta área.
+          </div>
+          <div class="room-list" id="roomList"></div>
+        </section>
+      </section>
+
+      <section id="gameScreen" class="screen">
+        <div class="game-layout">
+          <section class="game-main glass">
+            <div class="game-header">
+              <button class="text-button" id="leaveGameButton" type="button">← Sair da mesa</button>
+              <div class="room-title">
+                <span id="gameModeLabel">PARTIDA</span>
+                <h2 id="roomTitle">Mesa de Uril</h2>
+              </div>
+              <button class="secondary-button compact" id="newRoundButton" type="button" hidden>Nova partida</button>
+            </div>
+
+            <div class="match-strip">
+              <div class="player-summary north" id="northSummary">
+                <div class="avatar" id="northAvatar">N</div>
+                <div><strong id="northNick">Norte</strong><small id="northIsland">Cabo Verde</small></div>
+              </div>
+              <div class="match-counter">
+                <div class="quatro-box"><span>QUATROS</span><b id="northQuatros">0</b><i>—</i><b id="southQuatros">0</b></div>
+                <div class="run-score"><b id="northRun">0</b><span>CONTAGEM</span><b id="southRun">0</b></div>
+                <small id="cutStatus"></small>
+              </div>
+              <div class="player-summary south" id="southSummary">
+                <div><strong id="southNick">Sul</strong><small id="southIsland">Cabo Verde</small></div>
+                <div class="avatar" id="southAvatar">S</div>
+              </div>
+            </div>
+
+            <div class="score-row">
+              <span>Colhidas por Norte <b id="northScore">0</b></span>
+              <div id="turnBadge" class="turn-badge">Vez de Sul</div>
+              <span><b id="southScore">0</b> Colhidas por Sul</span>
+            </div>
+
+            <div class="board-wrap">
+              <div class="board" id="board" aria-label="Tabuleiro de Uril">
+                <div class="board-grain"></div>
+                <div class="pit-row north-row" id="northRow"></div>
+                <div class="board-centre">
+                  <span>URIL</span>
+                  <i>48 sementes · Cabo Verde</i>
+                </div>
+                <div class="pit-row south-row" id="southRow"></div>
+              </div>
+            </div>
+
+            <div class="status-panel" id="statusPanel">
+              <strong id="statusTitle">A partida começou.</strong>
+              <span id="statusMessage">Sul joga primeiro.</span>
+            </div>
+          </section>
+
+          <aside class="game-sidebar">
+            <section class="glass sidebar-card">
+              <span class="eyebrow">ESTADO DA MESA</span>
+              <div class="room-status" id="roomStatus">Partida local</div>
+              <p id="matchMessage">A contagem começa em 0–0.</p>
+            </section>
+            <section class="glass sidebar-card">
+              <span class="eyebrow">ÚLTIMA JOGADA</span>
+              <p id="lastMoveText">Ainda não houve jogadas.</p>
+            </section>
+            <section class="glass sidebar-card rules-mini">
+              <span class="eyebrow">LEMBRETE</span>
+              <p>Distribuição anti-horária, sem deixar semente na casa de origem ao completar a volta. Colheita consecutiva de casas com 2 ou 3 sementes.</p>
+              <button class="text-button" id="sidebarRulesButton" type="button">Ler regras completas</button>
+              <p class="asset-credit">Tabuleiro e sementes do visual clássico: Oliver Merkel, licença CC BY-NC-SA 4.0.</p>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="rulesDialog">
+    <div class="dialog-head">
+      <div><span class="eyebrow">REGULAMENTO V0</span><h2>Regras do Uril de Cabo Verde</h2></div>
+      <button class="icon-button" id="closeRulesButton" type="button">×</button>
+    </div>
+    <div class="rules-content">
+      <ol>
+        <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
+        <li><strong>Orientação.</strong> Sul joga na fila inferior e Norte na fila superior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
+        <li><strong>Sementeira.</strong> Escolhem-se todas as sementes de uma casa própria e distribui-se uma por casa. Quando a volta passa novamente pela casa de origem, essa casa é saltada.</li>
+        <li><strong>Casa com uma semente.</strong> Só se joga uma casa com uma única semente quando nenhuma outra casa própria tiver mais de uma.</li>
+        <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e continuam a colher-se, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
+        <li><strong>Alimentação.</strong> Quando o adversário não tem sementes, é obrigatório escolher uma jogada que lhe dê sementes, sempre que essa jogada exista.</li>
+        <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. O mesmo jogador joga novamente para tentar alimentar o adversário; sem jogada de alimentação, a partida termina e cada lado recolhe as sementes da sua fila.</li>
+        <li><strong>Fim.</strong> A partida termina quando alguém alcança 25 sementes ou deixa de existir jogada legal de alimentação. Com 24–24 há empate.</li>
+        <li><strong>O Quatro.</strong> A contagem pertence ao vencedor da última partida e regressa a 1–0 quando muda de jogador. Quatro vitórias consecutivas marcam um <em>Quatro</em>.</li>
+        <li><strong>Corte depois do Quatro.</strong> O adversário só corta a contagem com duas vitórias consecutivas, passando a liderar por 2–0. O Quatro já marcado continua registado.</li>
+      </ol>
+      <p class="rules-note">Esta é a interpretação operacional usada na versão zero. O regulamento fica isolado no motor do jogo para facilitar correcções após validação com mestres de Uril.</p>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

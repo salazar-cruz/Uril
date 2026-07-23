@@ -1,0 +1,16 @@
+Uril de Cabo Verde — Versão Zero
+Copyright (c) 2026 DevNexus Digital. Todos os direitos reservados sobre o código específico desta versão e os elementos gráficos próprios.
+
+ELEMENTOS GRÁFICOS DE TERCEIROS
+
+Os ficheiros existentes em assets/classic/ foram criados por Oliver Merkel e provêm do projecto OMerkel/Oware:
+- board01.jpg
+- trou-bonduc00.png a trou-bonduc15.png
+
+Estes elementos são utilizados ao abrigo da licença Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
+
+Autor: Oliver Merkel
+Fonte: https://github.com/OMerkel/Oware
+Licença: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+A utilização comercial destes elementos gráficos não está autorizada por esta licença. Para uma futura versão comercial, deverão ser substituídos por imagens próprias.

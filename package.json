@@ -1,0 +1,9 @@
+{
+  "name": "uril-cabo-verde-v0",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
