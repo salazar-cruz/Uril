@@ -56,9 +56,19 @@ const app = {
   side: SOUTH,
   spectator: false,
   busy: false,
+  animationGame: null,
+  animation: null,
+  remoteUpdateQueue: Promise.resolve(),
   aiTimer: null,
   rooms: [],
   onlinePlayers: [],
+};
+
+const ANIMATION_TIMING = {
+  lift: 180,
+  seed: 150,
+  capture: 220,
+  settle: 120,
 };
 
 const multiplayer = new MultiplayerService({
@@ -134,6 +144,107 @@ function playerName(player) {
 
 function islandName(code) {
   return ISLANDS[code] || 'Cabo Verde';
+}
+
+function cloneValue(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function displayedGame() {
+  return app.animationGame || app.session.game;
+}
+
+function sleep(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function boardsEqual(left, right) {
+  return Array.isArray(left) && Array.isArray(right) &&
+    left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function movePath(beforeBoard, pitIndex) {
+  const path = [];
+  let seeds = beforeBoard[pitIndex];
+  let cursor = pitIndex;
+  while (seeds > 0) {
+    cursor = (cursor + 1) % 12;
+    if (cursor === pitIndex) cursor = (cursor + 1) % 12;
+    path.push(cursor);
+    seeds -= 1;
+  }
+  return path;
+}
+
+function canAnimateTransition(fromGame, toGame) {
+  const move = toGame?.lastMove;
+  return Boolean(
+    move &&
+    boardsEqual(fromGame?.board, move.before) &&
+    move.player === fromGame?.currentPlayer
+  );
+}
+
+async function animateMove(fromGame, toGame) {
+  if (!canAnimateTransition(fromGame, toGame)) return;
+
+  const move = toGame.lastMove;
+  app.animationGame = cloneValue(fromGame);
+  app.animationGame.lastMove = null;
+  app.animationGame.board[move.pitIndex] = 0;
+  app.animation = {
+    phase: 'lifting',
+    activePit: move.pitIndex,
+    step: 0,
+    total: move.before[move.pitIndex],
+    player: move.player,
+  };
+  renderGame();
+  await sleep(ANIMATION_TIMING.lift);
+
+  const path = movePath(move.before, move.pitIndex);
+  for (let step = 0; step < path.length; step += 1) {
+    const pitIndex = path[step];
+    app.animationGame.board[pitIndex] += 1;
+    app.animation = {
+      phase: 'sowing',
+      activePit: pitIndex,
+      step: step + 1,
+      total: path.length,
+      player: move.player,
+    };
+    renderGame();
+    await sleep(ANIMATION_TIMING.seed);
+  }
+
+  for (const pitIndex of move.capturedPits || []) {
+    const captured = app.animationGame.board[pitIndex];
+    app.animationGame.board[pitIndex] = 0;
+    app.animationGame.scores[move.player] += captured;
+    app.animation = {
+      phase: 'capture',
+      activePit: pitIndex,
+      step: 0,
+      total: move.capturedPits.length,
+      player: move.player,
+      captured,
+    };
+    renderGame();
+    await sleep(ANIMATION_TIMING.capture);
+  }
+
+  app.animationGame = cloneValue(toGame);
+  app.animation = {
+    phase: 'settling',
+    activePit: move.lastPit,
+    step: path.length,
+    total: path.length,
+    player: move.player,
+  };
+  renderGame();
+  await sleep(ANIMATION_TIMING.settle);
+  app.animationGame = null;
+  app.animation = null;
 }
 
 function settleRound(session) {
@@ -279,6 +390,7 @@ async function enterRoomFromList(room, isPlayer) {
 }
 
 async function enterOnlineRoom(room, spectator) {
+  app.remoteUpdateQueue = Promise.resolve();
   app.mode = 'online';
   app.room = room;
   app.spectator = spectator;
@@ -289,13 +401,9 @@ async function enterOnlineRoom(room, spectator) {
   };
   app.side = spectator ? null : room.host_id === multiplayer.user.id ? SOUTH : NORTH;
   await multiplayer.subscribeRoom(room.id, (updated) => {
-    app.room = updated;
-    app.session = normaliseSession(updated.game_state);
-    app.players = {
-      [SOUTH]: { nick: updated.host_nick, island: updated.host_island },
-      [NORTH]: { nick: updated.guest_nick || 'À espera…', island: updated.guest_island || 'santa-luzia' },
-    };
-    renderGame();
+    app.remoteUpdateQueue = app.remoteUpdateQueue
+      .then(() => applyRemoteRoomUpdate(updated))
+      .catch((error) => toast(`Erro ao sincronizar a sala: ${error.message}`));
   });
   showScreen('game');
   renderGame();
@@ -306,9 +414,33 @@ function normaliseSession(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+async function applyRemoteRoomUpdate(updated) {
+  if (app.mode !== 'online' || (app.room?.id && updated.id !== app.room.id)) return;
+  const incoming = normaliseSession(updated.game_state);
+  const previous = normaliseSession(app.session);
+
+  app.room = updated;
+  app.players = {
+    [SOUTH]: { nick: updated.host_nick, island: updated.host_island },
+    [NORTH]: { nick: updated.guest_nick || 'À espera…', island: updated.guest_island || 'santa-luzia' },
+  };
+
+  if (!app.busy && canAnimateTransition(previous.game, incoming.game)) {
+    app.busy = true;
+    try {
+      await animateMove(previous.game, incoming.game);
+    } finally {
+      app.busy = false;
+    }
+  }
+
+  app.session = incoming;
+  renderGame();
+}
+
 function buildPit(index) {
   const button = document.createElement('button');
-  const seedTotal = app.session.game.board[index];
+  const seedTotal = displayedGame().board[index];
   const spriteTotal = Math.min(seedTotal, 15);
   const spriteName = String(spriteTotal).padStart(2, '0');
 
@@ -324,6 +456,13 @@ function buildPit(index) {
   count.className = 'seed-count';
   count.textContent = String(seedTotal);
   if (seedTotal > 15) button.classList.add('overflow-count');
+
+  if (app.animation?.activePit === index) {
+    if (app.animation.phase === 'lifting') button.classList.add('lifting');
+    if (app.animation.phase === 'sowing') button.classList.add('sowing');
+    if (app.animation.phase === 'capture') button.classList.add('capturing');
+    if (app.animation.phase === 'settling') button.classList.add('settling');
+  }
 
   button.append(count);
   button.addEventListener('click', () => playMove(index));
@@ -344,8 +483,9 @@ function canLocalPlayerAct() {
 function renderBoard() {
   elements.northRow.replaceChildren();
   elements.southRow.replaceChildren();
+  const game = displayedGame();
   const moves = canLocalPlayerAct() ? legalMoves(app.session.game) : [];
-  const lastPit = app.session.game.lastMove?.lastPit;
+  const lastPit = app.animation ? null : game.lastMove?.lastPit;
 
   for (let index = 6; index <= 11; index += 1) {
     const pit = buildPit(index);
@@ -364,7 +504,8 @@ function renderBoard() {
 }
 
 function renderGame() {
-  const { game, match } = app.session;
+  const game = displayedGame();
+  const { match } = app.session;
   const display = matchDisplay(match);
   elements.northNick.textContent = playerName(NORTH);
   elements.southNick.textContent = playerName(SOUTH);
@@ -415,7 +556,27 @@ function renderGame() {
 }
 
 function renderStatus() {
-  const game = app.session.game;
+  const game = displayedGame();
+  if (app.animation?.phase === 'lifting') {
+    elements.statusTitle.textContent = `${playerName(app.animation.player)} levantou as sementes.`;
+    elements.statusMessage.textContent = 'A casa de origem fica vazia antes da distribuição.';
+    return;
+  }
+  if (app.animation?.phase === 'sowing') {
+    elements.statusTitle.textContent = `${playerName(app.animation.player)} está a semear.`;
+    elements.statusMessage.textContent = `Semente ${app.animation.step} de ${app.animation.total}.`;
+    return;
+  }
+  if (app.animation?.phase === 'capture') {
+    elements.statusTitle.textContent = `${playerName(app.animation.player)} está a colher.`;
+    elements.statusMessage.textContent = `${app.animation.captured} sementes recolhidas desta casa.`;
+    return;
+  }
+  if (app.animation?.phase === 'settling') {
+    elements.statusTitle.textContent = 'Jogada concluída.';
+    elements.statusMessage.textContent = 'O tabuleiro está a passar a vez.';
+    return;
+  }
   if (app.mode === 'online' && app.room?.status === 'waiting') {
     elements.statusTitle.textContent = 'Mesa criada.';
     elements.statusMessage.textContent = 'À espera que outro jogador entre.';
@@ -448,6 +609,14 @@ function renderStatus() {
 }
 
 function renderLastMove() {
+  if (app.animation?.phase === 'sowing') {
+    elements.lastMoveText.textContent = `${playerName(app.animation.player)} distribui as sementes uma a uma.`;
+    return;
+  }
+  if (app.animation?.phase === 'capture') {
+    elements.lastMoveText.textContent = `${playerName(app.animation.player)} recolhe as casas válidas.`;
+    return;
+  }
   const move = app.session.game.lastMove;
   if (!move) {
     elements.lastMoveText.textContent = 'Ainda não houve jogadas.';
@@ -463,15 +632,18 @@ async function playMove(index) {
   if (!canLocalPlayerAct()) return;
   try {
     app.busy = true;
-    let next = JSON.parse(JSON.stringify(app.session));
+    const previous = cloneValue(app.session);
+    let next = cloneValue(app.session);
     next.game = applyMove(next.game, index);
     next = settleRound(next);
+
+    await animateMove(previous.game, next.game);
+    app.session = next;
+    renderGame();
 
     if (app.mode === 'online') {
       app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
       app.session = normaliseSession(app.room.game_state);
-    } else {
-      app.session = next;
     }
   } catch (error) {
     if (app.mode === 'online') {
@@ -494,13 +666,17 @@ function maybeRunAI() {
     app.session.game.currentPlayer !== NORTH
   ) return;
 
-  app.aiTimer = window.setTimeout(() => {
+  app.aiTimer = window.setTimeout(async () => {
     app.busy = true;
     try {
       const move = chooseMove(app.session.game, app.aiLevel);
       if (move !== null) {
-        app.session.game = applyMove(app.session.game, move);
-        app.session = settleRound(app.session);
+        const previous = cloneValue(app.session);
+        let next = cloneValue(app.session);
+        next.game = applyMove(next.game, move);
+        next = settleRound(next);
+        await animateMove(previous.game, next.game);
+        app.session = next;
       }
     } catch (error) {
       toast(`Erro do computador: ${error.message}`);
@@ -531,6 +707,9 @@ async function newRound() {
 
 async function leaveGame() {
   clearTimeout(app.aiTimer);
+  app.remoteUpdateQueue = Promise.resolve();
+  app.animationGame = null;
+  app.animation = null;
   if (app.mode === 'online') await multiplayer.leaveRoomChannel();
   app.mode = null;
   app.room = null;

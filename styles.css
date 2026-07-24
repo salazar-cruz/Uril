@@ -358,3 +358,73 @@ input:focus, select:focus { border-color: rgba(230,184,92,.7); box-shadow: 0 0 0
 .south-row .pit:nth-child(4) { left: 36.5%; top: 49.7041%; }
 .south-row .pit:nth-child(5) { left: 21.5%; top: 49.4083%; }
 .south-row .pit:nth-child(6) { left: 6.5833%; top: 49.4083%; }
+
+
+/* Animação de sementeira: cada grão entra visualmente numa casa. */
+.pit.classic-pit.lifting {
+  animation: uril-lift-seeds .18s ease-out both;
+  filter: brightness(.9);
+  z-index: 5;
+}
+.pit.classic-pit.sowing {
+  animation: uril-pit-pulse .15s ease-out both;
+  filter: brightness(1.13) drop-shadow(0 0 10px rgba(245,204,117,.95));
+  z-index: 6;
+}
+.pit.classic-pit.sowing::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 10%;
+  min-width: 9px;
+  aspect-ratio: 1.45 / 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 24%, #f7e2ad 0 16%, #bd8b50 46%, #5b351b 100%);
+  box-shadow: 0 3px 5px rgba(0,0,0,.5);
+  transform: translate(-50%, -170%) rotate(-18deg);
+  animation: uril-seed-drop .15s cubic-bezier(.2,.75,.25,1) both;
+  pointer-events: none;
+}
+.pit.classic-pit.capturing {
+  animation: uril-capture .22s ease-in-out both;
+  z-index: 6;
+}
+.pit.classic-pit.settling {
+  animation: uril-settle .12s ease-out both;
+}
+
+@keyframes uril-lift-seeds {
+  0% { transform: scale(1); }
+  55% { transform: scale(.96) translateY(-3px); }
+  100% { transform: scale(1); }
+}
+@keyframes uril-pit-pulse {
+  0% { transform: scale(.96); }
+  65% { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+@keyframes uril-seed-drop {
+  0% { opacity: 0; transform: translate(-50%, -170%) rotate(-18deg) scale(.75); }
+  32% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, 250%) rotate(34deg) scale(1.05); }
+}
+@keyframes uril-capture {
+  0% { filter: brightness(1); transform: scale(1); }
+  45% { filter: brightness(1.25) sepia(.3); transform: scale(1.035); }
+  100% { filter: brightness(.82); transform: scale(.98); }
+}
+@keyframes uril-settle {
+  0% { filter: brightness(1.13); }
+  100% { filter: brightness(1.06) drop-shadow(0 0 8px rgba(61,197,139,.95)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pit.classic-pit.lifting,
+  .pit.classic-pit.sowing,
+  .pit.classic-pit.capturing,
+  .pit.classic-pit.settling,
+  .pit.classic-pit.sowing::after {
+    animation-duration: .01ms !important;
+  }
+}
