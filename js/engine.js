@@ -81,36 +81,12 @@ export function sowOnly(game, pitIndex) {
   return { board, lastPit: cursor };
 }
 
-function oneSeedRestriction(game, player, pitIndex) {
-  const own = OWN_PITS[player];
-  const hasLargeHouse = own.some((index) => game.board[index] > 1);
-  return !(hasLargeHouse && game.board[pitIndex] === 1);
-}
-
-function leavesOpponentFedAfterMove(game, pitIndex) {
-  const player = game.currentPlayer;
-  const opponent = otherPlayer(player);
-  const { board, lastPit } = sowOnly(game, pitIndex);
-  const preview = [...board];
-  const { capturedSeeds } = captureFrom(preview, player, lastPit);
-  const projectedScore = game.scores[player] + capturedSeeds;
-  return projectedScore >= MAJORITY || OWN_PITS[opponent].some((index) => preview[index] > 0);
-}
-
 export function legalMoves(game) {
   if (game.status !== 'playing') return [];
 
-  const player = game.currentPlayer;
-  const opponent = otherPlayer(player);
-  let moves = OWN_PITS[player].filter(
-    (index) => game.board[index] > 0 && oneSeedRestriction(game, player, index),
-  );
-
-  if (rowSeedCount(game, opponent) === 0) {
-    moves = moves.filter((index) => leavesOpponentFedAfterMove(game, index));
-  }
-
-  return moves;
+  // Regra operacional do Uril de Cabo Verde: qualquer casa própria com
+  // pelo menos uma semente é jogável. Não existe bloqueio por alimentação.
+  return OWN_PITS[game.currentPlayer].filter((index) => game.board[index] > 0);
 }
 
 function captureFrom(board, player, lastPit) {
@@ -190,27 +166,19 @@ export function applyMove(game, pitIndex) {
 
   if (checkImmediateMajority(next)) return next;
 
-  if (grandSlam) {
-    // Regra cabo-verdiana: quem colhe as seis casas joga novamente e deve
-    // alimentar o adversário. Se não existir jogada de alimentação, termina.
-    next.currentPlayer = player;
-    const feedingMoves = legalMoves(next);
-    if (feedingMoves.length === 0) {
-      collectRemainingSeeds(
-        next,
-        'Colheita das seis casas e impossibilidade de alimentar o adversário.',
-      );
-    }
-    return next;
-  }
-
+  // Depois da jogada, a vez passa sempre ao adversário, incluindo quando
+  // foram colhidas as seis casas. Se o adversário ficar sem sementes para
+  // jogar, a partida termina e cada lado recolhe o que resta na sua fila.
   next.currentPlayer = opponent;
 
   const opponentMoves = legalMoves(next);
   if (opponentMoves.length === 0) {
-    // Se o jogador sem sementes não puder ser alimentado, cada lado recolhe
-    // as sementes que ficaram na sua própria fila.
-    collectRemainingSeeds(next, 'Não existe jogada legal de alimentação.');
+    collectRemainingSeeds(
+      next,
+      grandSlam
+        ? 'Colheita das seis casas; o adversário ficou sem jogada.'
+        : 'O adversário ficou sem sementes para jogar.',
+    );
     return next;
   }
 

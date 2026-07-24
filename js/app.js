@@ -9,10 +9,10 @@ import {
   otherPlayer,
   pitLabel,
   registerGameResult,
-} from './engine.js';
-import { chooseMove, levelLabel } from './ai.js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-import { MultiplayerService } from './multiplayer.js';
+} from './engine.js?v=0.0.4';
+import { chooseMove, levelLabel } from './ai.js?v=0.0.4';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.4';
+import { MultiplayerService } from './multiplayer.js?v=0.0.4';
 
 const ISLANDS = {
   'santiago': 'Santiago',
