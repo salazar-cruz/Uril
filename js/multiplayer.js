@@ -49,8 +49,14 @@ export class MultiplayerService {
     this.lobbyChannel
       .on('presence', { event: 'sync' }, () => {
         const state = this.lobbyChannel.presenceState();
-        const players = Object.values(state).flat();
-        this.onPresenceChange?.(players);
+        const players = Object.entries(state).map(([userId, metas]) => ({
+          user_id: userId,
+          ...(metas.at(-1) || {}),
+        }));
+        this.onPresenceChange?.({
+          players,
+          count: players.length,
+        });
       })
       .on(
         'postgres_changes',

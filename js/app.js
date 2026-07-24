@@ -10,10 +10,10 @@ import {
   otherPlayer,
   pitLabel,
   registerGameResult,
-} from './engine.js?v=0.0.5';
-import { chooseMove, levelLabel } from './ai.js?v=0.0.5';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.5';
-import { MultiplayerService } from './multiplayer.js?v=0.0.5';
+} from './engine.js?v=0.0.6';
+import { chooseMove, levelLabel } from './ai.js?v=0.0.6';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.6';
+import { MultiplayerService } from './multiplayer.js?v=0.0.6';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -52,7 +52,7 @@ const elements = {
 const app = {
   profile: loadProfile(),
   mode: null,
-  aiLevel: 'player',
+  aiLevel: 'amateur',
   session: createSession(),
   players: defaultPlayers(),
   room: null,
@@ -68,6 +68,8 @@ const app = {
   roundTransitionBusy: false,
   rooms: [],
   onlinePlayers: [],
+  pitButtons: new Map(),
+  spriteCache: new Map(),
 };
 
 const ROUND_TRANSITION_TIMING = {
@@ -87,9 +89,13 @@ const multiplayer = new MultiplayerService({
   url: SUPABASE_URL,
   anonKey: SUPABASE_ANON_KEY,
   onLobbyChange: () => refreshRooms(),
-  onPresenceChange: (players) => {
+  onPresenceChange: ({ players = [], count = 0 } = {}) => {
     app.onlinePlayers = players;
-    elements.onlineCount.textContent = String(Math.max(1, players.length));
+    elements.onlineCount.textContent = String(count);
+    elements.onlineCount.closest('.online-pill')?.setAttribute(
+      'title',
+      `${count} jogador${count === 1 ? '' : 'es'} ligado${count === 1 ? '' : 's'}`,
+    );
   },
 });
 
@@ -495,35 +501,84 @@ async function applyRemoteRoomUpdate(updated) {
   renderGame();
 }
 
-function buildPit(index) {
-  const button = document.createElement('button');
-  const seedTotal = displayedGame().board[index];
-  const spriteTotal = Math.min(seedTotal, 15);
+function classicSpriteUrl(seedTotal) {
+  const spriteTotal = Math.min(Math.max(Number(seedTotal) || 0, 0), 15);
   const spriteName = String(spriteTotal).padStart(2, '0');
+  return new URL(`../assets/classic/trou-bonduc${spriteName}.png`, import.meta.url).href;
+}
 
+async function preloadClassicSprites() {
+  const loads = [];
+  for (let total = 0; total <= 15; total += 1) {
+    const image = new Image();
+    app.spriteCache.set(total, image);
+    loads.push(new Promise((resolve) => {
+      image.addEventListener('load', resolve, { once: true });
+      image.addEventListener('error', resolve, { once: true });
+      image.src = classicSpriteUrl(total);
+    }));
+  }
+  await Promise.all(loads);
+}
+
+function createPitElement(index) {
+  const button = document.createElement('button');
   button.className = 'pit classic-pit';
   button.type = 'button';
   button.dataset.index = String(index);
-  button.dataset.seeds = String(seedTotal);
-  button.title = `${pitLabel(index)}: ${seedTotal} sementes`;
-  button.setAttribute('aria-label', `${pitLabel(index)}: ${seedTotal} sementes`);
-  button.style.backgroundImage = `url("assets/classic/trou-bonduc${spriteName}.png")`;
 
   const count = document.createElement('span');
   count.className = 'seed-count';
-  count.textContent = String(seedTotal);
-  if (seedTotal > 15) button.classList.add('overflow-count');
-
-  if (app.animation?.activePit === index) {
-    if (app.animation.phase === 'lifting') button.classList.add('lifting');
-    if (app.animation.phase === 'sowing') button.classList.add('sowing');
-    if (app.animation.phase === 'capture') button.classList.add('capturing');
-    if (app.animation.phase === 'settling') button.classList.add('settling');
-  }
-
   button.append(count);
   button.addEventListener('click', () => playMove(index));
+
+  app.pitButtons.set(index, button);
   return button;
+}
+
+function ensurePitElements() {
+  if (app.pitButtons.size === 12) return;
+
+  app.pitButtons.clear();
+  elements.northRow.replaceChildren(
+    ...[6, 7, 8, 9, 10, 11].map(createPitElement),
+  );
+  elements.southRow.replaceChildren(
+    ...[5, 4, 3, 2, 1, 0].map(createPitElement),
+  );
+}
+
+function updatePitElement(index, game, moves, lastPit) {
+  const button = app.pitButtons.get(index);
+  if (!button) return;
+
+  const seedTotal = game.board[index];
+  const spriteTotal = Math.min(seedTotal, 15);
+  const spriteName = String(spriteTotal).padStart(2, '0');
+
+  // O elemento permanece no DOM. A imagem só muda quando muda o número de
+  // sementes, evitando o clarão de uma casa vazia a cada refrescamento.
+  if (button.dataset.sprite !== spriteName) {
+    button.style.backgroundImage = `url("${classicSpriteUrl(spriteTotal)}")`;
+    button.dataset.sprite = spriteName;
+  }
+
+  button.dataset.seeds = String(seedTotal);
+  button.title = `${pitLabel(index)}: ${seedTotal} sementes`;
+  button.setAttribute('aria-label', `${pitLabel(index)}: ${seedTotal} sementes`);
+  button.disabled = !moves.includes(index);
+  button.classList.toggle('legal', moves.includes(index));
+  button.classList.toggle('last', lastPit === index);
+  button.classList.toggle('overflow-count', seedTotal > 15);
+
+  const count = button.querySelector('.seed-count');
+  if (count) count.textContent = String(seedTotal);
+
+  const active = app.animation?.activePit === index;
+  button.classList.toggle('lifting', active && app.animation.phase === 'lifting');
+  button.classList.toggle('sowing', active && app.animation.phase === 'sowing');
+  button.classList.toggle('capturing', active && app.animation.phase === 'capture');
+  button.classList.toggle('settling', active && app.animation.phase === 'settling');
 }
 
 function canLocalPlayerAct() {
@@ -538,25 +593,13 @@ function canLocalPlayerAct() {
 }
 
 function renderBoard() {
-  elements.northRow.replaceChildren();
-  elements.southRow.replaceChildren();
+  ensurePitElements();
   const game = displayedGame();
   const moves = canLocalPlayerAct() ? legalMoves(app.session.game) : [];
   const lastPit = app.animation ? null : game.lastMove?.lastPit;
 
-  for (let index = 6; index <= 11; index += 1) {
-    const pit = buildPit(index);
-    pit.disabled = !moves.includes(index);
-    if (moves.includes(index)) pit.classList.add('legal');
-    if (lastPit === index) pit.classList.add('last');
-    elements.northRow.append(pit);
-  }
-  for (let index = 5; index >= 0; index -= 1) {
-    const pit = buildPit(index);
-    pit.disabled = !moves.includes(index);
-    if (moves.includes(index)) pit.classList.add('legal');
-    if (lastPit === index) pit.classList.add('last');
-    elements.southRow.append(pit);
+  for (let index = 0; index < 12; index += 1) {
+    updatePitElement(index, game, moves, lastPit);
   }
 }
 
@@ -743,6 +786,41 @@ async function playMove(index) {
   }
 }
 
+function chooseMoveAsync(game, level) {
+  if (typeof Worker === 'undefined') {
+    return Promise.resolve(chooseMove(game, level));
+  }
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL('./ai-worker.js?v=0.0.6', import.meta.url),
+      { type: 'module' },
+    );
+    const timeout = window.setTimeout(() => {
+      worker.terminate();
+      reject(new Error('A análise da jogada excedeu o tempo previsto.'));
+    }, level === 'grandmaster' ? 6000 : 3500);
+
+    const finish = () => {
+      window.clearTimeout(timeout);
+      worker.terminate();
+    };
+
+    worker.addEventListener('message', (event) => {
+      finish();
+      if (event.data?.ok) resolve(event.data.move);
+      else reject(new Error(event.data?.error || 'A inteligência artificial falhou.'));
+    }, { once: true });
+
+    worker.addEventListener('error', (event) => {
+      finish();
+      reject(new Error(event.message || 'Não foi possível iniciar a inteligência artificial.'));
+    }, { once: true });
+
+    worker.postMessage({ game: cloneValue(game), level });
+  });
+}
+
 function maybeRunAI() {
   clearTimeout(app.aiTimer);
   if (
@@ -753,7 +831,7 @@ function maybeRunAI() {
   app.aiTimer = window.setTimeout(async () => {
     app.busy = true;
     try {
-      const move = chooseMove(app.session.game, app.aiLevel);
+      const move = await chooseMoveAsync(app.session.game, app.aiLevel);
       if (move !== null) {
         const previous = cloneValue(app.session);
         let next = cloneValue(app.session);
@@ -858,6 +936,7 @@ function bindEvents() {
 
 async function init() {
   bindEvents();
+  await preloadClassicSprites();
   renderGame();
   try {
     const result = await multiplayer.init(app.profile);

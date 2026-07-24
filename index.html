@@ -8,7 +8,7 @@
   <title>Uril de Cabo Verde</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=0.0.6">
 </head>
 <body data-island="santiago">
   <div class="island-background" aria-hidden="true"></div>
@@ -19,7 +19,7 @@
         <span><strong>URIL</strong><small>CABO VERDE</small></span>
       </button>
       <div class="topbar-actions">
-        <span class="online-pill" id="onlinePill"><i></i><b id="onlineCount">1</b> online</span>
+        <span class="online-pill" id="onlinePill"><i></i><b id="onlineCount">0</b> jogadores online</span>
         <button class="icon-button" id="rulesButton" type="button" title="Regras">?</button>
       </div>
     </header>
@@ -62,7 +62,7 @@
             <label for="levelSelect">Nível</label>
             <select id="levelSelect">
               <option value="apprentice">Aprendiz</option>
-              <option value="player" selected>Jogador</option>
+              <option value="amateur" selected>Amador</option>
               <option value="master">Mestre</option>
               <option value="grandmaster">Grande Mestre</option>
             </select>
@@ -197,11 +197,11 @@
         <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
         <li><strong>Orientação.</strong> Sul joga na fila inferior e Norte na fila superior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
         <li><strong>Sementeira.</strong> Escolhem-se todas as sementes de uma casa própria e distribui-se uma por casa. Quando a volta passa novamente pela casa de origem, essa casa é saltada.</li>
-        <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. Não existe bloqueio por obrigação de alimentar o adversário.</li>
+        <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. A única excepção surge quando o adversário está sem sementes: nesse caso escolhe-se uma jogada que o alimente, quando existe.</li>
         <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e continuam a colher-se, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
-        <li><strong>Sem bloqueio de alimentação.</strong> A escolha de uma casa própria não é anulada por deixar o adversário sem sementes.</li>
-        <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. A vez passa ao adversário; se este ficar sem sementes para jogar, a partida termina e cada lado recolhe as sementes que restam na sua fila.</li>
-        <li><strong>Fim.</strong> A partida termina quando alguém alcança 25 sementes ou o jogador da vez fica sem qualquer semente para jogar. Com 24–24 há empate.</li>
+        <li><strong>Alimentação.</strong> Quando o campo do adversário está vazio, o jogador tem de escolher uma casa cuja sementeira deixe pelo menos uma semente no campo adversário. Se nenhuma jogada conseguir alimentá-lo, a partida termina.</li>
+        <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. Se o adversário ficar sem qualquer jogada depois dessa colheita, a partida termina e as sementes restantes são contabilizadas.</li>
+        <li><strong>Fim.</strong> A partida termina quando alguém alcança 25 sementes, após uma colheita das seis casas que deixe o adversário sem jogada, ou quando não existe nenhuma jogada de alimentação. Com 24–24 há empate.</li>
         <li><strong>O Quatro.</strong> A contagem pertence ao vencedor da última partida e regressa a 1–0 quando muda de jogador. Quatro vitórias consecutivas marcam um <em>Quatro</em>.</li>
         <li><strong>Corte depois do Quatro.</strong> O adversário só corta a contagem com duas vitórias consecutivas, passando a liderar por 2–0. O Quatro já marcado continua registado.</li>
       </ol>
@@ -211,6 +211,6 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script type="module" src="js/app.js?v=0.0.5"></script>
+  <script type="module" src="js/app.js?v=0.0.6"></script>
 </body>
 </html>

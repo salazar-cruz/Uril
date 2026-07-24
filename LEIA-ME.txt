@@ -1,0 +1,23 @@
+URIL DE CABO VERDE — CORRECÇÃO V0.0.6
+
+No repositório GitHub, substitui os ficheiros deste pacote mantendo exactamente as mesmas pastas.
+
+Ficheiros alterados:
+- index.html
+- js/app.js
+- js/engine.js
+- js/ai.js
+- js/ai-worker.js (novo)
+- js/multiplayer.js
+
+IMPORTANTE:
+- Não apagues nem substituas js/config.js. Esse ficheiro conserva o URL e a chave pública do teu Supabase.
+- Depois do commit, aguarda a publicação do GitHub Pages e faz Ctrl + F5.
+
+Correcções:
+1. as imagens das sementes são pré-carregadas e as doze casas deixam de ser recriadas a cada refrescamento;
+2. se um campo está vazio, ficam válidas as jogadas que o alimentam;
+3. a partida só termina por falta de alimentação quando nenhuma jogada consegue passar sementes;
+4. IA reforçada e executada fora da interface através de Web Worker;
+5. nível Jogador alterado para Amador;
+6. presença online contada por utilizadores únicos.

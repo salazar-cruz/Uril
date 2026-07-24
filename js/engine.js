@@ -17,8 +17,6 @@ export function otherPlayer(player) {
 
 export function nextRoundStarter(game, previousFirstPlayer = SOUTH) {
   if (PLAYERS.includes(game?.winner)) return game.winner;
-  // Em caso de empate, conserva-se a saída: volta a começar quem abriu
-  // a partida empatada.
   return PLAYERS.includes(previousFirstPlayer) ? previousFirstPlayer : SOUTH;
 }
 
@@ -57,8 +55,12 @@ function structuredCloneSafe(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function rowSeedCountFromBoard(board, player) {
+  return OWN_PITS[player].reduce((sum, index) => sum + board[index], 0);
+}
+
 export function rowSeedCount(game, player) {
-  return OWN_PITS[player].reduce((sum, index) => sum + game.board[index], 0);
+  return rowSeedCountFromBoard(game.board, player);
 }
 
 function nextPit(index) {
@@ -78,22 +80,12 @@ export function sowOnly(game, pitIndex) {
 
   while (seeds > 0) {
     cursor = nextPit(cursor);
-    if (cursor === pitIndex) {
-      cursor = nextPit(cursor);
-    }
+    if (cursor === pitIndex) cursor = nextPit(cursor);
     board[cursor] += 1;
     seeds -= 1;
   }
 
   return { board, lastPit: cursor };
-}
-
-export function legalMoves(game) {
-  if (game.status !== 'playing') return [];
-
-  // Regra operacional do Uril de Cabo Verde: qualquer casa própria com
-  // pelo menos uma semente é jogável. Não existe bloqueio por alimentação.
-  return OWN_PITS[game.currentPlayer].filter((index) => game.board[index] > 0);
 }
 
 function captureFrom(board, player, lastPit) {
@@ -113,6 +105,66 @@ function captureFrom(board, player, lastPit) {
   }
 
   return { capturedPits, capturedSeeds };
+}
+
+/**
+ * Calcula a sementeira e a colheita sem alterar a partida original.
+ * Quando o adversário já está sem sementes, uma colheita que retiraria
+ * imediatamente as sementes acabadas de lhe dar é anulada. Assim, a jogada
+ * de alimentação deixa efectivamente sementes no campo adversário.
+ */
+function previewMove(game, pitIndex) {
+  const player = game.currentPlayer;
+  const opponent = otherPlayer(player);
+  const opponentWasEmpty = rowSeedCount(game, opponent) === 0;
+  const before = [...game.board];
+  const { board: sownBoard, lastPit } = sowOnly(game, pitIndex);
+
+  const capturedBoard = [...sownBoard];
+  let { capturedPits, capturedSeeds } = captureFrom(capturedBoard, player, lastPit);
+  let board = capturedBoard;
+  let feedingCaptureCancelled = false;
+
+  if (
+    opponentWasEmpty &&
+    rowSeedCountFromBoard(sownBoard, opponent) > 0 &&
+    rowSeedCountFromBoard(capturedBoard, opponent) === 0
+  ) {
+    board = sownBoard;
+    capturedPits = [];
+    capturedSeeds = 0;
+    feedingCaptureCancelled = true;
+  }
+
+  return {
+    player,
+    opponent,
+    before,
+    board,
+    lastPit,
+    capturedPits,
+    capturedSeeds,
+    opponentWasEmpty,
+    feedingCaptureCancelled,
+  };
+}
+
+export function legalMoves(game) {
+  if (game.status !== 'playing') return [];
+
+  const player = game.currentPlayer;
+  const opponent = otherPlayer(player);
+  const candidates = OWN_PITS[player].filter((index) => game.board[index] > 0);
+
+  if (!candidates.length) return [];
+  if (rowSeedCount(game, opponent) > 0) return candidates;
+
+  // Se o campo adversário está vazio, é obrigatório escolher uma jogada
+  // que lhe deixe pelo menos uma semente, desde que tal jogada exista.
+  return candidates.filter((index) => {
+    const preview = previewMove(game, index);
+    return rowSeedCountFromBoard(preview.board, opponent) > 0;
+  });
 }
 
 function collectRemainingSeeds(game, reason) {
@@ -144,48 +196,51 @@ export function applyMove(game, pitIndex) {
   const next = cloneGame(game);
   const moves = legalMoves(next);
   if (!moves.includes(pitIndex)) {
-    throw new Error('Jogada inválida segundo as regras do Uril de Cabo Verde.');
+    const opponent = otherPlayer(next.currentPlayer);
+    const starvation = rowSeedCount(next, opponent) === 0;
+    throw new Error(
+      starvation
+        ? 'Jogada inválida: o adversário está sem sementes e tem de ser alimentado.'
+        : 'Jogada inválida segundo as regras do Uril de Cabo Verde.',
+    );
   }
 
-  const player = next.currentPlayer;
-  const opponent = otherPlayer(player);
-  const before = [...next.board];
-  const { board, lastPit } = sowOnly(next, pitIndex);
-  next.board = board;
-
-  const { capturedPits, capturedSeeds } = captureFrom(next.board, player, lastPit);
-  next.scores[player] += capturedSeeds;
+  const outcome = previewMove(next, pitIndex);
+  const { player, opponent } = outcome;
+  next.board = [...outcome.board];
+  next.scores[player] += outcome.capturedSeeds;
 
   const grandSlam =
-    capturedSeeds > 0 && OWN_PITS[opponent].every((index) => next.board[index] === 0);
+    outcome.capturedSeeds > 0 &&
+    OWN_PITS[opponent].every((index) => next.board[index] === 0);
 
   next.lastMove = {
     player,
     pitIndex,
-    before,
+    before: outcome.before,
     after: [...next.board],
-    lastPit,
-    capturedPits,
-    capturedSeeds,
+    lastPit: outcome.lastPit,
+    capturedPits: outcome.capturedPits,
+    capturedSeeds: outcome.capturedSeeds,
     grandSlam,
+    fedOpponent: outcome.opponentWasEmpty && rowSeedCount(next, opponent) > 0,
+    feedingCaptureCancelled: outcome.feedingCaptureCancelled,
   };
   next.turn += 1;
 
   if (checkImmediateMajority(next)) return next;
 
-  // Depois da jogada, a vez passa sempre ao adversário, incluindo quando
-  // foram colhidas as seis casas. Se o adversário ficar sem sementes para
-  // jogar, a partida termina e cada lado recolhe o que resta na sua fila.
   next.currentPlayer = opponent;
-
   const opponentMoves = legalMoves(next);
+
   if (opponentMoves.length === 0) {
-    collectRemainingSeeds(
-      next,
-      grandSlam
-        ? 'Colheita das seis casas; o adversário ficou sem jogada.'
-        : 'O adversário ficou sem sementes para jogar.',
-    );
+    const opponentRowEmpty = rowSeedCount(next, opponent) === 0;
+    const reason = grandSlam
+      ? 'Colheita das seis casas; o adversário ficou sem jogada.'
+      : opponentRowEmpty
+        ? 'O adversário ficou sem sementes para jogar.'
+        : 'Não existe jogada que consiga alimentar o adversário.';
+    collectRemainingSeeds(next, reason);
     return next;
   }
 
@@ -223,8 +278,6 @@ export function registerGameResult(match, winner) {
     next.message = 'Empate: a contagem mantém-se.';
     return next;
   }
-
-  const opponent = otherPlayer(winner);
 
   if (next.protectedBy && winner !== next.protectedBy) {
     if (next.cutCandidate === winner) next.cutWins += 1;
@@ -269,8 +322,6 @@ export function registerGameResult(match, winner) {
     next.message = `${labelPlayer(winner)} lidera a contagem actual por ${next.runWins}–0.`;
   }
 
-  // Mantém a estrutura explícita, mesmo quando o adversário não tem contagem.
-  void opponent;
   return next;
 }
 
