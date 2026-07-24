@@ -116,7 +116,7 @@
                 <span id="gameModeLabel">PARTIDA</span>
                 <h2 id="roomTitle">Mesa de Uril</h2>
               </div>
-              <button class="secondary-button compact" id="newRoundButton" type="button" hidden>Nova partida</button>
+              <button class="secondary-button compact" id="newRoundButton" type="button" hidden>Arrumar agora</button>
             </div>
 
             <div class="match-strip">
@@ -150,6 +150,12 @@
                   <i>48 sementes · Cabo Verde</i>
                 </div>
                 <div class="pit-row south-row" id="southRow"></div>
+              </div>
+              <div class="round-result glass" id="roundResult" role="status" aria-live="assertive" hidden>
+                <span class="eyebrow">PARTIDA TERMINADA</span>
+                <strong id="roundResultTitle">Sul venceu a partida.</strong>
+                <b id="roundResultScore">Norte 0 — 0 Sul</b>
+                <small id="roundResultNext">O tabuleiro será arrumado.</small>
               </div>
             </div>
 
@@ -191,11 +197,11 @@
         <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
         <li><strong>Orientação.</strong> Sul joga na fila inferior e Norte na fila superior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
         <li><strong>Sementeira.</strong> Escolhem-se todas as sementes de uma casa própria e distribui-se uma por casa. Quando a volta passa novamente pela casa de origem, essa casa é saltada.</li>
-        <li><strong>Casa com uma semente.</strong> Só se joga uma casa com uma única semente quando nenhuma outra casa própria tiver mais de uma.</li>
+        <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. Não existe bloqueio por obrigação de alimentar o adversário.</li>
         <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e continuam a colher-se, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
-        <li><strong>Alimentação.</strong> Quando o adversário não tem sementes, é obrigatório escolher uma jogada que lhe dê sementes, sempre que essa jogada exista.</li>
-        <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. O mesmo jogador joga novamente para tentar alimentar o adversário; sem jogada de alimentação, a partida termina e cada lado recolhe as sementes da sua fila.</li>
-        <li><strong>Fim.</strong> A partida termina quando alguém alcança 25 sementes ou deixa de existir jogada legal de alimentação. Com 24–24 há empate.</li>
+        <li><strong>Sem bloqueio de alimentação.</strong> A escolha de uma casa própria não é anulada por deixar o adversário sem sementes.</li>
+        <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. A vez passa ao adversário; se este ficar sem sementes para jogar, a partida termina e cada lado recolhe as sementes que restam na sua fila.</li>
+        <li><strong>Fim.</strong> A partida termina quando alguém alcança 25 sementes ou o jogador da vez fica sem qualquer semente para jogar. Com 24–24 há empate.</li>
         <li><strong>O Quatro.</strong> A contagem pertence ao vencedor da última partida e regressa a 1–0 quando muda de jogador. Quatro vitórias consecutivas marcam um <em>Quatro</em>.</li>
         <li><strong>Corte depois do Quatro.</strong> O adversário só corta a contagem com duas vitórias consecutivas, passando a liderar por 2–0. O Quatro já marcado continua registado.</li>
       </ol>
@@ -205,6 +211,6 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=0.0.5"></script>
 </body>
 </html>

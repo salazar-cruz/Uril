@@ -139,7 +139,7 @@ input:focus, select:focus { border-color: rgba(230,184,92,.7); box-shadow: 0 0 0
 .score-row b { color: var(--ink); font-size: 18px; margin: 0 5px; }
 .turn-badge { padding: 7px 11px; border-radius: 999px; background: rgba(61,197,139,.12); border: 1px solid rgba(61,197,139,.25); color: #95edc6; font-weight: 800; }
 
-.board-wrap { padding: 12px 0 8px; }
+.board-wrap { position: relative; padding: 12px 0 8px; }
 .board { position: relative; width: min(100%, 980px); margin: 0 auto; padding: 34px 38px; border-radius: 52px; background: linear-gradient(145deg, var(--wood-3), var(--wood-2) 42%, var(--wood-1)); border: 5px solid rgba(76,41,20,.85); box-shadow: inset 0 0 0 2px rgba(255,255,255,.14), inset 0 18px 30px rgba(255,255,255,.08), inset 0 -24px 42px rgba(44,21,10,.35), 0 25px 55px rgba(0,0,0,.35); overflow: hidden; }
 .board-grain { position: absolute; inset: 0; opacity: .16; background-image: repeating-linear-gradient(7deg, transparent 0 18px, rgba(55,24,8,.28) 19px 20px, transparent 21px 42px); pointer-events: none; }
 .pit-row { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(6, minmax(54px, 1fr)); gap: clamp(8px, 1.4vw, 17px); }
@@ -427,4 +427,43 @@ input:focus, select:focus { border-color: rgba(230,184,92,.7); box-shadow: 0 0 0
   .pit.classic-pit.sowing::after {
     animation-duration: .01ms !important;
   }
+}
+
+
+/* Resultado entre partidas: anuncia o vencedor antes de arrumar o tabuleiro. */
+.round-result {
+  position: absolute;
+  z-index: 12;
+  left: 50%;
+  top: 50%;
+  width: min(430px, calc(100% - 42px));
+  transform: translate(-50%, -50%);
+  padding: 24px 26px;
+  border-radius: 20px;
+  text-align: center;
+  background: rgba(8, 24, 19, .94);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, .58);
+  animation: round-result-in .28s ease-out both;
+}
+.round-result[hidden] { display: none; }
+.round-result strong {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(24px, 3vw, 34px);
+  color: var(--gold-strong);
+}
+.round-result b {
+  display: block;
+  margin-top: 10px;
+  font-size: 17px;
+}
+.round-result small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+@keyframes round-result-in {
+  from { opacity: 0; transform: translate(-50%, -44%) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }

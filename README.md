@@ -40,3 +40,22 @@ npm test
 O código específico desta versão pertence à DevNexus Digital.
 
 O tabuleiro fotográfico e as imagens das casas com sementes foram produzidos por Oliver Merkel e reutilizados ao abrigo da licença Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International. Consulta [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+
+## Alteração v0.0.3
+
+- Sementeira animada grão a grão, com bloqueio da mesa até ao fim da jogada.
+- Colheita das casas também apresentada de forma progressiva.
+- Jogadas recebidas nas salas online são reproduzidas no tabuleiro em vez de surgirem de forma brusca.
+
+## Correcção v0.0.4
+
+- Remove totalmente o bloqueio de casas com uma semente.
+- Elimina a obrigação de alimentação na selecção de jogadas.
+- Após a colheita das seis casas, a vez passa ao adversário; sem sementes para jogar, a partida termina.
+- Acrescenta versionamento aos módulos JavaScript para evitar que o navegador reutilize o motor antigo em cache.
+
+
+## Alteração v0.0.5
+
+No fim de cada partida, o jogo anuncia o vencedor e o resultado, arruma automaticamente o tabuleiro e dá a primeira jogada da partida seguinte ao vencedor. Em caso de empate, volta a abrir o mesmo jogador que iniciou a partida empatada.

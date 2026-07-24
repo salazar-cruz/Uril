@@ -6,13 +6,14 @@ import {
   createMatch,
   legalMoves,
   matchDisplay,
+  nextRoundStarter,
   otherPlayer,
   pitLabel,
   registerGameResult,
-} from './engine.js?v=0.0.4';
-import { chooseMove, levelLabel } from './ai.js?v=0.0.4';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.4';
-import { MultiplayerService } from './multiplayer.js?v=0.0.4';
+} from './engine.js?v=0.0.5';
+import { chooseMove, levelLabel } from './ai.js?v=0.0.5';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.5';
+import { MultiplayerService } from './multiplayer.js?v=0.0.5';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -44,6 +45,8 @@ const elements = {
   statusTitle: $('#statusTitle'), statusMessage: $('#statusMessage'),
   matchMessage: $('#matchMessage'), lastMoveText: $('#lastMoveText'), roomStatus: $('#roomStatus'),
   newRound: $('#newRoundButton'), rules: $('#rulesDialog'), toast: $('#toast'),
+  roundResult: $('#roundResult'), roundResultTitle: $('#roundResultTitle'),
+  roundResultScore: $('#roundResultScore'), roundResultNext: $('#roundResultNext'),
 };
 
 const app = {
@@ -60,8 +63,17 @@ const app = {
   animation: null,
   remoteUpdateQueue: Promise.resolve(),
   aiTimer: null,
+  roundTimer: null,
+  roundKey: null,
+  roundTransitionBusy: false,
   rooms: [],
   onlinePlayers: [],
+};
+
+const ROUND_TRANSITION_TIMING = {
+  local: 2800,
+  onlineHost: 2800,
+  onlineGuestFallback: 4600,
 };
 
 const ANIMATION_TIMING = {
@@ -81,11 +93,12 @@ const multiplayer = new MultiplayerService({
   },
 });
 
-function createSession(firstPlayer = SOUTH, match = createMatch()) {
+function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinner = null) {
   return {
     game: createGame({ firstPlayer }),
     match,
     firstPlayer,
+    previousWinner,
     roundRegistered: false,
     createdAt: new Date().toISOString(),
   };
@@ -156,6 +169,48 @@ function displayedGame() {
 
 function sleep(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function clearRoundTransition() {
+  window.clearTimeout(app.roundTimer);
+  app.roundTimer = null;
+  app.roundKey = null;
+}
+
+function roundKey(session = app.session) {
+  const game = session?.game;
+  if (!game || game.status !== 'finished') return null;
+  return [session.createdAt, game.turn, game.winner, session.match?.gamesPlayed].join(':');
+}
+
+function canArrangeNextRound() {
+  if (app.spectator) return false;
+  if (app.mode !== 'online') return true;
+  return Boolean(app.side && multiplayer.user);
+}
+
+function roundTransitionDelay() {
+  if (app.mode !== 'online') return ROUND_TRANSITION_TIMING.local;
+  const isHost = app.room?.host_id === multiplayer.user?.id;
+  return isHost
+    ? ROUND_TRANSITION_TIMING.onlineHost
+    : ROUND_TRANSITION_TIMING.onlineGuestFallback;
+}
+
+function scheduleRoundTransition() {
+  const key = roundKey();
+  if (!key) {
+    clearRoundTransition();
+    return;
+  }
+  if (!canArrangeNextRound() || app.roundKey === key || app.roundTransitionBusy) return;
+
+  app.roundKey = key;
+  app.roundTimer = window.setTimeout(() => {
+    newRound({ automatic: true, scheduledKey: key }).catch((error) => {
+      toast(`Não foi possível arrumar o tabuleiro: ${error.message}`);
+    });
+  }, roundTransitionDelay());
 }
 
 function boardsEqual(left, right) {
@@ -411,7 +466,9 @@ async function enterOnlineRoom(room, spectator) {
 
 function normaliseSession(value) {
   if (!value?.game || !value?.match) return createSession(SOUTH);
-  return JSON.parse(JSON.stringify(value));
+  const session = JSON.parse(JSON.stringify(value));
+  if (!('previousWinner' in session)) session.previousWinner = null;
+  return session;
 }
 
 async function applyRemoteRoomUpdate(updated) {
@@ -538,9 +595,9 @@ function renderGame() {
   renderStatus();
   renderLastMove();
   renderBoard();
+  renderRoundResult();
 
-  const hostCanStart = app.mode === 'online' && app.room?.host_id === multiplayer.user?.id;
-  elements.newRound.hidden = game.status !== 'finished' || app.spectator || (app.mode === 'online' && !hostCanStart);
+  elements.newRound.hidden = game.status !== 'finished' || app.spectator;
 
   if (app.mode === 'online') {
     elements.roomStatus.textContent = app.room?.status === 'waiting'
@@ -552,7 +609,29 @@ function renderGame() {
     elements.roomStatus.textContent = 'Partida local no mesmo dispositivo';
   }
 
+  scheduleRoundTransition();
   maybeRunAI();
+}
+
+function renderRoundResult() {
+  const game = app.session.game;
+  if (game.status !== 'finished') {
+    elements.roundResult.hidden = true;
+    return;
+  }
+
+  const winner = game.winner;
+  const isDraw = winner === 'draw';
+  const starter = nextRoundStarter(game, app.session.firstPlayer || SOUTH);
+  elements.roundResult.hidden = false;
+  elements.roundResultTitle.textContent = isDraw
+    ? 'A partida terminou empatada.'
+    : `${playerName(winner)} venceu a partida.`;
+  elements.roundResultScore.textContent =
+    `${playerName(NORTH)} ${game.scores[NORTH]} — ${game.scores[SOUTH]} ${playerName(SOUTH)}`;
+  elements.roundResultNext.textContent = isDraw
+    ? `O tabuleiro será arrumado. ${playerName(starter)} começa a próxima partida.`
+    : `O tabuleiro será arrumado. ${playerName(winner)} começa a próxima partida.`;
 }
 
 function renderStatus() {
@@ -587,6 +666,11 @@ function renderStatus() {
       ? 'Empate.'
       : `${playerName(game.winner)} venceu a partida.`;
     elements.statusMessage.textContent = `${game.scores[NORTH]}–${game.scores[SOUTH]}. ${game.reason}`;
+    return;
+  }
+  if (!game.lastMove && app.session.previousWinner) {
+    elements.statusTitle.textContent = `${playerName(app.session.previousWinner)} venceu a partida anterior.`;
+    elements.statusMessage.textContent = `Tabuleiro arrumado. ${playerName(game.currentPlayer)} joga primeiro.`;
     return;
   }
   if (app.spectator) {
@@ -687,26 +771,50 @@ function maybeRunAI() {
   }, 520);
 }
 
-async function newRound() {
-  if (app.session.game.status !== 'finished') return;
-  const nextFirst = otherPlayer(app.session.firstPlayer || SOUTH);
-  const next = createSession(nextFirst, app.session.match);
-  if (app.mode === 'online') {
-    try {
+async function newRound(options = {}) {
+  const { automatic = false, scheduledKey = null } = options || {};
+  if (app.session.game.status !== 'finished' || app.roundTransitionBusy) return;
+  if (scheduledKey && scheduledKey !== roundKey()) return;
+  if (app.mode === 'online' && (app.spectator || !app.side)) return;
+
+  const finishedGame = cloneValue(app.session.game);
+  const winner = finishedGame.winner;
+  const nextFirst = nextRoundStarter(finishedGame, app.session.firstPlayer || SOUTH);
+  const previousWinner = [SOUTH, NORTH].includes(winner) ? winner : null;
+  const next = createSession(nextFirst, app.session.match, previousWinner);
+
+  window.clearTimeout(app.roundTimer);
+  app.roundTimer = null;
+  app.roundTransitionBusy = true;
+  app.busy = true;
+
+  try {
+    if (app.mode === 'online') {
       app.room = await multiplayer.updateRoomState(app.room, next, 'playing');
       app.session = normaliseSession(app.room.game_state);
-    } catch (error) {
-      toast(`Não foi possível iniciar: ${error.message}`);
-      return;
+    } else {
+      app.session = next;
     }
-  } else {
-    app.session = next;
+    clearRoundTransition();
+  } catch (error) {
+    if (app.mode === 'online') {
+      try {
+        app.room = await multiplayer.getRoom(app.room.id);
+        app.session = normaliseSession(app.room.game_state);
+        if (automatic && app.session.game.status === 'playing') return;
+      } catch {}
+    }
+    throw error;
+  } finally {
+    app.roundTransitionBusy = false;
+    app.busy = false;
+    renderGame();
   }
-  renderGame();
 }
 
 async function leaveGame() {
   clearTimeout(app.aiTimer);
+  clearRoundTransition();
   app.remoteUpdateQueue = Promise.resolve();
   app.animationGame = null;
   app.animation = null;

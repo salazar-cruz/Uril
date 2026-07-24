@@ -15,6 +15,13 @@ export function otherPlayer(player) {
   return OTHER[player];
 }
 
+export function nextRoundStarter(game, previousFirstPlayer = SOUTH) {
+  if (PLAYERS.includes(game?.winner)) return game.winner;
+  // Em caso de empate, conserva-se a saída: volta a começar quem abriu
+  // a partida empatada.
+  return PLAYERS.includes(previousFirstPlayer) ? previousFirstPlayer : SOUTH;
+}
+
 export function playerPits(player) {
   return [...OWN_PITS[player]];
 }

@@ -7,6 +7,7 @@ import {
   createGame,
   createMatch,
   legalMoves,
+  nextRoundStarter,
   registerGameResult,
   sowOnly,
   validateGame,
@@ -42,7 +43,7 @@ test('a colheita múltipla recolhe casas adversárias consecutivas com 2 ou 3', 
 });
 
 
-test('a colheita das seis casas dá nova jogada para alimentar o adversário', () => {
+test('a colheita das seis casas termina se o adversário ficar sem jogada', () => {
   const game = createGame();
   game.board = Array(12).fill(0);
   game.board[0] = 6;
@@ -50,17 +51,26 @@ test('a colheita das seis casas dá nova jogada para alimentar o adversário', (
   for (let i = 6; i < 12; i += 1) game.board[i] = 1;
   const next = applyMove(game, 5);
   assert.equal(next.lastMove.grandSlam, true);
-  assert.equal(next.currentPlayer, SOUTH);
-  assert.deepEqual(legalMoves(next), [0]);
+  assert.equal(next.status, 'finished');
+  assert.equal(next.winner, SOUTH);
+  assert.equal(next.currentPlayer, NORTH);
 });
 
-test('a casa com uma semente fica bloqueada quando existe casa com mais sementes', () => {
+test('uma casa própria com uma semente é jogável normalmente', () => {
   const game = createGame();
   game.board = Array(12).fill(0);
   game.board[0] = 1;
   game.board[1] = 2;
   game.board[6] = 4;
-  assert.deepEqual(legalMoves(game), [1]);
+  assert.deepEqual(legalMoves(game), [0, 1]);
+});
+
+test('uma casa com uma semente continua jogável mesmo com o adversário vazio', () => {
+  const game = createGame();
+  game.board = Array(12).fill(0);
+  game.board[0] = 1;
+  game.board[1] = 2;
+  assert.deepEqual(legalMoves(game), [0, 1]);
 });
 
 test('um Quatro fica registado após quatro vitórias consecutivas', () => {
@@ -82,6 +92,25 @@ test('o adversário corta a contagem apenas com duas vitórias consecutivas', ()
   assert.equal(match.runOwner, NORTH);
   assert.equal(match.runWins, 2);
   assert.equal(match.quatros[SOUTH], 1);
+});
+
+
+test('o vencedor começa sempre a partida seguinte', () => {
+  const game = createGame({ firstPlayer: NORTH });
+  game.status = 'finished';
+  game.winner = SOUTH;
+  assert.equal(nextRoundStarter(game, NORTH), SOUTH);
+
+  game.winner = NORTH;
+  assert.equal(nextRoundStarter(game, SOUTH), NORTH);
+});
+
+test('num empate volta a começar quem abriu a partida empatada', () => {
+  const game = createGame({ firstPlayer: SOUTH });
+  game.status = 'finished';
+  game.winner = 'draw';
+  assert.equal(nextRoundStarter(game, SOUTH), SOUTH);
+  assert.equal(nextRoundStarter(game, NORTH), NORTH);
 });
 
 test('partidas aleatórias conservam sempre as 48 sementes', () => {
