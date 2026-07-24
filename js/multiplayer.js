@@ -8,6 +8,7 @@ export class MultiplayerService {
     this.user = null;
     this.lobbyChannel = null;
     this.roomChannel = null;
+    this.roomChannelReady = false;
   }
 
   get configured() {
@@ -53,10 +54,7 @@ export class MultiplayerService {
           user_id: userId,
           ...(metas.at(-1) || {}),
         }));
-        this.onPresenceChange?.({
-          players,
-          count: players.length,
-        });
+        this.onPresenceChange?.({ players, count: players.length });
       })
       .on(
         'postgres_changes',
@@ -118,6 +116,7 @@ export class MultiplayerService {
   }
 
   async joinRoom(roomId, profile) {
+    const current = await this.getRoom(roomId);
     const { data, error } = await this.client
       .from('uril_rooms')
       .update({
@@ -125,9 +124,11 @@ export class MultiplayerService {
         guest_nick: profile.nick,
         guest_island: profile.island,
         status: 'playing',
+        version: Number(current.version || 0) + 1,
         updated_at: new Date().toISOString(),
       })
       .eq('id', roomId)
+      .eq('version', current.version)
       .is('guest_id', null)
       .select('*')
       .single();
@@ -147,8 +148,19 @@ export class MultiplayerService {
 
   async subscribeRoom(roomId, onChange) {
     if (this.roomChannel) await this.client.removeChannel(this.roomChannel);
+    this.roomChannelReady = false;
+
     this.roomChannel = this.client
-      .channel(`uril-room-${roomId}`)
+      .channel(`uril-room-${roomId}`, {
+        config: { broadcast: { self: false, ack: false } },
+      })
+      .on(
+        'broadcast',
+        { event: 'room_state' },
+        ({ payload }) => {
+          if (payload?.room) onChange(payload.room);
+        },
+      )
       .on(
         'postgres_changes',
         {
@@ -158,8 +170,38 @@ export class MultiplayerService {
           filter: `id=eq.${roomId}`,
         },
         (payload) => onChange(payload.new),
-      )
-      .subscribe();
+      );
+
+    await new Promise((resolve, reject) => {
+      const timer = window.setTimeout(
+        () => reject(new Error('A ligação em tempo real à mesa excedeu o tempo previsto.')),
+        8000,
+      );
+
+      this.roomChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          window.clearTimeout(timer);
+          this.roomChannelReady = true;
+          resolve();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          window.clearTimeout(timer);
+          reject(new Error('Falhou a ligação em tempo real à mesa.'));
+        }
+      });
+    });
+  }
+
+  async broadcastRoomState(room) {
+    if (!this.roomChannel || !this.roomChannelReady || !room) return;
+    try {
+      await this.roomChannel.send({
+        type: 'broadcast',
+        event: 'room_state',
+        payload: { room },
+      });
+    } catch {
+      // O Postgres Realtime continua a servir de via de recuperação.
+    }
   }
 
   async updateRoomState(room, session, status = room.status) {
@@ -176,6 +218,10 @@ export class MultiplayerService {
       .select('*')
       .single();
     if (error) throw error;
+
+    // Broadcast reduz a latência da animação. A alteração da base de dados
+    // continua a ser a fonte oficial e recupera qualquer mensagem perdida.
+    await this.broadcastRoomState(data);
     return data;
   }
 
@@ -191,6 +237,7 @@ export class MultiplayerService {
     if (this.roomChannel && this.client) {
       await this.client.removeChannel(this.roomChannel);
       this.roomChannel = null;
+      this.roomChannelReady = false;
     }
   }
 }

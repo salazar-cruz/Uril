@@ -10,10 +10,11 @@ import {
   otherPlayer,
   pitLabel,
   registerGameResult,
-} from './engine.js?v=0.0.6';
-import { chooseMove, levelLabel } from './ai.js?v=0.0.6';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.6';
-import { MultiplayerService } from './multiplayer.js?v=0.0.6';
+} from './engine.js?v=0.0.7';
+import { chooseMove, levelLabel } from './ai.js?v=0.0.7';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.7';
+import { MultiplayerService } from './multiplayer.js?v=0.0.7';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.7';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -39,6 +40,7 @@ const elements = {
   northIsland: $('#northIsland'), southIsland: $('#southIsland'),
   northAvatar: $('#northAvatar'), southAvatar: $('#southAvatar'),
   northScore: $('#northScore'), southScore: $('#southScore'),
+  topScoreLabel: $('#topScoreLabel'), bottomScoreLabel: $('#bottomScoreLabel'),
   northQuatros: $('#northQuatros'), southQuatros: $('#southQuatros'),
   northRun: $('#northRun'), southRun: $('#southRun'), cutStatus: $('#cutStatus'),
   turnBadge: $('#turnBadge'), roomTitle: $('#roomTitle'), gameModeLabel: $('#gameModeLabel'),
@@ -70,6 +72,8 @@ const app = {
   onlinePlayers: [],
   pitButtons: new Map(),
   spriteCache: new Map(),
+  boardPerspective: null,
+  lastRoomFingerprint: null,
 };
 
 const ROUND_TRANSITION_TIMING = {
@@ -165,6 +169,38 @@ function islandName(code) {
   return ISLANDS[code] || 'Cabo Verde';
 }
 
+function currentPerspective() {
+  return app.mode === 'online' && !app.spectator && app.side === NORTH
+    ? NORTH
+    : SOUTH;
+}
+
+function currentSeats() {
+  return seatPlayers(currentPerspective());
+}
+
+function invalidateBoardView() {
+  app.pitButtons.clear();
+  app.boardPerspective = null;
+  elements.northRow.replaceChildren();
+  elements.southRow.replaceChildren();
+}
+
+function roomFingerprint(room) {
+  const game = room?.game_state?.game || {};
+  return JSON.stringify({
+    id: room?.id || null,
+    version: Number(room?.version || 0),
+    status: room?.status || null,
+    guest: room?.guest_id || null,
+    turn: Number(game.turn || 0),
+    currentPlayer: game.currentPlayer || null,
+    winner: game.winner || null,
+    board: Array.isArray(game.board) ? game.board : [],
+    scores: game.scores || {},
+  });
+}
+
 function cloneValue(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -241,8 +277,7 @@ function canAnimateTransition(fromGame, toGame) {
   const move = toGame?.lastMove;
   return Boolean(
     move &&
-    boardsEqual(fromGame?.board, move.before) &&
-    move.player === fromGame?.currentPlayer
+    boardsEqual(fromGame?.board, move.before)
   );
 }
 
@@ -461,6 +496,8 @@ async function enterOnlineRoom(room, spectator) {
     [NORTH]: { nick: room.guest_nick || 'À espera…', island: room.guest_island || 'santa-luzia' },
   };
   app.side = spectator ? null : room.host_id === multiplayer.user.id ? SOUTH : NORTH;
+  app.lastRoomFingerprint = roomFingerprint(room);
+  invalidateBoardView();
   await multiplayer.subscribeRoom(room.id, (updated) => {
     app.remoteUpdateQueue = app.remoteUpdateQueue
       .then(() => applyRemoteRoomUpdate(updated))
@@ -478,16 +515,26 @@ function normaliseSession(value) {
 }
 
 async function applyRemoteRoomUpdate(updated) {
-  if (app.mode !== 'online' || (app.room?.id && updated.id !== app.room.id)) return;
+  if (app.mode !== 'online' || !updated || (app.room?.id && updated.id !== app.room.id)) return;
+
+  const fingerprint = roomFingerprint(updated);
+  if (fingerprint === app.lastRoomFingerprint) return;
+
+  const incomingVersion = Number(updated.version || 0);
+  const currentVersion = Number(app.room?.version || 0);
+  if (incomingVersion < currentVersion) return;
+
   const incoming = normaliseSession(updated.game_state);
   const previous = normaliseSession(app.session);
-
+  app.lastRoomFingerprint = fingerprint;
   app.room = updated;
   app.players = {
     [SOUTH]: { nick: updated.host_nick, island: updated.host_island },
     [NORTH]: { nick: updated.guest_nick || 'À espera…', island: updated.guest_island || 'santa-luzia' },
   };
 
+  // A actualização chega por Broadcast e também pelo Postgres Realtime. O
+  // fingerprint elimina o duplicado; a primeira chegada reproduz a jogada.
   if (!app.busy && canAnimateTransition(previous.game, incoming.game)) {
     app.busy = true;
     try {
@@ -537,15 +584,16 @@ function createPitElement(index) {
 }
 
 function ensurePitElements() {
-  if (app.pitButtons.size === 12) return;
+  const perspective = currentPerspective();
+  if (app.pitButtons.size === 12 && app.boardPerspective === perspective) return;
 
+  const rows = boardRowsForPerspective(perspective);
   app.pitButtons.clear();
-  elements.northRow.replaceChildren(
-    ...[6, 7, 8, 9, 10, 11].map(createPitElement),
-  );
-  elements.southRow.replaceChildren(
-    ...[5, 4, 3, 2, 1, 0].map(createPitElement),
-  );
+  elements.northRow.replaceChildren(...rows.top.map(createPitElement));
+  elements.southRow.replaceChildren(...rows.bottom.map(createPitElement));
+  app.boardPerspective = perspective;
+  document.body.dataset.boardPerspective = perspective;
+  document.body.dataset.onlinePlayer = app.mode === 'online' && !app.spectator ? 'true' : 'false';
 }
 
 function updatePitElement(index, game, moves, lastPit) {
@@ -607,18 +655,24 @@ function renderGame() {
   const game = displayedGame();
   const { match } = app.session;
   const display = matchDisplay(match);
-  elements.northNick.textContent = playerName(NORTH);
-  elements.southNick.textContent = playerName(SOUTH);
-  elements.northIsland.textContent = islandName(app.players[NORTH].island);
-  elements.southIsland.textContent = islandName(app.players[SOUTH].island);
-  elements.northAvatar.textContent = initials(playerName(NORTH));
-  elements.southAvatar.textContent = initials(playerName(SOUTH));
-  elements.northScore.textContent = String(game.scores[NORTH]);
-  elements.southScore.textContent = String(game.scores[SOUTH]);
-  elements.northQuatros.textContent = String(display.quatros[NORTH]);
-  elements.southQuatros.textContent = String(display.quatros[SOUTH]);
-  elements.northRun.textContent = String(display.score[NORTH]);
-  elements.southRun.textContent = String(display.score[SOUTH]);
+  const seats = currentSeats();
+  const top = seats.top;
+  const bottom = seats.bottom;
+
+  elements.northNick.textContent = playerName(top);
+  elements.southNick.textContent = playerName(bottom);
+  elements.northIsland.textContent = islandName(app.players[top].island);
+  elements.southIsland.textContent = islandName(app.players[bottom].island);
+  elements.northAvatar.textContent = initials(playerName(top));
+  elements.southAvatar.textContent = initials(playerName(bottom));
+  elements.northScore.textContent = String(game.scores[top]);
+  elements.southScore.textContent = String(game.scores[bottom]);
+  elements.topScoreLabel.textContent = `Colhidas por ${playerName(top)}`;
+  elements.bottomScoreLabel.textContent = `Colhidas por ${playerName(bottom)}`;
+  elements.northQuatros.textContent = String(display.quatros[top]);
+  elements.southQuatros.textContent = String(display.quatros[bottom]);
+  elements.northRun.textContent = String(display.score[top]);
+  elements.southRun.textContent = String(display.score[bottom]);
   elements.cutStatus.textContent = display.cutCandidate
     ? `Corte: ${playerName(display.cutCandidate)} ${display.cutWins}/2`
     : display.protectedBy
@@ -645,7 +699,9 @@ function renderGame() {
   if (app.mode === 'online') {
     elements.roomStatus.textContent = app.room?.status === 'waiting'
       ? 'À espera de adversário'
-      : app.spectator ? 'Modo espectador' : `Estás a jogar como ${app.side === SOUTH ? 'Sul' : 'Norte'}`;
+      : app.spectator
+        ? 'Modo espectador · Sul em baixo'
+        : `O teu lado está em baixo · ${playerName(app.side)}`;
   } else if (app.mode === 'pc') {
     elements.roomStatus.textContent = `Computador no nível ${levelLabel(app.aiLevel)}`;
   } else {
@@ -764,14 +820,18 @@ async function playMove(index) {
     next.game = applyMove(next.game, index);
     next = settleRound(next);
 
+    if (app.mode === 'online') {
+      // Grava e transmite primeiro. Assim os dois navegadores reproduzem a
+      // sementeira praticamente ao mesmo tempo, sem esperar pelo fim da
+      // animação de quem jogou.
+      app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
+      app.lastRoomFingerprint = roomFingerprint(app.room);
+      next = normaliseSession(app.room.game_state);
+    }
+
     await animateMove(previous.game, next.game);
     app.session = next;
     renderGame();
-
-    if (app.mode === 'online') {
-      app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
-      app.session = normaliseSession(app.room.game_state);
-    }
   } catch (error) {
     if (app.mode === 'online') {
       try {
@@ -793,7 +853,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.6', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.7', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -898,8 +958,11 @@ async function leaveGame() {
   app.animation = null;
   if (app.mode === 'online') await multiplayer.leaveRoomChannel();
   app.mode = null;
+  document.body.dataset.onlinePlayer = 'false';
   app.room = null;
   app.spectator = false;
+  app.lastRoomFingerprint = null;
+  invalidateBoardView();
   showScreen('home');
   await refreshRooms();
 }

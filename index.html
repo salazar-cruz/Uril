@@ -136,9 +136,9 @@
             </div>
 
             <div class="score-row">
-              <span>Colhidas por Norte <b id="northScore">0</b></span>
+              <span><span id="topScoreLabel">Colhidas por Norte</span> <b id="northScore">0</b></span>
               <div id="turnBadge" class="turn-badge">Vez de Sul</div>
-              <span><b id="southScore">0</b> Colhidas por Sul</span>
+              <span><b id="southScore">0</b> <span id="bottomScoreLabel">Colhidas por Sul</span></span>
             </div>
 
             <div class="board-wrap">
@@ -195,7 +195,7 @@
     <div class="rules-content">
       <ol>
         <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
-        <li><strong>Orientação.</strong> Sul joga na fila inferior e Norte na fila superior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
+        <li><strong>Orientação.</strong> Em partidas locais e contra o computador, Sul fica na fila inferior. Nas salas online, cada jogador vê sempre o seu próprio campo na fila inferior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
         <li><strong>Sementeira.</strong> Escolhem-se todas as sementes de uma casa própria e distribui-se uma por casa. Quando a volta passa novamente pela casa de origem, essa casa é saltada.</li>
         <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. A única excepção surge quando o adversário está sem sementes: nesse caso escolhe-se uma jogada que o alimente, quando existe.</li>
         <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e continuam a colher-se, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
@@ -211,6 +211,6 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script type="module" src="js/app.js?v=0.0.6"></script>
+  <script type="module" src="js/app.js?v=0.0.7"></script>
 </body>
 </html>

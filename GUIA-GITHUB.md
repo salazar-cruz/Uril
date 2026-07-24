@@ -37,9 +37,7 @@ No gestor DNS do domínio, cria um registo:
 
 - Tipo: `CNAME`
 - Host: `uril`
-- Destino: `TEU-UTILIZADOR.github.io`
-
-Substitui `TEU-UTILIZADOR` pelo nome exacto da tua conta ou organização no GitHub.
+- Destino: `salazar-cruz.github.io`
 
 Depois regressa a **Settings → Pages**, confirma o domínio personalizado e activa **Enforce HTTPS** quando a opção surgir disponível.
 
@@ -48,14 +46,14 @@ Depois regressa a **Settings → Pages**, confirma o domínio personalizado e ac
 1. Cria um projecto Supabase.
 2. Abre o **SQL Editor**.
 3. Cola e executa o conteúdo de `supabase.sql`.
-4. Em **Project Settings → API**, copia o URL do projecto e a chave pública `anon`.
+4. Em **Project Settings → API Keys**, copia o URL do projecto e a chave pública `Publishable key` (`sb_publishable_...`).
 5. Abre `js/config.js` no GitHub, selecciona o lápis e preenche:
 
 ```js
 export const SUPABASE_URL = 'COLOCAR_AQUI_O_URL';
-export const SUPABASE_ANON_KEY = 'COLOCAR_AQUI_A_CHAVE_ANON';
+export const SUPABASE_ANON_KEY = 'COLOCAR_AQUI_A_CHAVE_PUBLICA';
 ```
 
 6. Grava a alteração.
 
-A chave `anon` fica no navegador por desenho do Supabase. A protecção das tabelas assenta nas políticas RLS incluídas em `supabase.sql`.
+A chave pública fica no navegador por desenho do Supabase. Nunca coloques a `Secret key` no repositório. A protecção das tabelas assenta nas políticas RLS incluídas em `supabase.sql`.
