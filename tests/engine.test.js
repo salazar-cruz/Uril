@@ -11,9 +11,11 @@ import {
   nextRoundStarter,
   positionKey,
   registerGameResult,
+  resignGame,
+  resignationValue,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=0.0.11';
+} from '../js/engine.js?v=0.0.12';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();
@@ -225,4 +227,31 @@ test('jogadas aleatórias conservam sempre as 48 sementes', () => {
     assert.notEqual(game.status, 'playing', 'a partida não deve entrar num ciclo infinito');
     assert.equal(validateGame(game).total, 48);
   }
+});
+
+
+test('desistir com menos de 12 sementes vale duas partidas', () => {
+  const game = createGame();
+  game.scores = { [SOUTH]: 11, [NORTH]: 9 };
+  game.board = [4,4,4,4,4,0,1,1,1,1,1,3];
+  assert.equal(resignationValue(game, SOUTH), 2);
+  const next = resignGame(game, SOUTH);
+  assert.equal(next.status, 'finished');
+  assert.equal(next.winner, NORTH);
+  assert.equal(next.resignedBy, SOUTH);
+  assert.equal(next.resultValue, 2);
+  assert.equal(next.capote, SOUTH);
+  assert.equal(validateGame(next).valid, true);
+});
+
+test('desistir com 12 ou mais sementes vale uma partida', () => {
+  const game = createGame();
+  game.scores = { [SOUTH]: 12, [NORTH]: 8 };
+  game.board = [4,4,4,4,4,0,1,1,1,1,1,3];
+  assert.equal(resignationValue(game, SOUTH), 1);
+  const next = resignGame(game, SOUTH);
+  assert.equal(next.winner, NORTH);
+  assert.equal(next.resultValue, 1);
+  assert.equal(next.capote, null);
+  assert.equal(validateGame(next).valid, true);
 });

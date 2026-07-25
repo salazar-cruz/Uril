@@ -59,10 +59,10 @@ Os convites directos e o chat utilizam o canal Realtime do Supabase e não exige
 npm test
 ```
 
-A versão 0.0.11 inclui 32 testes automáticos do motor, IA, presença, idiomas, convites, interface e perspectivas do tabuleiro.
+A versão 0.0.12 inclui 38 testes automáticos do motor, IA, presença, idiomas, convites, desistência, interface e perspectivas do tabuleiro.
 
 
-## Alterações v0.0.11
+## Alterações v0.0.12
 
 - acrescenta selector **PT · FR · EN** no topo e traduz a interface, a ajuda, as mensagens do jogo e os estados online;
 - explica no átrio e na ajuda que o Uril é a variante praticada em Cabo Verde da família africana **Ayo/Awalé/Oware**;
@@ -95,3 +95,7 @@ A versão 0.0.11 inclui 32 testes automáticos do motor, IA, presença, idiomas,
 O código específico desta versão pertence à DevNexus Digital.
 
 O tabuleiro fotográfico e as imagens das casas com sementes foram produzidos por Oliver Merkel e reutilizados ao abrigo da licença Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International. Consulta [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+## Novidades da v0.0.12
+
+Desistência confirmada, pedido de desistência da IA, visual sem relva com banco sobre banquinho e rodapé com copyright, versão e sugestões.

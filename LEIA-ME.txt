@@ -1,23 +1,18 @@
-URIL DE CABO VERDE — CORRECÇÃO V0.0.6
+URIL CABO VERDE — ACTUALIZAÇÃO V0.0.12
 
-No repositório GitHub, substitui os ficheiros deste pacote mantendo exactamente as mesmas pastas.
+Substitui no repositório os ficheiros deste pacote, conservando as mesmas pastas.
 
-Ficheiros alterados:
-- index.html
-- js/app.js
-- js/engine.js
-- js/ai.js
-- js/ai-worker.js (novo)
-- js/multiplayer.js
+Este pacote NÃO contém js/config.js. A ligação actual ao Supabase fica intacta.
 
-IMPORTANTE:
-- Não apagues nem substituas js/config.js. Esse ficheiro conserva o URL e a chave pública do teu Supabase.
-- Depois do commit, aguarda a publicação do GitHub Pages e faz Ctrl + F5.
+Inclui:
+- botão de desistência com confirmação;
+- derrota por uma partida com 12 ou mais sementes colhidas;
+- derrota por duas partidas abaixo de 12 sementes;
+- pedido de desistência da IA, aceite ou recusado pelo jogador;
+- tabuleiro sem fundo de relva, colocado sobre um banquinho;
+- rodapé com copyright, versão e sugestões.
 
-Correcções:
-1. as imagens das sementes são pré-carregadas e as doze casas deixam de ser recriadas a cada refrescamento;
-2. se um campo está vazio, ficam válidas as jogadas que o alimentam;
-3. a partida só termina por falta de alimentação quando nenhuma jogada consegue passar sementes;
-4. IA reforçada e executada fora da interface através de Web Worker;
-5. nível Jogador alterado para Amador;
-6. presença online contada por utilizadores únicos.
+O botão Sugestões prepara uma mensagem para sugestoes@devnexusdigital.com.
+Confirma que esse endereço ou alias existe no teu Google Workspace.
+
+Depois do commit no GitHub Pages, faz Ctrl + F5.

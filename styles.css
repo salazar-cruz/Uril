@@ -93,11 +93,14 @@ input:focus, select:focus { border-color: rgba(230,184,92,.7); box-shadow: 0 0 0
 .mode-card p { color: var(--muted); line-height: 1.55; margin: 0 0 18px; }
 .mode-card label { margin-top: auto; }
 .mode-card select { margin-bottom: 12px; }
-.primary-button, .secondary-button { border-radius: 13px; padding: 13px 18px; border: 1px solid transparent; cursor: pointer; font-weight: 800; transition: transform .15s ease, filter .15s ease, background .15s ease; }
+.primary-button, .secondary-button, .danger-button { border-radius: 13px; padding: 13px 18px; border: 1px solid transparent; cursor: pointer; font-weight: 800; transition: transform .15s ease, filter .15s ease, background .15s ease; }
 .primary-button { background: linear-gradient(180deg, #f1c96e, #c58b2d); color: #2b1c08; box-shadow: 0 10px 24px rgba(197,139,45,.2); }
 .secondary-button { background: rgba(255,255,255,.06); border-color: var(--line); }
-.primary-button:hover, .secondary-button:hover { transform: translateY(-1px); filter: brightness(1.06); }
-.primary-button:disabled, .secondary-button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.danger-button { border: 1px solid rgba(255,140,120,.42); border-radius: 13px; padding: 13px 18px; cursor: pointer; font-weight: 850; background: linear-gradient(180deg, rgba(163,55,43,.96), rgba(104,31,25,.98)); color: #fff2ee; box-shadow: 0 10px 24px rgba(104,31,25,.2); }
+.danger-button:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.danger-button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.primary-button:hover, .secondary-button:hover, .danger-button:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.primary-button:disabled, .secondary-button:disabled, .danger-button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .compact { padding: 10px 14px; font-size: 12px; }
 .text-button { border: 0; background: transparent; color: var(--gold-strong); cursor: pointer; padding: 6px; font-weight: 800; font-size: 12px; }
 
@@ -234,7 +237,7 @@ input:focus, select:focus { border-color: rgba(230,184,92,.7); box-shadow: 0 0 0
   border: 0;
   border-radius: 0;
   overflow: hidden;
-  background: url('assets/classic/board01.jpg') center / 100% 100% no-repeat;
+  background: url('assets/classic/board01-bench.jpg') center / 100% 100% no-repeat;
   box-shadow: 0 24px 55px rgba(0,0,0,.4);
 }
 .board-grain,
@@ -869,4 +872,70 @@ body[data-online-player="true"] .player-summary.south::after {
   .language-select { min-width: 60px; padding-right: 25px; }
   .shared-invite-panel { align-items: stretch; flex-direction: column; }
   .shared-invite-panel .whatsapp-button { width: 100%; }
+}
+
+
+/* V0.0.12 — mesa tradicional sem relva, com o banco apoiado num banquinho. */
+body.game-active .island-background {
+  background-image:
+    radial-gradient(circle at 50% 8%, rgba(255,226,175,.18), transparent 38%),
+    linear-gradient(180deg, #76553b 0%, #513927 64%, #34251c 100%);
+  filter: none;
+  transform: none;
+}
+body.game-active .island-background::after {
+  background:
+    repeating-linear-gradient(91deg, rgba(255,255,255,.018) 0 2px, transparent 2px 37px),
+    radial-gradient(circle at 50% 15%, transparent 0 20%, rgba(18,10,7,.48) 100%);
+}
+.game-header-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.site-footer {
+  margin-top: 20px;
+  min-height: 70px;
+  border-radius: 18px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.site-footer strong, .site-footer span { display: block; }
+.site-footer strong { font-size: 13px; }
+.site-footer span { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.footer-actions { display: flex; align-items: center; gap: 12px; }
+.footer-actions span { margin: 0; }
+
+.action-dialog {
+  width: min(560px, calc(100% - 28px));
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 0;
+  color: var(--ink);
+  background: #10231d;
+  box-shadow: 0 30px 100px rgba(0,0,0,.58);
+}
+.action-dialog::backdrop { background: rgba(3,9,7,.76); backdrop-filter: blur(6px); }
+.action-dialog-body { padding: 22px 24px 26px; }
+.action-dialog-body > p { color: var(--muted); line-height: 1.55; }
+.action-dialog-body textarea {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+  margin-top: 10px;
+  color: var(--ink);
+  background: rgba(1,12,9,.45);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  font: inherit;
+}
+.action-dialog-body small { display: block; margin-top: 9px; color: var(--muted); }
+.dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+
+@media (max-width: 560px) {
+  .site-footer { align-items: flex-start; flex-direction: column; }
+  .footer-actions { width: 100%; justify-content: space-between; }
+  .game-header-actions { flex-wrap: wrap; }
+  .dialog-actions { display: grid; grid-template-columns: 1fr; }
 }

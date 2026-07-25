@@ -11,12 +11,14 @@ import {
   otherPlayer,
   positionKey,
   registerGameResult,
-} from './engine.js?v=0.0.11';
-import { chooseMove } from './ai.js?v=0.0.11';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.11';
-import { MultiplayerService } from './multiplayer.js?v=0.0.11';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.11';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.11';
+  resignGame,
+  resignationValue,
+} from './engine.js?v=0.0.12';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.12';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.12';
+import { MultiplayerService } from './multiplayer.js?v=0.0.12';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.12';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.12';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -54,7 +56,13 @@ const elements = {
   turnBadge: $('#turnBadge'), roomTitle: $('#roomTitle'), gameModeLabel: $('#gameModeLabel'),
   statusTitle: $('#statusTitle'), statusMessage: $('#statusMessage'),
   matchMessage: $('#matchMessage'), lastMoveText: $('#lastMoveText'), roomStatus: $('#roomStatus'),
-  newRound: $('#newRoundButton'), rules: $('#rulesDialog'), toast: $('#toast'),
+  newRound: $('#newRoundButton'), resign: $('#resignButton'), rules: $('#rulesDialog'), toast: $('#toast'),
+  resignDialog: $('#resignDialog'), resignPlayer: $('#resignPlayer'), resignWarning: $('#resignWarning'),
+  resignCancel: $('#resignCancelButton'), resignConfirm: $('#resignConfirmButton'),
+  aiResignDialog: $('#aiResignDialog'), aiResignWarning: $('#aiResignWarning'),
+  aiResignReject: $('#aiResignRejectButton'), aiResignAccept: $('#aiResignAcceptButton'),
+  suggestionsDialog: $('#suggestionsDialog'), suggestionText: $('#suggestionText'),
+  suggestionForm: $('#suggestionForm'),
   roundResult: $('#roundResult'), roundResultTitle: $('#roundResultTitle'),
   roundResultScore: $('#roundResultScore'), roundResultNext: $('#roundResultNext'),
   chatCard: $('#chatCard'), chatMessages: $('#chatMessages'), chatEmpty: $('#chatEmpty'),
@@ -90,6 +98,8 @@ const app = {
   spriteCache: new Map(),
   boardPerspective: null,
   lastRoomFingerprint: null,
+  pendingResignationPlayer: null,
+  aiResignResolver: null,
 };
 
 const ROUND_TRANSITION_TIMING = {
@@ -128,6 +138,7 @@ function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinne
     firstPlayer,
     previousWinner,
     roundRegistered: false,
+    aiResignationDeclined: false,
     createdAt: new Date().toISOString(),
   };
 }
@@ -168,13 +179,17 @@ function translatedPitLabel(index) {
   return `${side} ${number}`;
 }
 
-function translatedGameReason(reason) {
+function translatedGameReason(reason, game = app.session.game) {
   const keys = {
     'A mesma posição repetiu-se três vezes. Cada jogador fica com as sementes do seu campo.': 'reasonTriple',
     'Colheita das seis casas; o adversário ficou sem jogada.': 'reasonSix',
     'O adversário ficou sem sementes para jogar.': 'reasonEmpty',
     'Não existe jogada que consiga alimentar o adversário.': 'reasonNoFeed',
+    'Desistência.': 'reasonResignation',
   };
+  if (reason === 'Desistência.') {
+    return t('reasonResignation', { player: playerName(game?.resignedBy) });
+  }
   return keys[reason] ? t(keys[reason]) : reason;
 }
 
@@ -239,6 +254,7 @@ function requireProfile() {
 }
 
 function showScreen(name) {
+  document.body.classList.toggle('game-active', name === 'game');
   elements.home.classList.toggle('active', name === 'home');
   elements.game.classList.toggle('active', name === 'game');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -970,6 +986,7 @@ function normaliseSession(value) {
   if (!value?.game || !value?.match) return createSession(SOUTH);
   const session = JSON.parse(JSON.stringify(value));
   if (!('previousWinner' in session)) session.previousWinner = null;
+  if (!('aiResignationDeclined' in session)) session.aiResignationDeclined = false;
   if (!session.game.repetitionCounts || typeof session.game.repetitionCounts !== 'object') {
     session.game.repetitionCounts = { [positionKey(session.game)]: 1 };
     session.game.lastRepetitionCount = 1;
@@ -1116,6 +1133,86 @@ function renderBoard() {
   }
 }
 
+function resignationPlayer() {
+  if (app.spectator || app.session.game.status !== 'playing') return null;
+  if (app.mode === 'pc') return SOUTH;
+  if (app.mode === 'local') return app.session.game.currentPlayer;
+  if (app.mode === 'online' && app.room?.status === 'playing') return app.side;
+  return null;
+}
+
+function renderResignButton() {
+  const player = resignationPlayer();
+  const visible = Boolean(player) && !app.busy;
+  elements.resign.hidden = !visible;
+  elements.resign.disabled = !visible;
+  if (player) elements.resign.textContent = t('resignButton');
+}
+
+function openResignDialog() {
+  const player = resignationPlayer();
+  if (!player || app.busy) return;
+  const seeds = Number(app.session.game.scores[player] || 0);
+  const value = resignationValue(app.session.game, player);
+  app.pendingResignationPlayer = player;
+  elements.resignPlayer.textContent = t('resignDialogPlayer', { player: playerName(player) });
+  elements.resignWarning.textContent = value === 2
+    ? t('resignWarningTwo', { player: playerName(player), seeds })
+    : t('resignWarningOne', { player: playerName(player), seeds });
+  elements.resignDialog.showModal();
+}
+
+function closeResignDialog() {
+  app.pendingResignationPlayer = null;
+  if (elements.resignDialog.open) elements.resignDialog.close();
+}
+
+async function performResignation(player) {
+  if (!player || app.session.game.status !== 'playing') return;
+  app.busy = true;
+  try {
+    let next = cloneValue(app.session);
+    next.game = resignGame(next.game, player);
+    next = settleRound(next);
+    if (app.mode === 'online') {
+      app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
+      app.lastRoomFingerprint = roomFingerprint(app.room);
+      next = normaliseSession(app.room.game_state);
+    }
+    app.session = next;
+    clearRoundTransition();
+    renderGame();
+  } catch (error) {
+    toast(error.message || t('resignError'));
+  } finally {
+    app.busy = false;
+    renderGame();
+  }
+}
+
+async function confirmResignation() {
+  const player = app.pendingResignationPlayer;
+  closeResignDialog();
+  await performResignation(player);
+}
+
+function resolveAIResignation(accepted) {
+  const resolver = app.aiResignResolver;
+  app.aiResignResolver = null;
+  if (elements.aiResignDialog.open) elements.aiResignDialog.close();
+  resolver?.(Boolean(accepted));
+}
+
+function askAIResignation() {
+  const seeds = Number(app.session.game.scores[NORTH] || 0);
+  const value = resignationValue(app.session.game, NORTH);
+  elements.aiResignWarning.textContent = value === 2
+    ? t('aiResignWarningTwo', { player: playerName(NORTH), seeds })
+    : t('aiResignWarningOne', { player: playerName(NORTH), seeds });
+  elements.aiResignDialog.showModal();
+  return new Promise((resolve) => { app.aiResignResolver = resolve; });
+}
+
 function renderGame() {
   const game = displayedGame();
   const { match } = app.session;
@@ -1160,6 +1257,7 @@ function renderGame() {
   renderRoundResult();
   renderChat();
   renderShareCard();
+  renderResignButton();
 
   elements.newRound.hidden = game.status !== 'finished' || app.spectator;
 
@@ -1190,18 +1288,24 @@ function renderRoundResult() {
   const isDraw = winner === 'draw';
   const starter = nextRoundStarter(game, app.session.firstPlayer || SOUTH);
   elements.roundResult.hidden = false;
-  elements.roundResultTitle.textContent = isDraw
-    ? t('roundDraw')
-    : game.resultValue === 2
-      ? t('roundCapote', { player: playerName(winner) })
-      : t('roundWin', { player: playerName(winner) });
+  elements.roundResultTitle.textContent = game.resignedBy
+    ? t('roundResignation', { loser: playerName(game.resignedBy), winner: playerName(winner) })
+    : isDraw
+      ? t('roundDraw')
+      : game.resultValue === 2
+        ? t('roundCapote', { player: playerName(winner) })
+        : t('roundWin', { player: playerName(winner) });
   elements.roundResultScore.textContent =
     `${playerName(NORTH)} ${game.scores[NORTH]} — ${game.scores[SOUTH]} ${playerName(SOUTH)}`;
-  elements.roundResultNext.textContent = isDraw
-    ? t('nextDraw', { player: playerName(starter) })
-    : game.resultValue === 2
-      ? t('nextCapote', { player: playerName(winner) })
-      : t('nextWin', { player: playerName(winner) });
+  elements.roundResultNext.textContent = game.resignedBy
+    ? game.resultValue === 2
+      ? t('nextResignationTwo', { player: playerName(winner) })
+      : t('nextResignationOne', { player: playerName(winner) })
+    : isDraw
+      ? t('nextDraw', { player: playerName(starter) })
+      : game.resultValue === 2
+        ? t('nextCapote', { player: playerName(winner) })
+        : t('nextWin', { player: playerName(winner) });
 }
 
 function renderStatus() {
@@ -1232,12 +1336,18 @@ function renderStatus() {
     return;
   }
   if (game.status === 'finished') {
-    elements.statusTitle.textContent = game.winner === 'draw'
-      ? t('draw')
-      : game.resultValue === 2
-        ? t('wonCapote', { player: playerName(game.winner) })
-        : t('wonMatch', { player: playerName(game.winner) });
-    elements.statusMessage.textContent = `${game.scores[NORTH]}–${game.scores[SOUTH]}. ${translatedGameReason(game.reason)}`;
+    elements.statusTitle.textContent = game.resignedBy
+      ? t('resignationWin', { loser: playerName(game.resignedBy), winner: playerName(game.winner) })
+      : game.winner === 'draw'
+        ? t('draw')
+        : game.resultValue === 2
+          ? t('wonCapote', { player: playerName(game.winner) })
+          : t('wonMatch', { player: playerName(game.winner) });
+    elements.statusMessage.textContent = game.resignedBy
+      ? game.resultValue === 2
+        ? t('resignationResultTwo', { player: playerName(game.resignedBy) })
+        : t('resignationResultOne')
+      : `${game.scores[NORTH]}–${game.scores[SOUTH]}. ${translatedGameReason(game.reason, game)}`;
     return;
   }
   if (!game.lastMove && app.session.previousWinner) {
@@ -1335,7 +1445,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.11', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.12', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -1373,6 +1483,18 @@ function maybeRunAI() {
   app.aiTimer = window.setTimeout(async () => {
     app.busy = true;
     try {
+      if (!app.session.aiResignationDeclined && shouldOfferResignation(app.session.game, NORTH)) {
+        const accepted = await askAIResignation();
+        if (accepted) {
+          let next = cloneValue(app.session);
+          next.game = resignGame(next.game, NORTH);
+          next = settleRound(next);
+          app.session = next;
+          return;
+        }
+        app.session.aiResignationDeclined = true;
+      }
+
       const move = await chooseMoveAsync(app.session.game, app.aiLevel);
       if (move !== null) {
         const previous = cloneValue(app.session);
@@ -1463,6 +1585,28 @@ function toast(message) {
   toast.timer = window.setTimeout(() => elements.toast.classList.remove('show'), 3200);
 }
 
+function openSuggestions() {
+  elements.suggestionsDialog.showModal();
+  window.setTimeout(() => elements.suggestionText.focus(), 50);
+}
+
+function submitSuggestion(event) {
+  event?.preventDefault?.();
+  const text = elements.suggestionText.value.trim();
+  if (text.length < 4) {
+    toast(t('suggestionEmpty'));
+    return;
+  }
+  const subject = t('suggestionSubject');
+  const body = `${text}
+
+${t('suggestionSignature', { version: '0.0.12', url: window.location.href })}`;
+  window.location.href = `mailto:sugestoes@devnexusdigital.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  elements.suggestionsDialog.close();
+  elements.suggestionText.value = '';
+  toast(t('suggestionPrepared'));
+}
+
 function bindEvents() {
   elements.nick.value = app.profile.nick;
   elements.island.value = app.profile.island;
@@ -1483,6 +1627,16 @@ function bindEvents() {
   elements.shareWatch.addEventListener('click', () => shareBankViaWhatsApp('watch'));
   $('#leaveGameButton').addEventListener('click', leaveGame);
   elements.newRound.addEventListener('click', newRound);
+  elements.resign.addEventListener('click', openResignDialog);
+  elements.resignCancel.addEventListener('click', closeResignDialog);
+  elements.resignConfirm.addEventListener('click', confirmResignation);
+  elements.resignDialog.addEventListener('cancel', (event) => { event.preventDefault(); closeResignDialog(); });
+  elements.aiResignReject.addEventListener('click', () => resolveAIResignation(false));
+  elements.aiResignAccept.addEventListener('click', () => resolveAIResignation(true));
+  elements.aiResignDialog.addEventListener('cancel', (event) => { event.preventDefault(); resolveAIResignation(false); });
+  $('#suggestionsButton').addEventListener('click', openSuggestions);
+  $('#closeSuggestionsButton').addEventListener('click', () => elements.suggestionsDialog.close());
+  elements.suggestionForm.addEventListener('submit', submitSuggestion);
   $('#brandHome').addEventListener('click', () => app.mode ? leaveGame() : showScreen('home'));
   for (const selector of ['#rulesButton', '#sidebarRulesButton']) {
     $(selector).addEventListener('click', () => elements.rules.showModal());

@@ -4,7 +4,8 @@
 
 Os seguintes ficheiros foram criados por Oliver Merkel:
 
-- `assets/classic/board01.jpg`
+- `assets/classic/board01.jpg` (original)
+- `assets/classic/board01-bench.jpg` (adaptação sem relva, sobre banquinho)
 - `assets/classic/trou-bonduc00.png` a `assets/classic/trou-bonduc15.png`
 
 Fonte original: <https://github.com/OMerkel/Oware>

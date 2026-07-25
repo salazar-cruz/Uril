@@ -45,3 +45,23 @@ test('os links WhatsApp abrem directamente o banco indicado', () => {
   assert.match(app, /function openSharedInvite/);
   assert.match(html, /id="sharedInvitePanel"/);
 });
+
+
+test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
+  assert.match(html, /id="resignButton"/);
+  assert.match(html, /id="resignDialog"/);
+  assert.match(html, /id="aiResignDialog"/);
+  assert.match(html, /© 2026 Salazar da Cruz/);
+  assert.match(html, /Versão 0\.0\.12/);
+});
+
+test('o visual do tabuleiro deixa de usar a fotografia com relva', () => {
+  assert.match(css, /board01-bench\.jpg/);
+  assert.doesNotMatch(css, /board01\.jpg'\) center/);
+});
+
+test('o rodapé oferece um local para sugestões', () => {
+  assert.match(html, /id="suggestionsButton"/);
+  assert.match(html, /id="suggestionsDialog"/);
+  assert.match(app, /sugestoes@devnexusdigital\.com/);
+});

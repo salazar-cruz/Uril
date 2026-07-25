@@ -9,7 +9,7 @@
 <title>Uril de Cabo Verde</title>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="assets/icons/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="styles.css?v=0.0.11" rel="stylesheet"/>
+<link href="styles.css?v=0.0.12" rel="stylesheet"/>
 </head>
 <body data-island="santiago">
 <div aria-hidden="true" class="island-background"></div>
@@ -125,7 +125,10 @@
 <span data-i18n="match" id="gameModeLabel">PARTIDA</span>
 <h2 data-i18n="bankOfUril" id="roomTitle">Banco de Uril</h2>
 </div>
-<button class="secondary-button compact" data-i18n="arrangeNow" hidden="" id="newRoundButton" type="button">Arrumar agora</button>
+<div class="game-header-actions">
+<button class="danger-button compact" data-i18n="resignButton" hidden id="resignButton" type="button">Desistir</button>
+<button class="secondary-button compact" data-i18n="arrangeNow" hidden id="newRoundButton" type="button">Arrumar agora</button>
+</div>
 </div>
 <div class="match-strip">
 <div class="player-summary north" id="northSummary">
@@ -210,6 +213,10 @@
 </section>
 </main>
 </div>
+<footer class="site-footer glass">
+  <div><strong data-i18n="footerCopyright">© 2026 Salazar da Cruz</strong><span data-i18n="footerConcept">Conceito e direcção</span></div>
+  <div class="footer-actions"><span data-i18n="versionLabel">Versão 0.0.12</span><button class="text-button" data-i18n="suggestions" id="suggestionsButton" type="button">Sugestões</button></div>
+</footer>
 </div>
 <section aria-live="assertive" class="invite-popup glass" hidden="" id="invitePopup" role="alertdialog">
 <span class="eyebrow" data-i18n="invitationReceived">CONVITE RECEBIDO</span>
@@ -221,12 +228,25 @@
 </section>
 <dialog id="rulesDialog">
 <div class="dialog-head">
-<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V0.0.11</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
+<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V0.0.12</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
 <button class="icon-button" data-i18n-aria="close" id="closeRulesButton" type="button">×</button>
 </div>
 <div class="rules-content help-content" data-i18n-html="helpContent"><section><h3>O que é o Uril</h3><p>O Uril é a variante cabo-verdiana da família Ayo/Awalé/Oware.</p></section></div>
 </dialog>
+
+<dialog class="action-dialog" id="resignDialog">
+  <div class="dialog-head"><div><span class="eyebrow" data-i18n="resignEyebrow">DESISTÊNCIA</span><h2 data-i18n="resignDialogTitle">Confirmar desistência</h2></div></div>
+  <div class="action-dialog-body"><strong id="resignPlayer"></strong><p id="resignWarning"></p><div class="dialog-actions"><button class="secondary-button" data-i18n="keepPlaying" id="resignCancelButton" type="button">Continuar a jogar</button><button class="danger-button" data-i18n="confirmResign" id="resignConfirmButton" type="button">Confirmar desistência</button></div></div>
+</dialog>
+<dialog class="action-dialog" id="aiResignDialog">
+  <div class="dialog-head"><div><span class="eyebrow" data-i18n="aiResignEyebrow">PEDIDO DO COMPUTADOR</span><h2 data-i18n="aiResignTitle">O computador quer desistir</h2></div></div>
+  <div class="action-dialog-body"><p id="aiResignWarning"></p><div class="dialog-actions"><button class="secondary-button" data-i18n="rejectAIResign" id="aiResignRejectButton" type="button">Não aceitar</button><button class="primary-button" data-i18n="acceptAIResign" id="aiResignAcceptButton" type="button">Aceitar desistência</button></div></div>
+</dialog>
+<dialog class="action-dialog" id="suggestionsDialog">
+  <div class="dialog-head"><div><span class="eyebrow" data-i18n="suggestionsEyebrow">AJUDAR A MELHORAR</span><h2 data-i18n="suggestionsTitle">Enviar sugestão</h2></div><button class="icon-button" data-i18n-aria="close" id="closeSuggestionsButton" type="button">×</button></div>
+  <form class="action-dialog-body" id="suggestionForm"><p data-i18n="suggestionsText">Escreve a tua sugestão, regra ou problema encontrado.</p><textarea data-i18n-placeholder="suggestionPlaceholder" id="suggestionText" maxlength="1200" placeholder="A tua sugestão…"></textarea><small data-i18n="suggestionEmailNote">A mensagem será preparada para sugestoes@devnexusdigital.com.</small><div class="dialog-actions"><button class="primary-button" data-i18n="sendSuggestion" type="submit">Preparar email</button></div></form>
+</dialog>
 <div class="toast" id="toast" role="status"></div>
-<script src="js/app.js?v=0.0.11" type="module"></script>
+<script src="js/app.js?v=0.0.12" type="module"></script>
 </body>
 </html>

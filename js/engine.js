@@ -234,6 +234,29 @@ export function gameResultValue(game) {
   return Number(game?.resultValue) === 2 ? 2 : 1;
 }
 
+export function resignationValue(game, player) {
+  if (!PLAYERS.includes(player)) throw new Error('Jogador inválido para desistência.');
+  return Number(game?.scores?.[player] || 0) < CAPOTE_LIMIT ? 2 : 1;
+}
+
+export function resignGame(game, player) {
+  if (!game || game.status !== 'playing') {
+    throw new Error('A desistência só é aceite durante uma partida em curso.');
+  }
+  if (!PLAYERS.includes(player)) throw new Error('Jogador inválido para desistência.');
+
+  const next = cloneGame(game);
+  const value = resignationValue(next, player);
+  next.status = 'finished';
+  next.winner = otherPlayer(player);
+  next.reason = 'Desistência.';
+  next.resignedBy = player;
+  next.capote = value === 2 ? player : null;
+  next.resultValue = value;
+  next.lastMove = next.lastMove ? { ...next.lastMove } : null;
+  return next;
+}
+
 export function applyMove(game, pitIndex) {
   const next = cloneGame(game);
   ensureRepetitionState(next);

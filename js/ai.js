@@ -6,7 +6,7 @@ import {
   otherPlayer,
   playerPits,
   rowSeedCount,
-} from './engine.js?v=0.0.11';
+} from './engine.js?v=0.0.12';
 
 const LEVELS = {
   apprentice: {
@@ -51,6 +51,14 @@ function normaliseLevel(level) {
 
 export function levelLabel(level) {
   return LEVELS[normaliseLevel(level)].label;
+}
+
+export function shouldOfferResignation(game, player = NORTH) {
+  if (!game || game.status !== 'playing' || game.currentPlayer !== player) return false;
+  const opponent = otherPlayer(player);
+  const seedsStillOnBoard = game.board.reduce((sum, seeds) => sum + Number(seeds || 0), 0);
+  const maximumPossible = Number(game.scores[player] || 0) + seedsStillOnBoard;
+  return maximumPossible < Number(game.scores[opponent] || 0);
 }
 
 export function chooseMove(game, requestedLevel = 'amateur') {
