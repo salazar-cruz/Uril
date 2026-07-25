@@ -182,7 +182,7 @@ export class MultiplayerService {
     return data;
   }
 
-  async subscribeRoom(roomId, onChange) {
+  async subscribeRoom(roomId, onChange, onChatMessage) {
     if (this.roomChannel) await this.client.removeChannel(this.roomChannel);
     this.roomChannelReady = false;
 
@@ -195,6 +195,13 @@ export class MultiplayerService {
         { event: 'room_state' },
         ({ payload }) => {
           if (payload?.room) onChange(payload.room);
+        },
+      )
+      .on(
+        'broadcast',
+        { event: 'chat_message' },
+        ({ payload }) => {
+          if (payload?.message) onChatMessage?.(payload.message);
         },
       )
       .on(
@@ -238,6 +245,34 @@ export class MultiplayerService {
     } catch {
       // O Postgres Realtime continua a servir de via de recuperação.
     }
+  }
+
+
+  async sendChatMessage(room, profile, text) {
+    if (!this.roomChannel || !this.roomChannelReady || !room) {
+      throw new Error('O chat ainda não está ligado a este banco de Uril.');
+    }
+
+    const content = String(text || '').trim().slice(0, 280);
+    if (!content) throw new Error('Escreve uma mensagem antes de enviar.');
+
+    const message = {
+      id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+      room_id: room.id,
+      user_id: this.user?.id || null,
+      nick: String(profile?.nick || 'Convidado').trim().slice(0, 18) || 'Convidado',
+      island: String(profile?.island || 'santiago'),
+      text: content,
+      sent_at: new Date().toISOString(),
+    };
+
+    const response = await this.roomChannel.send({
+      type: 'broadcast',
+      event: 'chat_message',
+      payload: { message },
+    });
+    if (response !== 'ok') throw new Error('O serviço em tempo real não confirmou a mensagem.');
+    return message;
   }
 
   async updateRoomState(room, session, status = room.status) {

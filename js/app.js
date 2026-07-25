@@ -10,12 +10,13 @@ import {
   nextRoundStarter,
   otherPlayer,
   pitLabel,
+  positionKey,
   registerGameResult,
-} from './engine.js?v=0.0.8';
-import { chooseMove, levelLabel } from './ai.js?v=0.0.8';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.8';
-import { MultiplayerService } from './multiplayer.js?v=0.0.8';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.8';
+} from './engine.js?v=0.0.9';
+import { chooseMove, levelLabel } from './ai.js?v=0.0.9';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.9';
+import { MultiplayerService } from './multiplayer.js?v=0.0.9';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.9';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -53,6 +54,8 @@ const elements = {
   newRound: $('#newRoundButton'), rules: $('#rulesDialog'), toast: $('#toast'),
   roundResult: $('#roundResult'), roundResultTitle: $('#roundResultTitle'),
   roundResultScore: $('#roundResultScore'), roundResultNext: $('#roundResultNext'),
+  chatCard: $('#chatCard'), chatMessages: $('#chatMessages'), chatEmpty: $('#chatEmpty'),
+  chatForm: $('#chatForm'), chatInput: $('#chatInput'), chatSend: $('#chatSendButton'),
 };
 
 const app = {
@@ -75,6 +78,8 @@ const app = {
   rooms: [],
   onlinePlayers: [],
   currentInvitation: null,
+  chatMessages: [],
+  chatIds: new Set(),
   pitButtons: new Map(),
   spriteCache: new Map(),
   boardPerspective: null,
@@ -282,6 +287,95 @@ function receiveInvitation(invitation) {
 function closeInvitation() {
   app.currentInvitation = null;
   elements.invitePopup.hidden = true;
+}
+
+function resetChat() {
+  app.chatMessages = [];
+  app.chatIds = new Set();
+  renderChat();
+}
+
+function normaliseChatMessage(message = {}) {
+  return {
+    id: String(message.id || `${message.user_id || 'anon'}-${message.sent_at || Date.now()}`),
+    room_id: message.room_id || null,
+    user_id: message.user_id || null,
+    nick: String(message.nick || 'Convidado').trim().slice(0, 18) || 'Convidado',
+    island: String(message.island || 'santiago'),
+    text: String(message.text || '').trim().slice(0, 280),
+    sent_at: message.sent_at || new Date().toISOString(),
+  };
+}
+
+function appendChatMessage(rawMessage) {
+  const message = normaliseChatMessage(rawMessage);
+  if (!message.text || !app.room || message.room_id !== app.room.id || app.chatIds.has(message.id)) return;
+
+  app.chatIds.add(message.id);
+  app.chatMessages.push(message);
+  if (app.chatMessages.length > 60) {
+    const removed = app.chatMessages.splice(0, app.chatMessages.length - 60);
+    for (const item of removed) app.chatIds.delete(item.id);
+  }
+  renderChat();
+}
+
+function renderChat() {
+  if (!elements.chatCard) return;
+  const enabled = app.mode === 'online' && Boolean(app.room);
+  elements.chatCard.hidden = !enabled;
+  if (!enabled) return;
+
+  const ready = Boolean(multiplayer.roomChannelReady);
+  elements.chatInput.disabled = !ready;
+  elements.chatSend.disabled = !ready;
+  elements.chatInput.placeholder = ready ? 'Escrever no banco…' : 'A ligar ao chat…';
+  elements.chatMessages.replaceChildren();
+  elements.chatEmpty.hidden = app.chatMessages.length > 0;
+
+  for (const message of app.chatMessages) {
+    const article = document.createElement('article');
+    article.className = 'chat-message';
+    article.classList.toggle('mine', message.user_id === multiplayer.user?.id);
+
+    const head = document.createElement('div');
+    head.className = 'chat-message-head';
+    const nick = document.createElement('strong');
+    nick.textContent = message.nick;
+    const time = document.createElement('time');
+    const date = new Date(message.sent_at);
+    time.textContent = Number.isNaN(date.getTime())
+      ? ''
+      : date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    head.append(nick, time);
+
+    const body = document.createElement('p');
+    body.textContent = message.text;
+    article.append(head, body);
+    elements.chatMessages.append(article);
+  }
+
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+}
+
+async function sendChatMessage(event) {
+  event?.preventDefault?.();
+  if (app.mode !== 'online' || !app.room) return;
+  const text = elements.chatInput.value.trim();
+  if (!text) return;
+
+  elements.chatInput.disabled = true;
+  elements.chatSend.disabled = true;
+  try {
+    const message = await multiplayer.sendChatMessage(app.room, app.profile, text);
+    appendChatMessage(message);
+    elements.chatInput.value = '';
+  } catch (error) {
+    toast(`Chat: ${error.message}`);
+  } finally {
+    renderChat();
+    elements.chatInput.focus();
+  }
 }
 
 async function acceptInvitation() {
@@ -530,6 +624,7 @@ function startPcGame() {
   app.side = SOUTH;
   app.spectator = false;
   app.room = null;
+  resetChat();
   app.players = {
     [SOUTH]: { ...app.profile },
     [NORTH]: { nick: `PC · ${levelLabel(app.aiLevel)}`, island: 'santa-luzia' },
@@ -546,6 +641,7 @@ function startLocalGame() {
   app.side = null;
   app.spectator = false;
   app.room = null;
+  resetChat();
   app.players = {
     [SOUTH]: { ...app.profile },
     [NORTH]: { nick: guest || 'Convidado', island: app.profile.island },
@@ -661,6 +757,7 @@ async function enterRoomFromList(room, isPlayer) {
 async function enterOnlineRoom(room, spectator) {
   app.remoteUpdateQueue = Promise.resolve();
   app.mode = 'online';
+  resetChat();
   app.room = room;
   app.spectator = spectator;
   app.session = normaliseSession(room.game_state);
@@ -671,11 +768,15 @@ async function enterOnlineRoom(room, spectator) {
   app.side = spectator ? null : room.host_id === multiplayer.user.id ? SOUTH : NORTH;
   app.lastRoomFingerprint = roomFingerprint(room);
   invalidateBoardView();
-  await multiplayer.subscribeRoom(room.id, (updated) => {
-    app.remoteUpdateQueue = app.remoteUpdateQueue
-      .then(() => applyRemoteRoomUpdate(updated))
-      .catch((error) => toast(`Erro ao sincronizar o banco de Uril: ${error.message}`));
-  });
+  await multiplayer.subscribeRoom(
+    room.id,
+    (updated) => {
+      app.remoteUpdateQueue = app.remoteUpdateQueue
+        .then(() => applyRemoteRoomUpdate(updated))
+        .catch((error) => toast(`Erro ao sincronizar o banco de Uril: ${error.message}`));
+    },
+    (message) => appendChatMessage(message),
+  );
   showScreen('game');
   renderGame();
   syncPresence();
@@ -685,6 +786,10 @@ function normaliseSession(value) {
   if (!value?.game || !value?.match) return createSession(SOUTH);
   const session = JSON.parse(JSON.stringify(value));
   if (!('previousWinner' in session)) session.previousWinner = null;
+  if (!session.game.repetitionCounts || typeof session.game.repetitionCounts !== 'object') {
+    session.game.repetitionCounts = { [positionKey(session.game)]: 1 };
+    session.game.lastRepetitionCount = 1;
+  }
   return session;
 }
 
@@ -868,6 +973,7 @@ function renderGame() {
   renderLastMove();
   renderBoard();
   renderRoundResult();
+  renderChat();
 
   elements.newRound.hidden = game.status !== 'finished' || app.spectator;
 
@@ -989,7 +1095,10 @@ function renderLastMove() {
   const capture = move.capturedSeeds
     ? ` e colheu ${move.capturedSeeds} sementes${move.grandSlam ? ' nas seis casas' : ''}`
     : '';
-  elements.lastMoveText.textContent = `${playerName(move.player)} jogou ${pitLabel(move.pitIndex)}${capture}.`;
+  const repetition = move.repetitionTriggered
+    ? ' A posição repetiu-se pela terceira vez e a partida terminou.'
+    : '';
+  elements.lastMoveText.textContent = `${playerName(move.player)} jogou ${pitLabel(move.pitIndex)}${capture}.${repetition}`;
 }
 
 async function playMove(index) {
@@ -1034,7 +1143,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.8', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.9', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -1146,6 +1255,7 @@ async function leaveGame() {
   app.mode = null;
   document.body.dataset.onlinePlayer = 'false';
   app.room = null;
+  resetChat();
   app.spectator = false;
   app.lastRoomFingerprint = null;
   invalidateBoardView();
@@ -1174,6 +1284,7 @@ function bindEvents() {
   $('#createRoomButton').addEventListener('click', createRoom);
   elements.acceptInvite.addEventListener('click', acceptInvitation);
   elements.declineInvite.addEventListener('click', closeInvitation);
+  elements.chatForm.addEventListener('submit', sendChatMessage);
   $('#leaveGameButton').addEventListener('click', leaveGame);
   elements.newRound.addEventListener('click', newRound);
   $('#brandHome').addEventListener('click', () => app.mode ? leaveGame() : showScreen('home'));

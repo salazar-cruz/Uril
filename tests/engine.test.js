@@ -9,10 +9,11 @@ import {
   gameResultValue,
   legalMoves,
   nextRoundStarter,
+  positionKey,
   registerGameResult,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=0.0.8';
+} from '../js/engine.js?v=0.0.9';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();
@@ -190,6 +191,26 @@ test('num empate volta a começar quem abriu a partida empatada', () => {
   assert.equal(nextRoundStarter(game, NORTH), NORTH);
 });
 
+
+test('a terceira repetição da mesma posição termina a partida e cada jogador conserva o seu campo', () => {
+  const probe = createGame();
+  const target = applyMove(probe, 0);
+  const key = positionKey(target);
+
+  const game = createGame();
+  game.repetitionCounts[key] = 2;
+  const next = applyMove(game, 0);
+
+  assert.equal(next.status, 'finished');
+  assert.equal(next.lastMove.repetitionTriggered, true);
+  assert.match(next.reason, /repetiu-se três vezes/);
+  assert.equal(next.scores[SOUTH], 24);
+  assert.equal(next.scores[NORTH], 24);
+  assert.equal(next.winner, 'draw');
+  assert.deepEqual(next.board, Array(12).fill(0));
+  assert.equal(validateGame(next).valid, true);
+});
+
 test('jogadas aleatórias conservam sempre as 48 sementes', () => {
   for (let sample = 0; sample < 80; sample += 1) {
     let game = createGame({ firstPlayer: sample % 2 ? NORTH : SOUTH });
@@ -201,6 +222,7 @@ test('jogadas aleatórias conservam sempre as 48 sementes', () => {
       assert.equal(validateGame(game).valid, true);
       safety += 1;
     }
+    assert.notEqual(game.status, 'playing', 'a partida não deve entrar num ciclo infinito');
     assert.equal(validateGame(game).total, 48);
   }
 });

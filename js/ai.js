@@ -6,7 +6,7 @@ import {
   otherPlayer,
   playerPits,
   rowSeedCount,
-} from './engine.js?v=0.0.8';
+} from './engine.js?v=0.0.9';
 
 const LEVELS = {
   apprentice: {
@@ -210,11 +210,18 @@ function checkDeadline(deadline) {
 }
 
 function stateKey(game) {
+  const repetitionState = Object.entries(game.repetitionCounts || {})
+    .filter(([, count]) => Number(count) > 1)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, count]) => `${key}=${count}`)
+    .join(';');
+
   return [
     game.currentPlayer,
     game.scores[SOUTH],
     game.scores[NORTH],
     ...game.board,
+    repetitionState,
   ].join('|');
 }
 

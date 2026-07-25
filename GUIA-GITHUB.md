@@ -57,3 +57,9 @@ export const SUPABASE_ANON_KEY = 'COLOCAR_AQUI_A_CHAVE_PUBLICA';
 6. Grava a alteração.
 
 A chave pública fica no navegador por desenho do Supabase. Nunca coloques a `Secret key` no repositório. A protecção das tabelas assenta nas políticas RLS incluídas em `supabase.sql`.
+
+## 6. Chat e repetição tripla
+
+O chat dos bancos de Uril usa o mesmo Realtime já activado. Não é necessário executar novo SQL. As mensagens não ficam guardadas.
+
+A regra de repetição tripla é tratada pelo motor no navegador e sincronizada no estado do banco. Depois de actualizar os ficheiros, usa **Ctrl + F5** nos navegadores dos jogadores.

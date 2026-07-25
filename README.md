@@ -14,6 +14,8 @@ Versão web do Uril de Cabo Verde, preparada para GitHub Pages.
 - presença com contagem de utilizadores únicos;
 - perspectiva online com o próprio campo sempre na fila inferior;
 - sementeira e colheita animadas grão a grão;
+- chat em tempo real dentro de cada banco de Uril;
+- detecção de repetição tripla para impedir ciclos infinitos;
 - contagem de partidas, Capote, Quatros e corte.
 
 ## Regras operacionais
@@ -21,7 +23,8 @@ Versão web do Uril de Cabo Verde, preparada para GitHub Pages.
 - qualquer casa própria com pelo menos uma semente é jogável;
 - se o campo adversário estiver vazio, é obrigatória uma jogada que o alimente, quando exista;
 - a partida não termina aos 25 pontos;
-- joga-se até deixar de existir uma jogada válida ou de alimentação, sendo então contabilizadas as sementes restantes;
+- joga-se até deixar de existir uma jogada válida ou de alimentação;
+- ao repetir-se três vezes a mesma posição com o mesmo jogador na vez, a partida termina e cada jogador conserva as sementes do seu campo;
 - é admitida a colheita das seis casas adversárias;
 - quem terminar com menos de 12 sementes leva Capote;
 - o Capote vale duas partidas na contagem;
@@ -45,7 +48,7 @@ Para activar os bancos online:
 3. executar `supabase.sql` no SQL Editor;
 4. preencher `SUPABASE_URL` e `SUPABASE_ANON_KEY` em `js/config.js`.
 
-Os convites directos utilizam o canal Realtime do Supabase e não exigem uma tabela adicional.
+Os convites directos e o chat utilizam o canal Realtime do Supabase e não exigem tabelas adicionais. As mensagens do chat não ficam arquivadas.
 
 ## Testes
 
@@ -53,16 +56,15 @@ Os convites directos utilizam o canal Realtime do Supabase e não exigem uma tab
 npm test
 ```
 
-A versão 0.0.8 inclui 22 testes automáticos do motor, IA e perspectivas do tabuleiro.
+A versão 0.0.9 inclui 25 testes automáticos do motor, IA, interface e perspectivas do tabuleiro.
 
-## Alterações v0.0.8
+## Alterações v0.0.9
 
-- acrescenta a lista lateral dos nicks online e o estado de cada jogador;
-- permite convidar um nick livre para um banco à espera ou criar automaticamente um novo banco;
-- substitui a terminologia pública “sala” por “banco de Uril”;
-- remove o fim automático aos 25 pontos;
-- acrescenta o Capote para o derrotado com menos de 12 sementes, valendo duas partidas;
-- mantém as correcções de alimentação, animação, presença, perspectiva online e IA das versões anteriores.
+- termina a partida na terceira repetição da mesma posição, atribuindo a cada jogador as sementes do seu campo;
+- corrige o modo local: a camada transparente da fila inferior já não bloqueia os cliques nas casas de Norte;
+- acrescenta chat em tempo real aos bancos de Uril, incluindo espectadores;
+- reorganiza a ajuda com funcionalidades, bancos, convites, presença, chat, regras e resolução de falhas de sincronização;
+- mantém a lista lateral dos nicks online, convites directos, Capote, Quatros e perspectiva individual nos bancos online.
 
 ## Licenças e atribuições
 

@@ -8,7 +8,7 @@
   <title>Uril de Cabo Verde</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=0.0.8">
+  <link rel="stylesheet" href="styles.css?v=0.0.9">
 </head>
 <body data-island="santiago">
   <div class="island-background" aria-hidden="true"></div>
@@ -20,7 +20,7 @@
       </button>
       <div class="topbar-actions">
         <span class="online-pill" id="onlinePill"><i></i><b id="onlineCount">0</b> jogadores online</span>
-        <button class="icon-button" id="rulesButton" type="button" title="Regras">?</button>
+        <button class="icon-button" id="rulesButton" type="button" title="Ajuda e regras">?</button>
       </div>
     </header>
 
@@ -186,6 +186,19 @@
               <span class="eyebrow">ÚLTIMA JOGADA</span>
               <p id="lastMoveText">Ainda não houve jogadas.</p>
             </section>
+            <section class="glass sidebar-card chat-card" id="chatCard" hidden>
+              <div class="chat-head">
+                <span class="eyebrow">CHAT DO BANCO</span>
+                <small>AO VIVO</small>
+              </div>
+              <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+              <p class="chat-empty" id="chatEmpty">Ainda não há mensagens neste banco.</p>
+              <form class="chat-form" id="chatForm">
+                <input id="chatInput" maxlength="280" autocomplete="off" placeholder="Escrever no banco…" aria-label="Mensagem para o chat">
+                <button class="primary-button compact" id="chatSendButton" type="submit">Enviar</button>
+              </form>
+              <p class="chat-note">As mensagens são transmitidas em tempo real e não ficam arquivadas.</p>
+            </section>
             <section class="glass sidebar-card rules-mini">
               <span class="eyebrow">LEMBRETE</span>
               <p>Distribuição anti-horária, sem deixar semente na casa de origem ao completar a volta. Colheita consecutiva de casas com 2 ou 3 sementes.</p>
@@ -210,29 +223,61 @@
 
   <dialog id="rulesDialog">
     <div class="dialog-head">
-      <div><span class="eyebrow">REGULAMENTO V0</span><h2>Regras do Uril de Cabo Verde</h2></div>
+      <div><span class="eyebrow">AJUDA V0.0.9</span><h2>Ajuda, bancos e regras</h2></div>
       <button class="icon-button" id="closeRulesButton" type="button">×</button>
     </div>
-    <div class="rules-content">
-      <ol>
-        <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
-        <li><strong>Orientação.</strong> Em partidas locais e contra o computador, Sul fica na fila inferior. Nos bancos online, cada jogador vê sempre o seu próprio campo na fila inferior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
-        <li><strong>Sementeira.</strong> Escolhem-se todas as sementes de uma casa própria e distribui-se uma por casa. Quando a volta passa novamente pela casa de origem, essa casa é saltada.</li>
-        <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. A única excepção surge quando o adversário está sem sementes: nesse caso escolhe-se uma jogada que o alimente, quando existe.</li>
-        <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e continuam a colher-se, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
-        <li><strong>Alimentação.</strong> Quando o campo do adversário está vazio, o jogador tem de escolher uma casa cuja sementeira deixe pelo menos uma semente no campo adversário. Se nenhuma jogada conseguir alimentá-lo, a partida termina.</li>
-        <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. Se o adversário ficar sem qualquer jogada depois dessa colheita, a partida termina e as sementes restantes são contabilizadas.</li>
-        <li><strong>Fim.</strong> A partida não termina aos 25 pontos. Continua até não existirem sementes jogáveis ou nenhuma jogada conseguir alimentar o campo vazio. Nesse momento, as sementes restantes são contabilizadas. Com 24–24 há empate.</li>
-        <li><strong>Capote.</strong> O jogador que terminar com menos de 12 sementes leva <em>Capote</em>. A vitória por Capote vale duas partidas na contagem.</li>
-        <li><strong>O Quatro.</strong> A contagem pertence ao vencedor da última partida e regressa a 1–0 quando muda de jogador. Quatro partidas consecutivas marcam um <em>Quatro</em>; um Capote soma duas partidas.</li>
-        <li><strong>Corte depois do Quatro.</strong> O adversário só corta a contagem com duas partidas consecutivas, passando a liderar por 2–0. Um Capote corta de imediato. O Quatro já marcado continua registado.</li>
-      </ol>
-      <p class="rules-note">Esta é a interpretação operacional usada na versão zero. O regulamento fica isolado no motor do jogo para facilitar correcções após validação com mestres de Uril.</p>
+    <div class="rules-content help-content">
+      <section>
+        <h3>Começar a jogar</h3>
+        <p>Escolhe um nick e a ilha. A ilha define o fundo do jogo. Não existe registo por email: no modo online é criada apenas uma sessão técnica anónima.</p>
+        <ul>
+          <li><strong>Contra o computador:</strong> níveis Aprendiz, Amador, Mestre e Grande Mestre.</li>
+          <li><strong>Dois jogadores:</strong> Sul e Norte alternam no mesmo dispositivo. As casas da fila superior pertencem a Norte.</li>
+          <li><strong>Bancos de Uril online:</strong> cria um banco, entra num banco à espera, retoma o teu banco ou assiste a uma partida em curso.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Jogadores e bancos de Uril</h3>
+        <p>A coluna da esquerda mostra os nicks ligados e o respectivo estado: livre, num banco à espera, a jogar ou a ver jogar. Um jogador livre recebe um convite directo. Se já tens um banco à espera, o convite usa esse banco; caso contrário, é criado um novo.</p>
+        <p>Nos bancos online, cada jogador vê sempre o seu próprio campo na parte inferior. Os espectadores vêem Sul na parte inferior. As jogadas são sincronizadas e animadas semente a semente nos dois navegadores.</p>
+      </section>
+
+      <section>
+        <h3>Chat do banco</h3>
+        <p>O chat aparece dentro de um banco online e está disponível aos dois jogadores e aos espectadores. As mensagens circulam em tempo real, têm um máximo de 280 caracteres e não ficam guardadas na base de dados. Ao sair ou actualizar a página, o histórico local desaparece.</p>
+      </section>
+
+      <section>
+        <h3>Regras do Uril de Cabo Verde</h3>
+        <ol>
+          <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
+          <li><strong>Orientação.</strong> A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
+          <li><strong>Sementeira.</strong> Retiram-se todas as sementes de uma casa própria e distribui-se uma por casa. Ao completar a volta, a casa de origem é saltada.</li>
+          <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. Quando o adversário está sem sementes, escolhe-se uma jogada que o alimente, quando tal jogada existe.</li>
+          <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
+          <li><strong>Alimentação.</strong> Com o campo adversário vazio, é obrigatório deixar-lhe pelo menos uma semente. Sem qualquer jogada de alimentação, a partida termina.</li>
+          <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. A partida termina apenas quando o adversário fica sem jogada de alimentação.</li>
+          <li><strong>Fim normal.</strong> A partida não termina aos 25 pontos. Continua até deixarem de existir jogadas. As sementes restantes ficam com o jogador em cujo campo se encontram.</li>
+          <li><strong>Repetição tripla.</strong> Quando a mesma posição, com o mesmo jogador na vez, surge três vezes, a partida termina para impedir um ciclo infinito. Cada jogador fica com as sementes existentes no seu próprio campo.</li>
+          <li><strong>Capote.</strong> O jogador que terminar com menos de 12 sementes leva <em>Capote</em>. O Capote vale duas partidas na contagem.</li>
+          <li><strong>O Quatro.</strong> Quatro partidas consecutivas marcam um <em>Quatro</em>. O Quatro já marcado não desaparece.</li>
+          <li><strong>Corte depois do Quatro.</strong> O adversário corta com duas partidas consecutivas e passa a liderar por 2–0. Um Capote realiza o corte de imediato.</li>
+          <li><strong>Partida seguinte.</strong> O vencedor começa a partida seguinte. Num empate, volta a começar quem abriu a partida empatada.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h3>Quando algo não sincroniza</h3>
+        <p>Confirma que ambos entraram no mesmo banco e que o estado indica “Banco online”. Depois de uma actualização do GitHub, usa <strong>Ctrl + F5</strong> nos dois navegadores para eliminar ficheiros antigos em cache.</p>
+      </section>
+
+      <p class="rules-note">Esta é a interpretação operacional da versão zero e continuará a ser ajustada com validação de jogadores experientes de Uril.</p>
     </div>
   </dialog>
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script type="module" src="js/app.js?v=0.0.8"></script>
+  <script type="module" src="js/app.js?v=0.0.9"></script>
 </body>
 </html>

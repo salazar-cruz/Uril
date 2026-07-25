@@ -10,6 +10,7 @@ const OWN_PITS = {
 const OTHER = { [SOUTH]: NORTH, [NORTH]: SOUTH };
 const TOTAL_SEEDS = 48;
 const CAPOTE_LIMIT = 12;
+const REPETITION_LIMIT = 3;
 
 export function otherPlayer(player) {
   return OTHER[player];
@@ -28,8 +29,35 @@ export function isOwnPit(player, pitIndex) {
   return OWN_PITS[player].includes(pitIndex);
 }
 
+export function positionKey(game) {
+  return `${game.currentPlayer}|${game.board.join(',')}`;
+}
+
+function ensureRepetitionState(game) {
+  if (!game.repetitionCounts || typeof game.repetitionCounts !== 'object') {
+    game.repetitionCounts = {};
+  }
+  const key = positionKey(game);
+  if (!Number.isFinite(Number(game.repetitionCounts[key]))) {
+    game.repetitionCounts[key] = 1;
+  }
+  game.lastRepetitionCount = Number(game.repetitionCounts[key]) || 1;
+  return game;
+}
+
+function registerPosition(game) {
+  if (!game.repetitionCounts || typeof game.repetitionCounts !== 'object') {
+    game.repetitionCounts = {};
+  }
+  const key = positionKey(game);
+  const count = (Number(game.repetitionCounts[key]) || 0) + 1;
+  game.repetitionCounts[key] = count;
+  game.lastRepetitionCount = count;
+  return count;
+}
+
 export function createGame({ firstPlayer = SOUTH } = {}) {
-  return {
+  const game = {
     board: Array(12).fill(4),
     scores: { [SOUTH]: 0, [NORTH]: 0 },
     currentPlayer: firstPlayer,
@@ -41,7 +69,11 @@ export function createGame({ firstPlayer = SOUTH } = {}) {
     consecutivePasses: 0,
     capote: null,
     resultValue: 1,
+    repetitionCounts: {},
+    lastRepetitionCount: 1,
   };
+  game.repetitionCounts[positionKey(game)] = 1;
+  return game;
 }
 
 export function cloneGame(game) {
@@ -49,6 +81,7 @@ export function cloneGame(game) {
     ...game,
     board: [...game.board],
     scores: { ...game.scores },
+    repetitionCounts: { ...(game.repetitionCounts || {}) },
     lastMove: game.lastMove ? structuredCloneSafe(game.lastMove) : null,
   };
 }
@@ -203,6 +236,7 @@ export function gameResultValue(game) {
 
 export function applyMove(game, pitIndex) {
   const next = cloneGame(game);
+  ensureRepetitionState(next);
   const moves = legalMoves(next);
   if (!moves.includes(pitIndex)) {
     const opponent = otherPlayer(next.currentPlayer);
@@ -238,6 +272,18 @@ export function applyMove(game, pitIndex) {
   next.turn += 1;
 
   next.currentPlayer = opponent;
+  const repetitionCount = registerPosition(next);
+  next.lastMove.repetitionCount = repetitionCount;
+
+  if (repetitionCount >= REPETITION_LIMIT) {
+    next.lastMove.repetitionTriggered = true;
+    collectRemainingSeeds(
+      next,
+      'A mesma posição repetiu-se três vezes. Cada jogador fica com as sementes do seu campo.',
+    );
+    return next;
+  }
+
   const opponentMoves = legalMoves(next);
 
   if (opponentMoves.length === 0) {
