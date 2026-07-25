@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.13';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.13';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.13';
-import { MultiplayerService } from './multiplayer.js?v=0.0.13';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.13';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.13';
+} from './engine.js?v=0.0.14';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.14';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.14';
+import { MultiplayerService } from './multiplayer.js?v=0.0.14';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.14';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.14';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1568,7 +1568,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.13', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.14', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -1735,7 +1735,7 @@ function submitSuggestion(event) {
   const subject = t('suggestionSubject');
   const body = `${text}
 
-${t('suggestionSignature', { version: '0.0.13', url: window.location.href })}`;
+${t('suggestionSignature', { version: '0.0.14', url: window.location.href })}`;
   window.location.href = `mailto:sugestoes@devnexusdigital.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   elements.suggestionsDialog.close();
   elements.suggestionText.value = '';

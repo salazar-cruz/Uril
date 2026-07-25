@@ -59,11 +59,11 @@ Os convites directos e o chat utilizam o canal Realtime do Supabase e não exige
 npm test
 ```
 
-A versão 0.0.13 inclui testes automáticos do motor, IA, presença, idiomas, convites, desistência, observação de partidas contra o computador, interface e perspectivas do tabuleiro.
+A versão 0.0.14 inclui testes automáticos do motor, IA, presença, idiomas, convites, desistência, observação de partidas contra o computador, interface e perspectivas do tabuleiro.
 
 
 
-## Alterações v0.0.13
+## Alterações v0.0.14
 
 - as partidas contra o computador abrem automaticamente um banco público quando o Supabase está ligado;
 - o banco surge na lista de bancos com a indicação **PC · AO VIVO**;
@@ -111,3 +111,10 @@ O tabuleiro fotográfico e as imagens das casas com sementes foram produzidos po
 ## Novidades da v0.0.12
 
 Desistência confirmada, pedido de desistência da IA, visual sem relva com banco sobre banquinho e rodapé com copyright, versão e sugestões.
+
+
+## Alterações v0.0.14
+
+- Fundo exterior do tabuleiro com transparência real.
+- Banco comprido de madeira colocado transversalmente, a 90 graus em relação ao tabuleiro.
+- Retirado o banquinho curto da versão anterior.

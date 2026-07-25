@@ -1,4 +1,4 @@
-import { chooseMove } from './ai.js?v=0.0.13';
+import { chooseMove } from './ai.js?v=0.0.14';
 
 self.addEventListener('message', (event) => {
   const { game, level } = event.data || {};

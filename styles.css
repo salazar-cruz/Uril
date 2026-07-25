@@ -875,7 +875,7 @@ body[data-online-player="true"] .player-summary.south::after {
 }
 
 
-/* V0.0.13 — mesa tradicional sem relva, com o banco apoiado num banquinho. */
+/* V0.0.14 — mesa tradicional sem relva, com o banco apoiado num banquinho. */
 body.game-active .island-background {
   background-image:
     radial-gradient(circle at 50% 8%, rgba(255,226,175,.18), transparent 38%),
@@ -938,4 +938,94 @@ body.game-active .island-background::after {
   .footer-actions { width: 100%; justify-content: space-between; }
   .game-header-actions { flex-wrap: wrap; }
   .dialog-actions { display: grid; grid-template-columns: 1fr; }
+}
+
+
+/* V0.0.14 — banco comprido transversal e tabuleiro com transparência real.
+   O tabuleiro mantém a orientação de jogo; o banco de assento cruza-o a 90 graus. */
+.board {
+  isolation: isolate;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Banco comprido de madeira: segue do jogador de cima ao jogador de baixo. */
+.board::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 36.5%;
+  top: -3%;
+  width: 27%;
+  height: 106%;
+  border: 2px solid rgba(44, 20, 8, .88);
+  border-radius: 6% / 3.5%;
+  background:
+    linear-gradient(90deg,
+      rgba(255,255,255,.12) 0%,
+      transparent 8%,
+      rgba(39,15,5,.20) 21%,
+      transparent 37%,
+      rgba(255,220,170,.08) 53%,
+      transparent 68%,
+      rgba(35,13,4,.26) 86%,
+      rgba(255,255,255,.08) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(50,20,7,.28) 0 2px,
+      rgba(151,79,31,.13) 2px 7px,
+      rgba(69,29,10,.16) 7px 11px
+    ),
+    linear-gradient(90deg, #6f3215 0%, #a85b27 18%, #7a3818 48%, #a85a27 77%, #5a260f 100%);
+  box-shadow:
+    inset 8px 0 12px rgba(255,220,170,.08),
+    inset -10px 0 16px rgba(26,9,3,.34),
+    0 22px 30px rgba(0,0,0,.38);
+  transform: perspective(900px) rotateX(1.5deg);
+}
+
+/* Rebordo e profundidade do banco comprido. */
+.board::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 38.2%;
+  top: -1%;
+  width: 23.6%;
+  height: 102%;
+  border-radius: 5% / 3%;
+  border-left: 2px solid rgba(255,207,143,.10);
+  border-right: 3px solid rgba(38,14,4,.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.035),
+    13px 7px 0 -8px rgba(37,13,4,.42);
+  pointer-events: none;
+}
+
+/* Fotografia do tabuleiro isolada da relva; o exterior é PNG transparente. */
+.board-grain {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: url('assets/classic/board01-transparent.png') center / 100% 100% no-repeat;
+  filter: drop-shadow(0 18px 18px rgba(0,0,0,.42));
+}
+
+/* As casas continuam acima do tabuleiro e mantêm as coordenadas originais. */
+.board .pit-row { z-index: 2; }
+
+@media (max-width: 720px) {
+  .board::before {
+    left: 34.5%;
+    width: 31%;
+    top: -2%;
+    height: 104%;
+  }
+  .board::after {
+    left: 36.5%;
+    width: 27%;
+  }
 }
