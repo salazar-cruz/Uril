@@ -15,3 +15,10 @@ test('a ajuda descreve bancos, chat e repetição tripla', () => {
   assert.match(html, /Chat do banco/);
   assert.match(html, /Repetição tripla/);
 });
+
+
+test('a ajuda explica a presença em tempo real e os estados PC e local', () => {
+  assert.match(html, /actualiza-se em tempo real/);
+  assert.match(html, /a jogar contra o computador/);
+  assert.match(html, /a jogar no modo local/);
+});

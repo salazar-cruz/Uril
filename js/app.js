@@ -12,11 +12,11 @@ import {
   pitLabel,
   positionKey,
   registerGameResult,
-} from './engine.js?v=0.0.9';
-import { chooseMove, levelLabel } from './ai.js?v=0.0.9';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.9';
-import { MultiplayerService } from './multiplayer.js?v=0.0.9';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.9';
+} from './engine.js?v=0.0.10';
+import { chooseMove, levelLabel } from './ai.js?v=0.0.10';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.10';
+import { MultiplayerService } from './multiplayer.js?v=0.0.10';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.10';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -186,7 +186,11 @@ function presencePayload() {
   let bankId = null;
   let bankName = null;
 
-  if (app.mode === 'online' && app.room) {
+  if (app.mode === 'pc') {
+    status = 'pc';
+  } else if (app.mode === 'local') {
+    status = 'local';
+  } else if (app.mode === 'online' && app.room) {
     bankId = app.room.id;
     bankName = app.room.name;
     status = app.spectator
@@ -211,6 +215,8 @@ function syncPresence() {
 function onlineStatus(player) {
   const bank = player.bank_name ? ` · ${player.bank_name}` : '';
   switch (player.status) {
+    case 'pc': return 'A jogar contra o computador';
+    case 'local': return 'A jogar no modo local';
     case 'waiting': return `Num banco de Uril, à espera${bank}`;
     case 'playing': return `Num banco de Uril, a jogar${bank}`;
     case 'watching': return `Num banco de Uril, a ver jogar${bank}`;
@@ -228,7 +234,7 @@ function renderOnlinePlayers() {
   }
 
   const currentUserId = multiplayer.user?.id;
-  const order = { free: 0, waiting: 1, playing: 2, watching: 3 };
+  const order = { free: 0, pc: 1, local: 2, waiting: 3, playing: 4, watching: 5 };
   const players = [...app.onlinePlayers].sort((left, right) => {
     if (left.user_id === currentUserId) return -1;
     if (right.user_id === currentUserId) return 1;
@@ -427,7 +433,7 @@ async function inviteOnlinePlayer(player) {
       await enterOnlineRoom(bank, false);
     }
 
-    await multiplayer.sendInvitation(player.user_id, bank, app.profile);
+    await multiplayer.sendInvitation(player, bank, app.profile);
     toast(`Convite enviado a ${player.nick}.`);
   } catch (error) {
     toast(`Não foi possível enviar o convite: ${error.message}`);
@@ -632,6 +638,7 @@ function startPcGame() {
   app.session = createSession(SOUTH);
   showScreen('game');
   renderGame();
+  syncPresence();
 }
 
 function startLocalGame() {
@@ -649,6 +656,7 @@ function startLocalGame() {
   app.session = createSession(SOUTH);
   showScreen('game');
   renderGame();
+  syncPresence();
 }
 
 async function openRooms() {
@@ -1143,7 +1151,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.9', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.10', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

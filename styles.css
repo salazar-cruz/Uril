@@ -488,7 +488,7 @@ body[data-online-player="false"] .player-summary.south::after {
   content: none;
 }
 
-/* V0.0.9 — lista de jogadores online e convites para bancos de Uril. */
+/* V0.0.10 — presença em tempo real, estados de jogo e convites. */
 .page-shell { width: min(1680px, calc(100% - 36px)); }
 .workspace {
   display: grid;
@@ -566,6 +566,8 @@ body[data-online-player="false"] .player-summary.south::after {
   background: rgba(255,255,255,.22);
 }
 .online-player.status-free::before { background: var(--green); }
+.online-player.status-pc::before { background: #72b7ff; }
+.online-player.status-local::before { background: #b18cff; }
 .online-player.status-waiting::before { background: var(--gold-strong); }
 .online-player.status-playing::before { background: #e07c5b; }
 .online-player.status-watching::before { background: #8da7ff; }

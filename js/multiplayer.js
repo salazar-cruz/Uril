@@ -1,3 +1,26 @@
+const PRESENCE_STATUSES = new Set([
+  'free',
+  'pc',
+  'local',
+  'waiting',
+  'playing',
+  'watching',
+]);
+
+const PRESENCE_HEARTBEAT_MS = 12000;
+const PRESENCE_STALE_MS = 45000;
+
+function makeId(prefix = 'connection') {
+  const random = globalThis.crypto?.randomUUID?.()
+    || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${random}`;
+}
+
+function seenTime(value) {
+  const parsed = Date.parse(value || '');
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export class MultiplayerService {
   constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation }) {
     this.url = url;
@@ -10,6 +33,11 @@ export class MultiplayerService {
     this.lobbyChannel = null;
     this.roomChannel = null;
     this.roomChannelReady = false;
+    this.connectionId = makeId('uril');
+    this.currentPresence = null;
+    this.announcedPresence = new Map();
+    this.heartbeatTimer = null;
+    this.lifecycleBound = false;
   }
 
   get configured() {
@@ -42,40 +70,169 @@ export class MultiplayerService {
 
   normalisePresence(profile = {}) {
     const fallback = this.user?.id ? `Convidado-${this.user.id.slice(0, 4)}` : 'Convidado';
+    const status = PRESENCE_STATUSES.has(profile.status) ? profile.status : 'free';
     return {
+      connection_id: this.connectionId,
+      user_id: this.user?.id || null,
       nick: String(profile.nick || '').trim() || fallback,
       island: String(profile.island || 'santiago'),
-      status: ['free', 'waiting', 'playing', 'watching'].includes(profile.status)
-        ? profile.status
-        : 'free',
+      status,
       bank_id: profile.bank_id || null,
       bank_name: profile.bank_name || null,
       seen_at: new Date().toISOString(),
     };
   }
 
+  presencePlayers() {
+    const byConnection = new Map();
+    const state = this.lobbyChannel?.presenceState?.() || {};
+
+    for (const [presenceKey, metas] of Object.entries(state)) {
+      for (const meta of metas || []) {
+        const player = {
+          connection_id: meta.connection_id || presenceKey,
+          user_id: meta.user_id || presenceKey,
+          ...meta,
+        };
+        const key = player.connection_id || presenceKey;
+        const existing = byConnection.get(key);
+        if (!existing || seenTime(player.seen_at) >= seenTime(existing.seen_at)) {
+          byConnection.set(key, player);
+        }
+      }
+    }
+
+    const now = Date.now();
+    for (const [key, player] of this.announcedPresence) {
+      if (now - seenTime(player.seen_at) > PRESENCE_STALE_MS) {
+        this.announcedPresence.delete(key);
+        continue;
+      }
+      const existing = byConnection.get(key);
+      if (!existing || seenTime(player.seen_at) > seenTime(existing.seen_at)) {
+        byConnection.set(key, player);
+      }
+    }
+
+    return [...byConnection.values()];
+  }
+
+  emitPresence() {
+    const players = this.presencePlayers();
+    this.onPresenceChange?.({ players, count: players.length });
+  }
+
+  rememberAnnouncement(profile) {
+    if (!profile?.connection_id) return;
+    this.announcedPresence.set(profile.connection_id, profile);
+  }
+
+  async announcePresence() {
+    if (!this.lobbyChannel || !this.currentPresence) return;
+    this.currentPresence = this.normalisePresence(this.currentPresence);
+    this.rememberAnnouncement(this.currentPresence);
+    this.emitPresence();
+    try {
+      await this.lobbyChannel.send({
+        type: 'broadcast',
+        event: 'presence_announce',
+        payload: { profile: this.currentPresence },
+      });
+    } catch {
+      // A presença nativa do Supabase continua a funcionar como via principal.
+    }
+  }
+
+  async requestPresence() {
+    if (!this.lobbyChannel) return;
+    try {
+      await this.lobbyChannel.send({
+        type: 'broadcast',
+        event: 'presence_probe',
+        payload: { requester_connection_id: this.connectionId },
+      });
+    } catch {
+      // O evento sync da presença continua a entregar o estado existente.
+    }
+  }
+
+  startHeartbeat() {
+    window.clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = window.setInterval(async () => {
+      if (!this.lobbyChannel || !this.currentPresence) return;
+      try {
+        this.currentPresence = this.normalisePresence(this.currentPresence);
+        await this.lobbyChannel.track(this.currentPresence);
+        await this.announcePresence();
+      } catch {
+        // A tentativa seguinte volta a anunciar o jogador.
+      }
+    }, PRESENCE_HEARTBEAT_MS);
+  }
+
+  bindLifecycle() {
+    if (this.lifecycleBound) return;
+    this.lifecycleBound = true;
+
+    const refreshPresence = () => {
+      if (document.visibilityState === 'visible') {
+        this.updatePresence(this.currentPresence || {}).catch(() => {});
+      }
+    };
+
+    window.addEventListener('focus', refreshPresence);
+    document.addEventListener('visibilitychange', refreshPresence);
+    window.addEventListener('pagehide', () => {
+      window.clearInterval(this.heartbeatTimer);
+      this.lobbyChannel?.send?.({
+        type: 'broadcast',
+        event: 'presence_goodbye',
+        payload: { connection_id: this.connectionId },
+      }).catch?.(() => {});
+      this.lobbyChannel?.untrack?.().catch?.(() => {});
+    });
+  }
+
   async connectLobby(profile) {
     if (!this.client || !this.user) return;
     if (this.lobbyChannel) await this.client.removeChannel(this.lobbyChannel);
 
-    this.lobbyChannel = this.client.channel('uril-lobby-v1', {
+    this.currentPresence = this.normalisePresence(profile);
+    this.announcedPresence.clear();
+
+    this.lobbyChannel = this.client.channel('uril-lobby-v2', {
       config: {
-        presence: { key: this.user.id },
+        presence: { key: this.connectionId },
         broadcast: { self: false, ack: true },
       },
     });
 
+    const refresh = () => this.emitPresence();
+
     this.lobbyChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = this.lobbyChannel.presenceState();
-        const players = Object.entries(state).map(([userId, metas]) => ({
-          user_id: userId,
-          ...(metas.at(-1) || {}),
-        }));
-        this.onPresenceChange?.({ players, count: players.length });
+      .on('presence', { event: 'sync' }, refresh)
+      .on('presence', { event: 'join' }, refresh)
+      .on('presence', { event: 'leave' }, refresh)
+      .on('broadcast', { event: 'presence_announce' }, ({ payload }) => {
+        if (!payload?.profile) return;
+        this.rememberAnnouncement(payload.profile);
+        this.emitPresence();
+      })
+      .on('broadcast', { event: 'presence_probe' }, ({ payload }) => {
+        if (payload?.requester_connection_id !== this.connectionId) {
+          this.announcePresence().catch(() => {});
+        }
+      })
+      .on('broadcast', { event: 'presence_goodbye' }, ({ payload }) => {
+        if (!payload?.connection_id) return;
+        this.announcedPresence.delete(payload.connection_id);
+        this.emitPresence();
       })
       .on('broadcast', { event: 'invite' }, ({ payload }) => {
-        if (payload?.target_id === this.user?.id) this.onInvitation?.(payload);
+        const addressedToConnection = payload?.target_connection_id === this.connectionId
+          || payload?.target_id === this.connectionId;
+        const addressedToUser = payload?.target_user_id && payload.target_user_id === this.user?.id;
+        if (addressedToConnection || addressedToUser) this.onInvitation?.(payload);
       })
       .on(
         'postgres_changes',
@@ -84,18 +241,29 @@ export class MultiplayerService {
       )
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await this.lobbyChannel.track(this.normalisePresence(profile));
+          await this.lobbyChannel.track(this.currentPresence);
+          await this.announcePresence();
+          await this.requestPresence();
+          this.startHeartbeat();
+          this.bindLifecycle();
         }
       });
   }
 
   async updatePresence(profile) {
     if (!this.lobbyChannel) return;
-    await this.lobbyChannel.track(this.normalisePresence(profile));
+    this.currentPresence = this.normalisePresence(profile);
+    await this.lobbyChannel.track(this.currentPresence);
+    await this.announcePresence();
   }
 
-  async sendInvitation(targetUserId, room, profile) {
-    if (!this.lobbyChannel || !targetUserId || !room) {
+  async sendInvitation(targetPlayer, room, profile) {
+    const target = typeof targetPlayer === 'string'
+      ? { connection_id: targetPlayer, user_id: null }
+      : targetPlayer || {};
+    const targetConnectionId = target.connection_id || target.user_id;
+
+    if (!this.lobbyChannel || !targetConnectionId || !room) {
       throw new Error('O convite não encontrou o jogador ou o banco de Uril.');
     }
 
@@ -103,9 +271,12 @@ export class MultiplayerService {
       type: 'broadcast',
       event: 'invite',
       payload: {
-        invite_id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
-        target_id: targetUserId,
+        invite_id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+        target_id: targetConnectionId,
+        target_connection_id: targetConnectionId,
+        target_user_id: target.user_id || null,
         inviter_id: this.user?.id,
+        inviter_connection_id: this.connectionId,
         inviter_nick: String(profile?.nick || room.host_nick || 'Jogador'),
         inviter_island: String(profile?.island || room.host_island || 'santiago'),
         bank_id: room.id,
@@ -247,7 +418,6 @@ export class MultiplayerService {
     }
   }
 
-
   async sendChatMessage(room, profile, text) {
     if (!this.roomChannel || !this.roomChannelReady || !room) {
       throw new Error('O chat ainda não está ligado a este banco de Uril.');
@@ -257,7 +427,7 @@ export class MultiplayerService {
     if (!content) throw new Error('Escreve uma mensagem antes de enviar.');
 
     const message = {
-      id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+      id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
       room_id: room.id,
       user_id: this.user?.id || null,
       nick: String(profile?.nick || 'Convidado').trim().slice(0, 18) || 'Convidado',

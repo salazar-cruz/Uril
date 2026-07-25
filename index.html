@@ -8,7 +8,7 @@
   <title>Uril de Cabo Verde</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=0.0.9">
+  <link rel="stylesheet" href="styles.css?v=0.0.10">
 </head>
 <body data-island="santiago">
   <div class="island-background" aria-hidden="true"></div>
@@ -223,7 +223,7 @@
 
   <dialog id="rulesDialog">
     <div class="dialog-head">
-      <div><span class="eyebrow">AJUDA V0.0.9</span><h2>Ajuda, bancos e regras</h2></div>
+      <div><span class="eyebrow">AJUDA V0.0.10</span><h2>Ajuda, bancos e regras</h2></div>
       <button class="icon-button" id="closeRulesButton" type="button">×</button>
     </div>
     <div class="rules-content help-content">
@@ -239,7 +239,7 @@
 
       <section>
         <h3>Jogadores e bancos de Uril</h3>
-        <p>A coluna da esquerda mostra os nicks ligados e o respectivo estado: livre, num banco à espera, a jogar ou a ver jogar. Um jogador livre recebe um convite directo. Se já tens um banco à espera, o convite usa esse banco; caso contrário, é criado um novo.</p>
+        <p>A coluna da esquerda actualiza-se em tempo real quando alguém entra, sai ou muda de modo. Mostra os estados: livre, a jogar contra o computador, a jogar no modo local, num banco à espera, num banco a jogar ou a ver jogar. Um jogador livre recebe um convite directo. Se já tens um banco à espera, o convite usa esse banco; caso contrário, é criado um novo.</p>
         <p>Nos bancos online, cada jogador vê sempre o seu próprio campo na parte inferior. Os espectadores vêem Sul na parte inferior. As jogadas são sincronizadas e animadas semente a semente nos dois navegadores.</p>
       </section>
 
@@ -269,7 +269,7 @@
 
       <section>
         <h3>Quando algo não sincroniza</h3>
-        <p>Confirma que ambos entraram no mesmo banco e que o estado indica “Banco online”. Depois de uma actualização do GitHub, usa <strong>Ctrl + F5</strong> nos dois navegadores para eliminar ficheiros antigos em cache.</p>
+        <p>Confirma que ambos entraram no mesmo banco e que o estado indica “Banco online”. A lista de jogadores renova a presença automaticamente e volta a anunciá-la quando o separador recupera o foco. Depois de uma actualização do GitHub, usa <strong>Ctrl + F5</strong> nos dois navegadores para eliminar ficheiros antigos em cache.</p>
       </section>
 
       <p class="rules-note">Esta é a interpretação operacional da versão zero e continuará a ser ajustada com validação de jogadores experientes de Uril.</p>
@@ -278,6 +278,6 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script type="module" src="js/app.js?v=0.0.9"></script>
+  <script type="module" src="js/app.js?v=0.0.10"></script>
 </body>
 </html>

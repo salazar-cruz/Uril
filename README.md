@@ -9,9 +9,9 @@ Versão web do Uril de Cabo Verde, preparada para GitHub Pages.
 - jogador contra computador nos níveis Aprendiz, Amador, Mestre e Grande Mestre;
 - dois jogadores no mesmo dispositivo;
 - bancos de Uril online e modo espectador através de Supabase;
-- lista lateral dos nicks online, com estado Livre, À espera, A jogar ou A ver jogar;
+- lista lateral dos nicks ligados, actualizada em tempo real, com estado Livre, Contra o computador, Jogo local, À espera, A jogar ou A ver jogar;
 - convite directo de um nick livre para um banco já aberto ou para um novo banco;
-- presença com contagem de utilizadores únicos;
+- presença bidireccional com anúncio imediato, renovação periódica e recuperação quando o separador volta ao primeiro plano;
 - perspectiva online com o próprio campo sempre na fila inferior;
 - sementeira e colheita animadas grão a grão;
 - chat em tempo real dentro de cada banco de Uril;
@@ -56,7 +56,18 @@ Os convites directos e o chat utilizam o canal Realtime do Supabase e não exige
 npm test
 ```
 
-A versão 0.0.9 inclui 25 testes automáticos do motor, IA, interface e perspectivas do tabuleiro.
+A versão 0.0.10 inclui 29 testes automáticos do motor, IA, presença, interface e perspectivas do tabuleiro.
+
+
+## Alterações v0.0.10
+
+- corrige a presença para que a entrada e a saída de um jogador se reflictam imediatamente nos restantes ecrãs;
+- cada separador usa um identificador de ligação próprio, evitando que sessões anónimas reutilizadas escondam jogadores;
+- um jogador recém-chegado recebe a lista completa dos utilizadores já ligados;
+- acrescenta anúncio periódico e recuperação da presença ao regressar ao separador;
+- mostra os estados **A jogar contra o computador** e **A jogar no modo local**, além dos estados dos bancos de Uril;
+- actualiza a contagem e a lista sem recarregar a página;
+- mantém os convites dirigidos à ligação certa do jogador.
 
 ## Alterações v0.0.9
 
