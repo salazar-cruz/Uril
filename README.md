@@ -148,3 +148,9 @@ Desistência confirmada, pedido de desistência da IA, visual sem relva com banc
 **Conceito, desenvolvimento e direcção:** Salazar da Cruz.
 
 Desenvolvimento assistido por ferramentas de inteligência artificial.
+
+
+## Alterações v0.0.18
+
+- Repostas as sementes originais, sem qualquer tratamento ou recoloração.
+- Mantido apenas o novo acabamento de madeira do tabuleiro.

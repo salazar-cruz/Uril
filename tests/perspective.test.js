@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SOUTH, NORTH } from '../js/engine.js?v=0.0.17';
-import { boardRowsForPerspective, seatPlayers } from '../js/perspective.js?v=0.0.17';
+import { SOUTH, NORTH } from '../js/engine.js?v=0.0.18';
+import { boardRowsForPerspective, seatPlayers } from '../js/perspective.js?v=0.0.18';
 
 test('Sul vê o seu campo na fila inferior', () => {
   assert.deepEqual(boardRowsForPerspective(SOUTH), {

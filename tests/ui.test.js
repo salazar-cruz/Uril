@@ -52,7 +52,7 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.17/);
+  assert.match(html, /Versão 0\.0\.18/);
 });
 
 test('o visual usa o tabuleiro premium em madeira sem banco inferior', () => {
@@ -91,4 +91,9 @@ test('a ajuda explica o banco público contra o computador nos três idiomas', (
   assert.match(i18n, /banco público que outros jogadores conseguem observar/);
   assert.match(i18n, /banque publique observable en temps réel/);
   assert.match(i18n, /public bank that can be watched live/);
+});
+
+test('as sementes usam novamente os sprites clássicos originais', () => {
+  assert.match(app, /assets\/classic\/trou-bonduc/);
+  assert.doesNotMatch(app, /assets\/premium\/trou-bonduc/);
 });
