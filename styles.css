@@ -875,7 +875,7 @@ body[data-online-player="true"] .player-summary.south::after {
 }
 
 
-/* V0.0.12 — mesa tradicional sem relva, com o banco apoiado num banquinho. */
+/* V0.0.13 — mesa tradicional sem relva, com o banco apoiado num banquinho. */
 body.game-active .island-background {
   background-image:
     radial-gradient(circle at 50% 8%, rgba(255,226,175,.18), transparent 38%),

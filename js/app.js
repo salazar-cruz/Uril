@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.12';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.12';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.12';
-import { MultiplayerService } from './multiplayer.js?v=0.0.12';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.12';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.12';
+} from './engine.js?v=0.0.13';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.13';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.13';
+import { MultiplayerService } from './multiplayer.js?v=0.0.13';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.13';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.13';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -141,6 +141,26 @@ function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinne
     aiResignationDeclined: false,
     createdAt: new Date().toISOString(),
   };
+}
+
+function createPcSession(firstPlayer = SOUTH, match = createMatch(), previousWinner = null, aiLevel = app.aiLevel) {
+  return {
+    ...createSession(firstPlayer, match, previousWinner),
+    mode: 'pc',
+    aiLevel,
+  };
+}
+
+function isComputerRoom(room) {
+  return room?.game_state?.mode === 'pc';
+}
+
+function hasPublicPcBank() {
+  return app.mode === 'pc' && Boolean(app.room);
+}
+
+function hasSyncedBank() {
+  return app.mode === 'online' || hasPublicPcBank();
 }
 
 function defaultPlayers() {
@@ -279,6 +299,8 @@ function presencePayload() {
 
   if (app.mode === 'pc') {
     status = 'pc';
+    bankId = app.room?.id || null;
+    bankName = app.room?.name || null;
   } else if (app.mode === 'local') {
     status = 'local';
   } else if (app.mode === 'online' && app.room) {
@@ -306,7 +328,7 @@ function syncPresence() {
 function onlineStatus(player) {
   const bank = player.bank_name ? ` · ${player.bank_name}` : '';
   switch (player.status) {
-    case 'pc': return t('statusPc');
+    case 'pc': return t('statusPc', { bank });
     case 'local': return t('statusLocal');
     case 'waiting': return t('statusWaiting', { bank });
     case 'playing': return t('statusPlaying', { bank });
@@ -364,6 +386,10 @@ function renderOnlinePlayers() {
       action.textContent = lockedInMatch ? t('inGame') : t('invite');
       action.disabled = lockedInMatch;
       if (!lockedInMatch) action.addEventListener('click', () => inviteOnlinePlayer(player));
+    } else if (player.status === 'pc' && player.bank_id) {
+      action.textContent = t('watchPlay');
+      action.disabled = false;
+      action.addEventListener('click', () => watchPlayerBank(player));
     } else {
       action.textContent = t('occupied');
       action.disabled = true;
@@ -371,6 +397,18 @@ function renderOnlinePlayers() {
 
     item.append(avatar, info, action);
     elements.onlineRoster.append(item);
+  }
+}
+
+async function watchPlayerBank(player) {
+  if (!player?.bank_id || !requireProfile()) return;
+  try {
+    if (app.mode) await leaveGame();
+    const room = await multiplayer.getRoom(player.bank_id);
+    await enterOnlineRoom(room, true);
+  } catch (error) {
+    toast(t('enterBankError', { error: error.message }));
+    await refreshRooms();
   }
 }
 
@@ -397,11 +435,11 @@ function bankInviteUrl(action) {
 }
 
 function shareBankViaWhatsApp(action) {
-  if (app.mode !== 'online' || !app.room) {
+  if (!app.room || !['online', 'pc'].includes(app.mode)) {
     toast(t('shareOnlyOnline'));
     return;
   }
-  if (action === 'play' && (app.room.status !== 'waiting' || app.room.guest_id)) {
+  if (action === 'play' && (app.mode !== 'online' || app.room.status !== 'waiting' || app.room.guest_id)) {
     toast(t('sharePlayUnavailable'));
     return;
   }
@@ -417,10 +455,10 @@ function shareBankViaWhatsApp(action) {
 
 function renderShareCard() {
   if (!elements.shareCard) return;
-  const enabled = app.mode === 'online' && Boolean(app.room);
+  const enabled = ['online', 'pc'].includes(app.mode) && Boolean(app.room);
   elements.shareCard.hidden = !enabled;
   if (!enabled) return;
-  const canInvitePlayer = !app.spectator && app.room.status === 'waiting' && !app.room.guest_id;
+  const canInvitePlayer = app.mode === 'online' && !app.spectator && app.room.status === 'waiting' && !app.room.guest_id;
   elements.sharePlay.hidden = !canInvitePlayer;
   elements.sharePlay.disabled = !canInvitePlayer;
   elements.shareWatch.disabled = false;
@@ -520,7 +558,7 @@ function appendChatMessage(rawMessage) {
 
 function renderChat() {
   if (!elements.chatCard) return;
-  const enabled = app.mode === 'online' && Boolean(app.room);
+  const enabled = ['online', 'pc'].includes(app.mode) && Boolean(app.room);
   elements.chatCard.hidden = !enabled;
   if (!enabled) return;
 
@@ -558,7 +596,7 @@ function renderChat() {
 
 async function sendChatMessage(event) {
   event?.preventDefault?.();
-  if (app.mode !== 'online' || !app.room) return;
+  if (!['online', 'pc'].includes(app.mode) || !app.room) return;
   const text = elements.chatInput.value.trim();
   if (!text) return;
 
@@ -815,7 +853,7 @@ function settleRound(session) {
   return session;
 }
 
-function startPcGame() {
+async function startPcGame() {
   if (!requireProfile()) return;
   app.mode = 'pc';
   app.aiLevel = elements.level.value;
@@ -823,14 +861,56 @@ function startPcGame() {
   app.spectator = false;
   app.room = null;
   resetChat();
+
+  const computerNick = `PC · ${translatedLevelLabel(app.aiLevel)}`;
   app.players = {
     [SOUTH]: { ...app.profile },
-    [NORTH]: { nick: `PC · ${translatedLevelLabel(app.aiLevel)}`, island: 'santa-luzia' },
+    [NORTH]: { nick: computerNick, island: 'santa-luzia' },
   };
-  app.session = createSession(SOUTH);
+  app.session = createPcSession(SOUTH, createMatch(), null, app.aiLevel);
   showScreen('game');
   renderGame();
   syncPresence();
+
+  if (!multiplayer.configured || !multiplayer.client || !multiplayer.user) {
+    toast(t('pcBankPrivate'));
+    return;
+  }
+
+  app.busy = true;
+  renderGame();
+  try {
+    const room = await multiplayer.createComputerRoom({
+      name: t('pcBankName', { nick: app.profile.nick }),
+      profile: app.profile,
+      session: app.session,
+      computerNick,
+      computerIsland: 'santa-luzia',
+    });
+    app.room = room;
+    app.lastRoomFingerprint = roomFingerprint(room);
+    await multiplayer.subscribeRoom(
+      room.id,
+      (updated) => {
+        if (app.mode !== 'pc' || updated?.id !== app.room?.id) return;
+        if (Number(updated.version || 0) >= Number(app.room?.version || 0)) {
+          app.room = updated;
+          app.lastRoomFingerprint = roomFingerprint(updated);
+        }
+      },
+      (message) => appendChatMessage(message),
+    );
+    toast(t('pcBankPublished'));
+    syncPresence();
+    await refreshRooms();
+  } catch (error) {
+    app.room = null;
+    await multiplayer.leaveRoomChannel().catch(() => {});
+    toast(t('pcBankPublishError', { error: error.message }));
+  } finally {
+    app.busy = false;
+    renderGame();
+  }
 }
 
 function startLocalGame() {
@@ -899,7 +979,11 @@ function renderRooms(rooms) {
 
     const state = document.createElement('span');
     state.className = 'room-state';
-    state.textContent = room.status === 'waiting' ? t('waitingUpper') : t('playingUpper');
+    state.textContent = isComputerRoom(room)
+      ? t('pcBankUpper')
+      : room.status === 'waiting'
+        ? t('waitingUpper')
+        : t('playingUpper');
 
     const button = document.createElement('button');
     button.className = room.status === 'waiting' ? 'primary-button compact' : 'secondary-button compact';
@@ -941,7 +1025,9 @@ async function createRoom() {
 async function enterRoomFromList(room, isPlayer) {
   if (!requireProfile()) return;
   try {
-    if (isPlayer) {
+    if (isComputerRoom(room) && isPlayer && room.host_id === multiplayer.user?.id) {
+      await resumeComputerRoom(await multiplayer.getRoom(room.id));
+    } else if (isPlayer) {
       await enterOnlineRoom(await multiplayer.getRoom(room.id), false);
     } else if (room.status === 'waiting') {
       await enterOnlineRoom(await multiplayer.joinRoom(room.id, app.profile), false);
@@ -952,6 +1038,37 @@ async function enterRoomFromList(room, isPlayer) {
     toast(t('enterBankError', { error: error.message }));
     await refreshRooms();
   }
+}
+
+async function resumeComputerRoom(room) {
+  app.remoteUpdateQueue = Promise.resolve();
+  app.mode = 'pc';
+  resetChat();
+  app.room = room;
+  app.spectator = false;
+  app.session = normaliseSession(room.game_state);
+  app.aiLevel = app.session.aiLevel || 'amateur';
+  app.players = {
+    [SOUTH]: { nick: room.host_nick, island: room.host_island },
+    [NORTH]: { nick: room.guest_nick || `PC · ${translatedLevelLabel(app.aiLevel)}`, island: room.guest_island || 'santa-luzia' },
+  };
+  app.side = SOUTH;
+  app.lastRoomFingerprint = roomFingerprint(room);
+  invalidateBoardView();
+  await multiplayer.subscribeRoom(
+    room.id,
+    (updated) => {
+      if (app.mode !== 'pc' || updated?.id !== app.room?.id) return;
+      if (Number(updated.version || 0) >= Number(app.room?.version || 0)) {
+        app.room = updated;
+        app.lastRoomFingerprint = roomFingerprint(updated);
+      }
+    },
+    (message) => appendChatMessage(message),
+  );
+  showScreen('game');
+  renderGame();
+  syncPresence();
 }
 
 async function enterOnlineRoom(room, spectator) {
@@ -987,6 +1104,7 @@ function normaliseSession(value) {
   const session = JSON.parse(JSON.stringify(value));
   if (!('previousWinner' in session)) session.previousWinner = null;
   if (!('aiResignationDeclined' in session)) session.aiResignationDeclined = false;
+  if (session.mode === 'pc' && !session.aiLevel) session.aiLevel = 'amateur';
   if (!session.game.repetitionCounts || typeof session.game.repetitionCounts !== 'object') {
     session.game.repetitionCounts = { [positionKey(session.game)]: 1 };
     session.game.lastRepetitionCount = 1;
@@ -1174,7 +1292,7 @@ async function performResignation(player) {
     let next = cloneValue(app.session);
     next.game = resignGame(next.game, player);
     next = settleRound(next);
-    if (app.mode === 'online') {
+    if (hasSyncedBank()) {
       app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
       app.lastRoomFingerprint = roomFingerprint(app.room);
       next = normaliseSession(app.room.game_state);
@@ -1242,9 +1360,12 @@ function renderGame() {
       : '';
   elements.matchMessage.textContent = translatedMatchMessage(match);
 
-  elements.roomTitle.textContent = app.mode === 'online' ? app.room?.name || t('bankOnline') : t('bankOfUril');
+  elements.roomTitle.textContent = app.room?.name || (app.mode === 'online' ? t('bankOnline') : t('bankOfUril'));
   elements.gameModeLabel.textContent =
-    app.mode === 'pc' ? t('versusPcMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() }) :
+    app.mode === 'pc'
+      ? (app.room
+          ? t('versusPcLiveMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() })
+          : t('versusPcMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() })) :
     app.mode === 'online' ? (app.spectator ? t('watchingMode') : t('onlineBankMode')) : t('twoPlayersMode');
 
   elements.turnBadge.textContent = game.status === 'finished'
@@ -1268,7 +1389,9 @@ function renderGame() {
         ? t('watchingBank')
         : t('yourSideBelow', { player: playerName(app.side) });
   } else if (app.mode === 'pc') {
-    elements.roomStatus.textContent = t('computerLevel', { level: translatedLevelLabel(app.aiLevel) });
+    elements.roomStatus.textContent = app.room
+      ? t('computerPublicBank', { level: translatedLevelLabel(app.aiLevel) })
+      : t('computerLevel', { level: translatedLevelLabel(app.aiLevel) });
   } else {
     elements.roomStatus.textContent = t('localBank');
   }
@@ -1412,8 +1535,8 @@ async function playMove(index) {
     next.game = applyMove(next.game, index);
     next = settleRound(next);
 
-    if (app.mode === 'online') {
-      // Grava e transmite primeiro. Assim os dois navegadores reproduzem a
+    if (hasSyncedBank()) {
+      // Grava e transmite primeiro. Assim os navegadores reproduzem a
       // sementeira praticamente ao mesmo tempo, sem esperar pelo fim da
       // animação de quem jogou.
       app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
@@ -1425,7 +1548,7 @@ async function playMove(index) {
     app.session = next;
     renderGame();
   } catch (error) {
-    if (app.mode === 'online') {
+    if (hasSyncedBank()) {
       try {
         app.room = await multiplayer.getRoom(app.room.id);
         app.session = normaliseSession(app.room.game_state);
@@ -1445,7 +1568,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.12', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.13', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -1489,6 +1612,11 @@ function maybeRunAI() {
           let next = cloneValue(app.session);
           next.game = resignGame(next.game, NORTH);
           next = settleRound(next);
+          if (hasPublicPcBank()) {
+            app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
+            app.lastRoomFingerprint = roomFingerprint(app.room);
+            next = normaliseSession(app.room.game_state);
+          }
           app.session = next;
           return;
         }
@@ -1501,6 +1629,11 @@ function maybeRunAI() {
         let next = cloneValue(app.session);
         next.game = applyMove(next.game, move);
         next = settleRound(next);
+        if (hasPublicPcBank()) {
+          app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
+          app.lastRoomFingerprint = roomFingerprint(app.room);
+          next = normaliseSession(app.room.game_state);
+        }
         await animateMove(previous.game, next.game);
         app.session = next;
       }
@@ -1523,7 +1656,9 @@ async function newRound(options = {}) {
   const winner = finishedGame.winner;
   const nextFirst = nextRoundStarter(finishedGame, app.session.firstPlayer || SOUTH);
   const previousWinner = [SOUTH, NORTH].includes(winner) ? winner : null;
-  const next = createSession(nextFirst, app.session.match, previousWinner);
+  const next = app.mode === 'pc'
+    ? createPcSession(nextFirst, app.session.match, previousWinner, app.aiLevel)
+    : createSession(nextFirst, app.session.match, previousWinner);
 
   window.clearTimeout(app.roundTimer);
   app.roundTimer = null;
@@ -1531,7 +1666,7 @@ async function newRound(options = {}) {
   app.busy = true;
 
   try {
-    if (app.mode === 'online') {
+    if (hasSyncedBank()) {
       app.room = await multiplayer.updateRoomState(app.room, next, 'playing');
       app.session = normaliseSession(app.room.game_state);
     } else {
@@ -1539,7 +1674,7 @@ async function newRound(options = {}) {
     }
     clearRoundTransition();
   } catch (error) {
-    if (app.mode === 'online') {
+    if (hasSyncedBank()) {
       try {
         app.room = await multiplayer.getRoom(app.room.id);
         app.session = normaliseSession(app.room.game_state);
@@ -1560,7 +1695,7 @@ async function leaveGame() {
   app.remoteUpdateQueue = Promise.resolve();
   app.animationGame = null;
   app.animation = null;
-  if (app.mode === 'online') {
+  if (app.room && ['online', 'pc'].includes(app.mode)) {
     if (!app.spectator && app.room?.host_id === multiplayer.user?.id) {
       await multiplayer.closeRoom(app.room).catch(() => {});
     }
@@ -1600,7 +1735,7 @@ function submitSuggestion(event) {
   const subject = t('suggestionSubject');
   const body = `${text}
 
-${t('suggestionSignature', { version: '0.0.12', url: window.location.href })}`;
+${t('suggestionSignature', { version: '0.0.13', url: window.location.href })}`;
   window.location.href = `mailto:sugestoes@devnexusdigital.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   elements.suggestionsDialog.close();
   elements.suggestionText.value = '';

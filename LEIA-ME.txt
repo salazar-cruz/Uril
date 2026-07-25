@@ -1,18 +1,18 @@
-URIL CABO VERDE — ACTUALIZAÇÃO V0.0.12
+URIL CABO VERDE — ACTUALIZAÇÃO V0.0.13
 
 Substitui no repositório os ficheiros deste pacote, conservando as mesmas pastas.
 
 Este pacote NÃO contém js/config.js. A ligação actual ao Supabase fica intacta.
 
 Inclui:
-- botão de desistência com confirmação;
-- derrota por uma partida com 12 ou mais sementes colhidas;
-- derrota por duas partidas abaixo de 12 sementes;
-- pedido de desistência da IA, aceite ou recusado pelo jogador;
-- tabuleiro sem fundo de relva, colocado sobre um banquinho;
-- rodapé com copyright, versão e sugestões.
+- banco público automático nas partidas contra o computador;
+- estado PC · AO VIVO na lista de bancos;
+- botão Ver jogar na lista lateral de nicks;
+- sincronização das jogadas do jogador e da IA com espectadores;
+- chat e convite WhatsApp para assistir;
+- retoma da partida contra o computador pelo anfitrião;
+- modo privado automático caso o Supabase esteja indisponível.
 
-O botão Sugestões prepara uma mensagem para sugestoes@devnexusdigital.com.
-Confirma que esse endereço ou alias existe no teu Google Workspace.
+Não é necessário executar novamente o supabase.sql.
 
-Depois do commit no GitHub Pages, faz Ctrl + F5.
+Depois do commit no GitHub Pages, actualiza os navegadores com Ctrl + F5.

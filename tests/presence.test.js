@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { MultiplayerService } from '../js/multiplayer.js?v=0.0.12';
+import { MultiplayerService } from '../js/multiplayer.js?v=0.0.13';
 
 function service() {
   const instance = new MultiplayerService({ url: 'x', anonKey: 'y' });
@@ -37,6 +37,13 @@ test('a aplicação anuncia imediatamente os modos PC e local', async () => {
   const source = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
   assert.match(source, /if \(app\.mode === 'pc'\) \{\s*status = 'pc';/s);
   assert.match(source, /else if \(app\.mode === 'local'\) \{\s*status = 'local';/s);
-  assert.match(source, /function startPcGame\(\)[\s\S]*?renderGame\(\);\s*syncPresence\(\);/);
+  assert.match(source, /async function startPcGame\(\)[\s\S]*?renderGame\(\);\s*syncPresence\(\);/);
   assert.match(source, /function startLocalGame\(\)[\s\S]*?renderGame\(\);\s*syncPresence\(\);/);
+});
+
+
+test('a presença do jogador contra o computador inclui o banco observável', async () => {
+  const source = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.match(source, /if \(app\.mode === 'pc'\) \{\s*status = 'pc';\s*bankId = app\.room\?\.id/s);
+  assert.match(source, /case 'pc': return t\('statusPc', \{ bank \}\)/);
 });

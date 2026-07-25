@@ -6,9 +6,9 @@ Versão web do Uril de Cabo Verde, preparada para GitHub Pages.
 
 - nick sem criação de conta;
 - escolha das dez ilhas, com fundo associado;
-- jogador contra computador nos níveis Aprendiz, Amador, Mestre e Grande Mestre;
+- jogador contra computador nos níveis Aprendiz, Amador, Mestre e Grande Mestre, com banco público observável quando o Supabase está ligado;
 - dois jogadores no mesmo dispositivo;
-- bancos de Uril online e modo espectador através de Supabase;
+- bancos de Uril online, partidas contra o computador observáveis e modo espectador através de Supabase;
 - lista lateral dos nicks ligados, actualizada em tempo real, com estado Livre, Contra o computador, Jogo local, À espera, A jogar ou A ver jogar;
 - convite directo de um nick livre para um banco já aberto ou para um novo banco;
 - presença bidireccional com anúncio imediato, renovação periódica e recuperação quando o separador volta ao primeiro plano;
@@ -42,7 +42,7 @@ Consulta [GUIA-GITHUB.md](GUIA-GITHUB.md) para publicar pelo sítio do GitHub, s
 
 ## Bancos de Uril online
 
-O modo contra o computador e o modo local funcionam sem serviços externos.
+O modo local e o jogo privado contra o computador funcionam sem serviços externos. Com o Supabase ligado, cada partida contra o computador abre automaticamente um banco público para espectadores.
 
 Para activar os bancos online:
 
@@ -59,8 +59,20 @@ Os convites directos e o chat utilizam o canal Realtime do Supabase e não exige
 npm test
 ```
 
-A versão 0.0.12 inclui 38 testes automáticos do motor, IA, presença, idiomas, convites, desistência, interface e perspectivas do tabuleiro.
+A versão 0.0.13 inclui testes automáticos do motor, IA, presença, idiomas, convites, desistência, observação de partidas contra o computador, interface e perspectivas do tabuleiro.
 
+
+
+## Alterações v0.0.13
+
+- as partidas contra o computador abrem automaticamente um banco público quando o Supabase está ligado;
+- o banco surge na lista de bancos com a indicação **PC · AO VIVO**;
+- na lista lateral, o estado do jogador mostra o nome do banco e oferece o botão **Ver jogar**;
+- espectadores acompanham as jogadas do jogador e da IA, animadas semente a semente;
+- chat e convite WhatsApp para assistir também ficam disponíveis no banco contra o computador;
+- o anfitrião retoma uma partida contra o computador a partir da lista de bancos;
+- sem Supabase ou em caso de falha, a partida continua em modo privado;
+- não há qualquer alteração ao esquema SQL.
 
 ## Alterações v0.0.12
 

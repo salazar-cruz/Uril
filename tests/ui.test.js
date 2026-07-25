@@ -52,7 +52,7 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.12/);
+  assert.match(html, /Versão 0\.0\.13/);
 });
 
 test('o visual do tabuleiro deixa de usar a fotografia com relva', () => {
@@ -64,4 +64,25 @@ test('o rodapé oferece um local para sugestões', () => {
   assert.match(html, /id="suggestionsButton"/);
   assert.match(html, /id="suggestionsDialog"/);
   assert.match(app, /sugestoes@devnexusdigital\.com/);
+});
+
+
+test('as partidas contra o computador podem abrir um banco público observável', () => {
+  assert.match(app, /async function startPcGame\(\)/);
+  assert.match(app, /multiplayer\.createComputerRoom/);
+  assert.match(app, /pcBankPublished/);
+  assert.match(app, /function watchPlayerBank/);
+  assert.match(app, /player\.status === 'pc' && player\.bank_id/);
+});
+
+test('chat e WhatsApp para assistir funcionam também no banco contra o computador', () => {
+  assert.match(app, /\['online', 'pc'\]\.includes\(app\.mode\).*Boolean\(app\.room\)/s);
+  assert.match(app, /const canInvitePlayer = app\.mode === 'online'/);
+  assert.match(app, /elements\.shareWatch\.disabled = false/);
+});
+
+test('a ajuda explica o banco público contra o computador nos três idiomas', () => {
+  assert.match(i18n, /banco público que outros jogadores conseguem observar/);
+  assert.match(i18n, /banque publique observable en temps réel/);
+  assert.match(i18n, /public bank that can be watched live/);
 });

@@ -322,6 +322,35 @@ export class MultiplayerService {
     return data;
   }
 
+  async createComputerRoom({
+    name,
+    profile,
+    session,
+    computerNick,
+    computerIsland = 'santa-luzia',
+  }) {
+    const payload = {
+      name: name || `Banco de ${profile.nick} contra o PC`,
+      host_id: this.user.id,
+      host_nick: profile.nick,
+      host_island: profile.island,
+      guest_id: null,
+      guest_nick: computerNick || 'PC',
+      guest_island: computerIsland,
+      status: 'playing',
+      allow_spectators: true,
+      game_state: session,
+      version: 1,
+    };
+    const { data, error } = await this.client
+      .from('uril_rooms')
+      .insert(payload)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
   async joinRoom(roomId, profile) {
     const current = await this.getRoom(roomId);
     const { data, error } = await this.client
