@@ -41,7 +41,7 @@ No gestor DNS do domínio, cria um registo:
 
 Depois regressa a **Settings → Pages**, confirma o domínio personalizado e activa **Enforce HTTPS** quando a opção surgir disponível.
 
-## 5. Activar as salas online
+## 5. Activar os bancos de Uril online
 
 1. Cria um projecto Supabase.
 2. Abre o **SQL Editor**.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseMove, levelLabel } from '../js/ai.js?v=0.0.6';
-import { NORTH, SOUTH, createGame } from '../js/engine.js?v=0.0.6';
+import { chooseMove, levelLabel } from '../js/ai.js?v=0.0.8';
+import { NORTH, SOUTH, createGame } from '../js/engine.js?v=0.0.8';
 
 test('o segundo nível chama-se Amador, incluindo o nome antigo guardado em cache', () => {
   assert.equal(levelLabel('amateur'), 'Amador');

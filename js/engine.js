@@ -9,7 +9,7 @@ const OWN_PITS = {
 
 const OTHER = { [SOUTH]: NORTH, [NORTH]: SOUTH };
 const TOTAL_SEEDS = 48;
-const MAJORITY = 25;
+const CAPOTE_LIMIT = 12;
 
 export function otherPlayer(player) {
   return OTHER[player];
@@ -39,6 +39,8 @@ export function createGame({ firstPlayer = SOUTH } = {}) {
     turn: 1,
     lastMove: null,
     consecutivePasses: 0,
+    capote: null,
+    resultValue: 1,
   };
 }
 
@@ -179,17 +181,24 @@ function collectRemainingSeeds(game, reason) {
 function finishGame(game, reason) {
   game.status = 'finished';
   game.reason = reason;
+  game.capote = null;
+  game.resultValue = 1;
+
   if (game.scores[SOUTH] > game.scores[NORTH]) game.winner = SOUTH;
   else if (game.scores[NORTH] > game.scores[SOUTH]) game.winner = NORTH;
   else game.winner = 'draw';
+
+  if (PLAYERS.includes(game.winner)) {
+    const loser = otherPlayer(game.winner);
+    if (game.scores[loser] < CAPOTE_LIMIT) {
+      game.capote = loser;
+      game.resultValue = 2;
+    }
+  }
 }
 
-function checkImmediateMajority(game) {
-  if (game.scores[SOUTH] >= MAJORITY || game.scores[NORTH] >= MAJORITY) {
-    finishGame(game, 'Maioria absoluta de sementes alcançada.');
-    return true;
-  }
-  return false;
+export function gameResultValue(game) {
+  return Number(game?.resultValue) === 2 ? 2 : 1;
 }
 
 export function applyMove(game, pitIndex) {
@@ -228,8 +237,6 @@ export function applyMove(game, pitIndex) {
   };
   next.turn += 1;
 
-  if (checkImmediateMajority(next)) return next;
-
   next.currentPlayer = opponent;
   const opponentMoves = legalMoves(next);
 
@@ -242,10 +249,6 @@ export function applyMove(game, pitIndex) {
         : 'Não existe jogada que consiga alimentar o adversário.';
     collectRemainingSeeds(next, reason);
     return next;
-  }
-
-  if (next.turn > 500) {
-    collectRemainingSeeds(next, 'Fim por limite de segurança de jogadas.');
   }
 
   return next;
@@ -261,6 +264,8 @@ export function createMatch() {
     cutWins: 0,
     gamesPlayed: 0,
     lastGameWinner: null,
+    lastGameValue: 1,
+    lastGameCapote: false,
     message: 'A contagem começa em 0–0.',
   };
 }
@@ -269,16 +274,31 @@ export function cloneMatch(match) {
   return structuredCloneSafe(match);
 }
 
-export function registerGameResult(match, winner) {
+export function registerGameResult(match, winner, value = 1) {
   const next = cloneMatch(match);
+  const gameValue = Number(value) === 2 ? 2 : 1;
   next.gamesPlayed += 1;
   next.lastGameWinner = winner;
+  next.lastGameValue = gameValue;
+  next.lastGameCapote = gameValue === 2;
 
   if (winner === 'draw' || !PLAYERS.includes(winner)) {
     next.message = 'Empate: a contagem mantém-se.';
     return next;
   }
 
+  let unitMessage = '';
+  for (let unit = 0; unit < gameValue; unit += 1) {
+    unitMessage = registerWinUnit(next, winner);
+  }
+
+  next.message = gameValue === 2
+    ? `CAPOTE: ${labelPlayer(winner)} soma duas partidas. ${unitMessage}`
+    : unitMessage;
+  return next;
+}
+
+function registerWinUnit(next, winner) {
   if (next.protectedBy && winner !== next.protectedBy) {
     if (next.cutCandidate === winner) next.cutWins += 1;
     else {
@@ -292,11 +312,10 @@ export function registerGameResult(match, winner) {
       next.runWins = 2;
       next.cutCandidate = null;
       next.cutWins = 0;
-      next.message = `${labelPlayer(winner)} cortou a contagem com duas vitórias seguidas e lidera por 2–0.`;
-    } else {
-      next.message = `${labelPlayer(winner)} conseguiu a primeira vitória necessária para cortar a contagem. Falta mais uma consecutiva.`;
+      return `${labelPlayer(winner)} cortou a contagem e lidera por 2–0.`;
     }
-    return next;
+
+    return `${labelPlayer(winner)} conseguiu a primeira vitória necessária para cortar a contagem. Falta mais uma consecutiva.`;
   }
 
   if (next.protectedBy === winner) {
@@ -317,12 +336,10 @@ export function registerGameResult(match, winner) {
     next.runWins = 0;
     next.cutCandidate = null;
     next.cutWins = 0;
-    next.message = `${labelPlayer(winner)} marcou um Quatro. O Quatro fica registado e só há corte com duas vitórias consecutivas do adversário.`;
-  } else {
-    next.message = `${labelPlayer(winner)} lidera a contagem actual por ${next.runWins}–0.`;
+    return `${labelPlayer(winner)} marcou um Quatro. O Quatro fica registado e só há corte com duas partidas consecutivas do adversário.`;
   }
 
-  return next;
+  return `${labelPlayer(winner)} lidera a contagem actual por ${next.runWins}–0.`;
 }
 
 function labelPlayer(player) {

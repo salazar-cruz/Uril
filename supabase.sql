@@ -1,4 +1,4 @@
--- URIL DE CABO VERDE — SALAS ONLINE V0
+-- URIL DE CABO VERDE — BANCOS DE URIL ONLINE V0
 -- Executar uma única vez no SQL Editor do Supabase.
 
 create extension if not exists pgcrypto;
@@ -25,21 +25,21 @@ create index if not exists uril_rooms_status_updated_idx
 
 alter table public.uril_rooms enable row level security;
 
--- Todos os visitantes com sessão anónima conseguem ver as salas abertas.
+-- Todos os visitantes com sessão anónima conseguem ver as bancos abertos.
 drop policy if exists "rooms_select_authenticated" on public.uril_rooms;
 create policy "rooms_select_authenticated"
 on public.uril_rooms for select
 to authenticated
 using (true);
 
--- Cada visitante cria apenas salas em seu próprio nome técnico.
+-- Cada visitante cria apenas bancos em seu próprio nome técnico.
 drop policy if exists "rooms_insert_host" on public.uril_rooms;
 create policy "rooms_insert_host"
 on public.uril_rooms for insert
 to authenticated
 with check (auth.uid() = host_id);
 
--- O anfitrião e o convidado actualizam o jogo. Uma sala ainda vazia aceita
+-- O anfitrião e o convidado actualizam o jogo. Um banco ainda vazia aceita
 -- a entrada de um convidado, desde que o novo guest_id seja o próprio utilizador.
 drop policy if exists "rooms_update_players_or_join" on public.uril_rooms;
 create policy "rooms_update_players_or_join"
@@ -55,14 +55,14 @@ with check (
   or auth.uid() = guest_id
 );
 
--- Apenas o anfitrião elimina definitivamente uma sala.
+-- Apenas o anfitrião elimina definitivamente um banco.
 drop policy if exists "rooms_delete_host" on public.uril_rooms;
 create policy "rooms_delete_host"
 on public.uril_rooms for delete
 to authenticated
 using (auth.uid() = host_id);
 
--- Activa notificações em tempo real para a lista de salas e para as partidas.
+-- Activa notificações em tempo real para a lista de bancos e para as partidas.
 do $$
 begin
   alter publication supabase_realtime add table public.uril_rooms;
@@ -70,5 +70,5 @@ exception
   when duplicate_object then null;
 end $$;
 
--- Limpeza manual opcional de mesas antigas:
+-- Limpeza manual opcional de bancos antigos:
 -- delete from public.uril_rooms where updated_at < now() - interval '24 hours';

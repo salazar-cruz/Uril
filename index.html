@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#122a22">
-  <meta name="description" content="Uril de Cabo Verde — jogo tradicional, computador e salas online.">
+  <meta name="description" content="Uril de Cabo Verde — jogo tradicional, computador e bancos de Uril online.">
   <title>Uril de Cabo Verde</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=0.0.6">
+  <link rel="stylesheet" href="styles.css?v=0.0.8">
 </head>
 <body data-island="santiago">
   <div class="island-background" aria-hidden="true"></div>
@@ -24,13 +24,24 @@
       </div>
     </header>
 
-    <main>
+    <div class="workspace">
+      <aside class="online-roster glass" aria-label="Jogadores online">
+        <div class="online-roster-head">
+          <div><span class="eyebrow">AO VIVO</span><h2>Jogadores online</h2></div>
+          <span class="roster-dot" aria-hidden="true"></span>
+        </div>
+        <p id="onlineRosterNote" class="online-roster-note">A ligar ao banco de jogadores…</p>
+        <div id="onlineRosterList" class="online-roster-list"></div>
+        <p class="online-roster-help">Os jogadores livres recebem convites directos para um banco de Uril.</p>
+      </aside>
+
+      <main>
       <section id="homeScreen" class="screen active">
         <div class="hero-panel glass">
           <div class="hero-copy">
             <span class="eyebrow">VERSÃO ZERO</span>
             <h1>O jogo tradicional,<br><em>ilha por ilha.</em></h1>
-            <p>Escolhe o teu nome de jogo, a tua ilha e entra numa mesa. Sem conta, sem formulários intermináveis.</p>
+            <p>Escolhe o teu nome de jogo, a tua ilha e entra num banco de Uril. Sem conta, sem formulários intermináveis.</p>
           </div>
 
           <div class="profile-card">
@@ -72,9 +83,9 @@
           <article class="mode-card glass">
             <div class="mode-icon">◉</div>
             <span class="mode-tag">AO VIVO</span>
-            <h2>Salas online</h2>
-            <p>Cria uma mesa, desafia outro jogador ou entra apenas para assistir.</p>
-            <button class="secondary-button" id="openRoomsButton" type="button">Ver salas</button>
+            <h2>Bancos de Uril online</h2>
+            <p>Cria um banco, convida outro jogador ou entra apenas para assistir.</p>
+            <button class="secondary-button" id="openRoomsButton" type="button">Ver bancos</button>
           </article>
 
           <article class="mode-card glass">
@@ -89,19 +100,19 @@
         <section class="rooms-panel glass" id="roomsPanel" hidden>
           <div class="section-heading">
             <div>
-              <span class="eyebrow">SALAS ABERTAS</span>
-              <h2>Mesas de Uril</h2>
+              <span class="eyebrow">BANCOS ABERTOS</span>
+              <h2>Bancos de Uril</h2>
             </div>
             <button class="text-button" id="refreshRoomsButton" type="button">Actualizar</button>
           </div>
 
           <div class="create-room-row">
-            <input id="roomNameInput" maxlength="28" placeholder="Nome da sala">
-            <button class="primary-button compact" id="createRoomButton" type="button">Criar sala</button>
+            <input id="roomNameInput" maxlength="28" placeholder="Nome do banco">
+            <button class="primary-button compact" id="createRoomButton" type="button">Criar banco</button>
           </div>
 
           <div id="onlineSetupNotice" class="setup-notice" hidden>
-            As salas online ainda não estão ligadas ao Supabase. O jogo contra o computador e o modo local já funcionam. Consulta o ficheiro <strong>GUIA-GITHUB.md</strong> para activar esta área.
+            Os bancos de Uril online ainda não estão ligados ao Supabase. O jogo contra o computador e o modo local já funcionam. Consulta o ficheiro <strong>GUIA-GITHUB.md</strong> para activar esta área.
           </div>
           <div class="room-list" id="roomList"></div>
         </section>
@@ -111,10 +122,10 @@
         <div class="game-layout">
           <section class="game-main glass">
             <div class="game-header">
-              <button class="text-button" id="leaveGameButton" type="button">← Sair da mesa</button>
+              <button class="text-button" id="leaveGameButton" type="button">← Sair do banco</button>
               <div class="room-title">
                 <span id="gameModeLabel">PARTIDA</span>
-                <h2 id="roomTitle">Mesa de Uril</h2>
+                <h2 id="roomTitle">Banco de Uril</h2>
               </div>
               <button class="secondary-button compact" id="newRoundButton" type="button" hidden>Arrumar agora</button>
             </div>
@@ -167,7 +178,7 @@
 
           <aside class="game-sidebar">
             <section class="glass sidebar-card">
-              <span class="eyebrow">ESTADO DA MESA</span>
+              <span class="eyebrow">ESTADO DO BANCO</span>
               <div class="room-status" id="roomStatus">Partida local</div>
               <p id="matchMessage">A contagem começa em 0–0.</p>
             </section>
@@ -184,8 +195,18 @@
           </aside>
         </div>
       </section>
-    </main>
+      </main>
+    </div>
   </div>
+
+  <section class="invite-popup glass" id="invitePopup" role="alertdialog" aria-live="assertive" hidden>
+    <span class="eyebrow">CONVITE RECEBIDO</span>
+    <strong id="inviteText">Recebeste um convite para um banco de Uril.</strong>
+    <div class="invite-actions">
+      <button class="secondary-button compact" id="declineInviteButton" type="button">Recusar</button>
+      <button class="primary-button compact" id="acceptInviteButton" type="button">Entrar no banco</button>
+    </div>
+  </section>
 
   <dialog id="rulesDialog">
     <div class="dialog-head">
@@ -195,15 +216,16 @@
     <div class="rules-content">
       <ol>
         <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
-        <li><strong>Orientação.</strong> Em partidas locais e contra o computador, Sul fica na fila inferior. Nas salas online, cada jogador vê sempre o seu próprio campo na fila inferior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
+        <li><strong>Orientação.</strong> Em partidas locais e contra o computador, Sul fica na fila inferior. Nos bancos online, cada jogador vê sempre o seu próprio campo na fila inferior. A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
         <li><strong>Sementeira.</strong> Escolhem-se todas as sementes de uma casa própria e distribui-se uma por casa. Quando a volta passa novamente pela casa de origem, essa casa é saltada.</li>
         <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. A única excepção surge quando o adversário está sem sementes: nesse caso escolhe-se uma jogada que o alimente, quando existe.</li>
         <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e continuam a colher-se, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
         <li><strong>Alimentação.</strong> Quando o campo do adversário está vazio, o jogador tem de escolher uma casa cuja sementeira deixe pelo menos uma semente no campo adversário. Se nenhuma jogada conseguir alimentá-lo, a partida termina.</li>
         <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. Se o adversário ficar sem qualquer jogada depois dessa colheita, a partida termina e as sementes restantes são contabilizadas.</li>
-        <li><strong>Fim.</strong> A partida termina quando alguém alcança 25 sementes, após uma colheita das seis casas que deixe o adversário sem jogada, ou quando não existe nenhuma jogada de alimentação. Com 24–24 há empate.</li>
-        <li><strong>O Quatro.</strong> A contagem pertence ao vencedor da última partida e regressa a 1–0 quando muda de jogador. Quatro vitórias consecutivas marcam um <em>Quatro</em>.</li>
-        <li><strong>Corte depois do Quatro.</strong> O adversário só corta a contagem com duas vitórias consecutivas, passando a liderar por 2–0. O Quatro já marcado continua registado.</li>
+        <li><strong>Fim.</strong> A partida não termina aos 25 pontos. Continua até não existirem sementes jogáveis ou nenhuma jogada conseguir alimentar o campo vazio. Nesse momento, as sementes restantes são contabilizadas. Com 24–24 há empate.</li>
+        <li><strong>Capote.</strong> O jogador que terminar com menos de 12 sementes leva <em>Capote</em>. A vitória por Capote vale duas partidas na contagem.</li>
+        <li><strong>O Quatro.</strong> A contagem pertence ao vencedor da última partida e regressa a 1–0 quando muda de jogador. Quatro partidas consecutivas marcam um <em>Quatro</em>; um Capote soma duas partidas.</li>
+        <li><strong>Corte depois do Quatro.</strong> O adversário só corta a contagem com duas partidas consecutivas, passando a liderar por 2–0. Um Capote corta de imediato. O Quatro já marcado continua registado.</li>
       </ol>
       <p class="rules-note">Esta é a interpretação operacional usada na versão zero. O regulamento fica isolado no motor do jogo para facilitar correcções após validação com mestres de Uril.</p>
     </div>
@@ -211,6 +233,6 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <script type="module" src="js/app.js?v=0.0.7"></script>
+  <script type="module" src="js/app.js?v=0.0.8"></script>
 </body>
 </html>

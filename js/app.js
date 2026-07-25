@@ -4,17 +4,18 @@ import {
   applyMove,
   createGame,
   createMatch,
+  gameResultValue,
   legalMoves,
   matchDisplay,
   nextRoundStarter,
   otherPlayer,
   pitLabel,
   registerGameResult,
-} from './engine.js?v=0.0.7';
-import { chooseMove, levelLabel } from './ai.js?v=0.0.7';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.7';
-import { MultiplayerService } from './multiplayer.js?v=0.0.7';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.7';
+} from './engine.js?v=0.0.8';
+import { chooseMove, levelLabel } from './ai.js?v=0.0.8';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.8';
+import { MultiplayerService } from './multiplayer.js?v=0.0.8';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.8';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -35,6 +36,9 @@ const elements = {
   nick: $('#nickInput'), island: $('#islandSelect'), level: $('#levelSelect'),
   roomsPanel: $('#roomsPanel'), roomList: $('#roomList'), roomName: $('#roomNameInput'),
   setupNotice: $('#onlineSetupNotice'), onlineCount: $('#onlineCount'),
+  onlineRoster: $('#onlineRosterList'), onlineRosterNote: $('#onlineRosterNote'),
+  invitePopup: $('#invitePopup'), inviteText: $('#inviteText'),
+  acceptInvite: $('#acceptInviteButton'), declineInvite: $('#declineInviteButton'),
   northRow: $('#northRow'), southRow: $('#southRow'),
   northNick: $('#northNick'), southNick: $('#southNick'),
   northIsland: $('#northIsland'), southIsland: $('#southIsland'),
@@ -70,6 +74,7 @@ const app = {
   roundTransitionBusy: false,
   rooms: [],
   onlinePlayers: [],
+  currentInvitation: null,
   pitButtons: new Map(),
   spriteCache: new Map(),
   boardPerspective: null,
@@ -100,7 +105,9 @@ const multiplayer = new MultiplayerService({
       'title',
       `${count} jogador${count === 1 ? '' : 'es'} ligado${count === 1 ? '' : 's'}`,
     );
+    renderOnlinePlayers();
   },
+  onInvitation: (invitation) => receiveInvitation(invitation),
 });
 
 function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinner = null) {
@@ -138,7 +145,7 @@ function saveProfile() {
   app.profile.island = elements.island.value;
   localStorage.setItem('uril-profile-v0', JSON.stringify(app.profile));
   document.body.dataset.island = app.profile.island;
-  multiplayer.updatePresence(app.profile).catch(() => {});
+  syncPresence();
 }
 
 function requireProfile() {
@@ -167,6 +174,171 @@ function playerName(player) {
 
 function islandName(code) {
   return ISLANDS[code] || 'Cabo Verde';
+}
+
+function presencePayload() {
+  let status = 'free';
+  let bankId = null;
+  let bankName = null;
+
+  if (app.mode === 'online' && app.room) {
+    bankId = app.room.id;
+    bankName = app.room.name;
+    status = app.spectator
+      ? 'watching'
+      : app.room.status === 'waiting'
+        ? 'waiting'
+        : 'playing';
+  }
+
+  return {
+    ...app.profile,
+    status,
+    bank_id: bankId,
+    bank_name: bankName,
+  };
+}
+
+function syncPresence() {
+  multiplayer.updatePresence(presencePayload()).catch(() => {});
+}
+
+function onlineStatus(player) {
+  const bank = player.bank_name ? ` · ${player.bank_name}` : '';
+  switch (player.status) {
+    case 'waiting': return `Num banco de Uril, à espera${bank}`;
+    case 'playing': return `Num banco de Uril, a jogar${bank}`;
+    case 'watching': return `Num banco de Uril, a ver jogar${bank}`;
+    default: return 'Livre';
+  }
+}
+
+function renderOnlinePlayers() {
+  if (!elements.onlineRoster) return;
+  elements.onlineRoster.replaceChildren();
+
+  if (!multiplayer.configured) {
+    elements.onlineRosterNote.textContent = 'Liga o Supabase para ver os jogadores.';
+    return;
+  }
+
+  const currentUserId = multiplayer.user?.id;
+  const order = { free: 0, waiting: 1, playing: 2, watching: 3 };
+  const players = [...app.onlinePlayers].sort((left, right) => {
+    if (left.user_id === currentUserId) return -1;
+    if (right.user_id === currentUserId) return 1;
+    const statusDiff = (order[left.status] ?? 9) - (order[right.status] ?? 9);
+    return statusDiff || String(left.nick || '').localeCompare(String(right.nick || ''), 'pt');
+  });
+
+  elements.onlineRosterNote.textContent = players.length
+    ? `${players.length} jogador${players.length === 1 ? '' : 'es'} ligado${players.length === 1 ? '' : 's'}`
+    : 'Ainda não há jogadores ligados.';
+
+  for (const player of players) {
+    const item = document.createElement('article');
+    item.className = `online-player status-${player.status || 'free'}`;
+
+    const avatar = document.createElement('span');
+    avatar.className = 'online-player-avatar';
+    avatar.textContent = initials(player.nick);
+
+    const info = document.createElement('div');
+    const nick = document.createElement('strong');
+    nick.textContent = player.nick || 'Convidado';
+    const detail = document.createElement('small');
+    detail.textContent = `${islandName(player.island)} · ${onlineStatus(player)}`;
+    info.append(nick, detail);
+
+    const isSelf = player.user_id === currentUserId;
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'roster-action';
+    if (isSelf) {
+      action.textContent = 'TU';
+      action.disabled = true;
+    } else if ((player.status || 'free') === 'free') {
+      const lockedInMatch = app.mode === 'online' && !app.spectator && app.room?.status === 'playing';
+      action.textContent = lockedInMatch ? 'Em jogo' : 'Convidar';
+      action.disabled = lockedInMatch;
+      if (!lockedInMatch) action.addEventListener('click', () => inviteOnlinePlayer(player));
+    } else {
+      action.textContent = 'Ocupado';
+      action.disabled = true;
+    }
+
+    item.append(avatar, info, action);
+    elements.onlineRoster.append(item);
+  }
+}
+
+function receiveInvitation(invitation) {
+  if (!invitation?.bank_id) return;
+  app.currentInvitation = invitation;
+  elements.inviteText.textContent = `${invitation.inviter_nick} convidou-te para o banco de Uril “${invitation.bank_name}”.`;
+  elements.invitePopup.hidden = false;
+}
+
+function closeInvitation() {
+  app.currentInvitation = null;
+  elements.invitePopup.hidden = true;
+}
+
+async function acceptInvitation() {
+  const invitation = app.currentInvitation;
+  if (!invitation || !requireProfile()) return;
+  closeInvitation();
+
+  try {
+    if (app.mode) await leaveGame();
+    const bank = await multiplayer.getRoom(invitation.bank_id);
+    if (bank.status !== 'waiting' || bank.guest_id) {
+      throw new Error('Esse banco de Uril já não está livre.');
+    }
+    const joined = await multiplayer.joinRoom(bank.id, app.profile);
+    await enterOnlineRoom(joined, false);
+  } catch (error) {
+    toast(`Não foi possível aceitar o convite: ${error.message}`);
+  }
+}
+
+async function inviteOnlinePlayer(player) {
+  if (!requireProfile()) return;
+  if (!multiplayer.client || !multiplayer.user) {
+    toast('O modo online ainda não está ligado.');
+    return;
+  }
+  if ((player.status || 'free') !== 'free') {
+    toast(`${player.nick} já está num banco de Uril.`);
+    return;
+  }
+
+  try {
+    let bank = app.mode === 'online' && !app.spectator && app.room?.host_id === multiplayer.user.id && app.room.status === 'waiting'
+      ? app.room
+      : app.rooms.find((candidate) => candidate.host_id === multiplayer.user.id && candidate.status === 'waiting');
+
+    if (!bank) {
+      bank = await multiplayer.createRoom({
+        name: `Banco de ${app.profile.nick}`,
+        profile: app.profile,
+        session: createSession(SOUTH),
+      });
+    } else {
+      bank = await multiplayer.getRoom(bank.id);
+    }
+
+    if (app.room?.id !== bank.id || app.mode !== 'online') {
+      if (app.mode) await leaveGame();
+      await enterOnlineRoom(bank, false);
+    }
+
+    await multiplayer.sendInvitation(player.user_id, bank, app.profile);
+    toast(`Convite enviado a ${player.nick}.`);
+  } catch (error) {
+    toast(`Não foi possível enviar o convite: ${error.message}`);
+    await refreshRooms();
+  }
 }
 
 function currentPerspective() {
@@ -345,7 +517,7 @@ async function animateMove(fromGame, toGame) {
 
 function settleRound(session) {
   if (session.game.status === 'finished' && !session.roundRegistered) {
-    session.match = registerGameResult(session.match, session.game.winner);
+    session.match = registerGameResult(session.match, session.game.winner, gameResultValue(session.game));
     session.roundRegistered = true;
   }
   return session;
@@ -392,27 +564,28 @@ async function openRooms() {
 }
 
 async function refreshRooms() {
-  if (elements.roomsPanel.hidden) return;
   if (!multiplayer.configured || !multiplayer.client) {
-    renderRooms([]);
+    app.rooms = [];
+    if (!elements.roomsPanel.hidden) renderRooms([]);
     return;
   }
   try {
     app.rooms = await multiplayer.listRooms();
-    renderRooms(app.rooms);
+    if (!elements.roomsPanel.hidden) renderRooms(app.rooms);
+    renderOnlinePlayers();
   } catch (error) {
-    toast(`Não foi possível actualizar as salas: ${error.message}`);
+    toast(`Não foi possível actualizar os bancos de Uril: ${error.message}`);
   }
 }
 
 function renderRooms(rooms) {
   elements.roomList.replaceChildren();
   if (!multiplayer.configured) {
-    elements.roomList.append(emptyState('Liga o Supabase para abrir as mesas online.'));
+    elements.roomList.append(emptyState('Liga o Supabase para abrir os bancos de Uril online.'));
     return;
   }
   if (!rooms.length) {
-    elements.roomList.append(emptyState('Ainda não há salas. Cria a primeira mesa.'));
+    elements.roomList.append(emptyState('Ainda não há bancos de Uril. Cria o primeiro banco.'));
     return;
   }
 
@@ -454,7 +627,7 @@ function emptyState(text) {
 async function createRoom() {
   if (!requireProfile()) return;
   if (!multiplayer.configured || !multiplayer.client) {
-    toast('As salas online precisam da configuração Supabase incluída no pacote.');
+    toast('Os bancos de Uril online precisam da configuração Supabase incluída no pacote.');
     return;
   }
   try {
@@ -465,7 +638,7 @@ async function createRoom() {
     });
     await enterOnlineRoom(room, false);
   } catch (error) {
-    toast(`Erro ao criar sala: ${error.message}`);
+    toast(`Erro ao criar banco de Uril: ${error.message}`);
   }
 }
 
@@ -480,7 +653,7 @@ async function enterRoomFromList(room, isPlayer) {
       await enterOnlineRoom(await multiplayer.getRoom(room.id), true);
     }
   } catch (error) {
-    toast(`Não foi possível entrar na sala: ${error.message}`);
+    toast(`Não foi possível entrar no banco de Uril: ${error.message}`);
     await refreshRooms();
   }
 }
@@ -501,10 +674,11 @@ async function enterOnlineRoom(room, spectator) {
   await multiplayer.subscribeRoom(room.id, (updated) => {
     app.remoteUpdateQueue = app.remoteUpdateQueue
       .then(() => applyRemoteRoomUpdate(updated))
-      .catch((error) => toast(`Erro ao sincronizar a sala: ${error.message}`));
+      .catch((error) => toast(`Erro ao sincronizar o banco de Uril: ${error.message}`));
   });
   showScreen('game');
   renderGame();
+  syncPresence();
 }
 
 function normaliseSession(value) {
@@ -546,6 +720,7 @@ async function applyRemoteRoomUpdate(updated) {
 
   app.session = incoming;
   renderGame();
+  syncPresence();
 }
 
 function classicSpriteUrl(seedTotal) {
@@ -680,10 +855,10 @@ function renderGame() {
       : '';
   elements.matchMessage.textContent = display.message;
 
-  elements.roomTitle.textContent = app.mode === 'online' ? app.room?.name || 'Sala online' : 'Mesa de Uril';
+  elements.roomTitle.textContent = app.mode === 'online' ? app.room?.name || 'Banco online' : 'Banco de Uril';
   elements.gameModeLabel.textContent =
     app.mode === 'pc' ? `CONTRA O PC · ${levelLabel(app.aiLevel).toUpperCase()}` :
-    app.mode === 'online' ? (app.spectator ? 'A ASSISTIR' : 'SALA ONLINE') : 'DOIS JOGADORES';
+    app.mode === 'online' ? (app.spectator ? 'A ASSISTIR' : 'BANCO ONLINE') : 'DOIS JOGADORES';
 
   elements.turnBadge.textContent = game.status === 'finished'
     ? 'Partida terminada'
@@ -698,14 +873,14 @@ function renderGame() {
 
   if (app.mode === 'online') {
     elements.roomStatus.textContent = app.room?.status === 'waiting'
-      ? 'À espera de adversário'
+      ? 'Banco à espera de adversário'
       : app.spectator
-        ? 'Modo espectador · Sul em baixo'
+        ? 'A ver o banco · Sul em baixo'
         : `O teu lado está em baixo · ${playerName(app.side)}`;
   } else if (app.mode === 'pc') {
     elements.roomStatus.textContent = `Computador no nível ${levelLabel(app.aiLevel)}`;
   } else {
-    elements.roomStatus.textContent = 'Partida local no mesmo dispositivo';
+    elements.roomStatus.textContent = 'Banco local no mesmo dispositivo';
   }
 
   scheduleRoundTransition();
@@ -725,12 +900,16 @@ function renderRoundResult() {
   elements.roundResult.hidden = false;
   elements.roundResultTitle.textContent = isDraw
     ? 'A partida terminou empatada.'
-    : `${playerName(winner)} venceu a partida.`;
+    : game.resultValue === 2
+      ? `${playerName(winner)} venceu com CAPOTE.`
+      : `${playerName(winner)} venceu a partida.`;
   elements.roundResultScore.textContent =
     `${playerName(NORTH)} ${game.scores[NORTH]} — ${game.scores[SOUTH]} ${playerName(SOUTH)}`;
   elements.roundResultNext.textContent = isDraw
     ? `O tabuleiro será arrumado. ${playerName(starter)} começa a próxima partida.`
-    : `O tabuleiro será arrumado. ${playerName(winner)} começa a próxima partida.`;
+    : game.resultValue === 2
+      ? `O Capote vale duas partidas. O tabuleiro será arrumado e ${playerName(winner)} começa.`
+      : `O tabuleiro será arrumado. ${playerName(winner)} começa a próxima partida.`;
 }
 
 function renderStatus() {
@@ -756,14 +935,16 @@ function renderStatus() {
     return;
   }
   if (app.mode === 'online' && app.room?.status === 'waiting') {
-    elements.statusTitle.textContent = 'Mesa criada.';
-    elements.statusMessage.textContent = 'À espera que outro jogador entre.';
+    elements.statusTitle.textContent = 'Banco criado.';
+    elements.statusMessage.textContent = 'À espera que outro jogador aceite o convite ou entre.';
     return;
   }
   if (game.status === 'finished') {
     elements.statusTitle.textContent = game.winner === 'draw'
       ? 'Empate.'
-      : `${playerName(game.winner)} venceu a partida.`;
+      : game.resultValue === 2
+        ? `${playerName(game.winner)} venceu com Capote.`
+        : `${playerName(game.winner)} venceu a partida.`;
     elements.statusMessage.textContent = `${game.scores[NORTH]}–${game.scores[SOUTH]}. ${game.reason}`;
     return;
   }
@@ -853,7 +1034,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.7', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.8', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -956,7 +1137,12 @@ async function leaveGame() {
   app.remoteUpdateQueue = Promise.resolve();
   app.animationGame = null;
   app.animation = null;
-  if (app.mode === 'online') await multiplayer.leaveRoomChannel();
+  if (app.mode === 'online') {
+    if (!app.spectator && app.room?.host_id === multiplayer.user?.id) {
+      await multiplayer.closeRoom(app.room).catch(() => {});
+    }
+    await multiplayer.leaveRoomChannel();
+  }
   app.mode = null;
   document.body.dataset.onlinePlayer = 'false';
   app.room = null;
@@ -964,6 +1150,7 @@ async function leaveGame() {
   app.lastRoomFingerprint = null;
   invalidateBoardView();
   showScreen('home');
+  syncPresence();
   await refreshRooms();
 }
 
@@ -985,6 +1172,8 @@ function bindEvents() {
   $('#openRoomsButton').addEventListener('click', openRooms);
   $('#refreshRoomsButton').addEventListener('click', refreshRooms);
   $('#createRoomButton').addEventListener('click', createRoom);
+  elements.acceptInvite.addEventListener('click', acceptInvitation);
+  elements.declineInvite.addEventListener('click', closeInvitation);
   $('#leaveGameButton').addEventListener('click', leaveGame);
   elements.newRound.addEventListener('click', newRound);
   $('#brandHome').addEventListener('click', () => app.mode ? leaveGame() : showScreen('home'));
@@ -1001,13 +1190,14 @@ async function init() {
   bindEvents();
   await preloadClassicSprites();
   renderGame();
+  renderOnlinePlayers();
   try {
     const result = await multiplayer.init(app.profile);
     elements.setupNotice.hidden = result.configured;
     if (result.configured) await refreshRooms();
   } catch (error) {
     elements.setupNotice.hidden = false;
-    toast(`As salas online não arrancaram: ${error.message}`);
+    toast(`Os bancos de Uril online não arrancaram: ${error.message}`);
   }
 }
 

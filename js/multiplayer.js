@@ -1,9 +1,10 @@
 export class MultiplayerService {
-  constructor({ url, anonKey, onLobbyChange, onPresenceChange }) {
+  constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation }) {
     this.url = url;
     this.anonKey = anonKey;
     this.onLobbyChange = onLobbyChange;
     this.onPresenceChange = onPresenceChange;
+    this.onInvitation = onInvitation;
     this.client = null;
     this.user = null;
     this.lobbyChannel = null;
@@ -39,12 +40,29 @@ export class MultiplayerService {
     return { configured: true, user: this.user };
   }
 
+  normalisePresence(profile = {}) {
+    const fallback = this.user?.id ? `Convidado-${this.user.id.slice(0, 4)}` : 'Convidado';
+    return {
+      nick: String(profile.nick || '').trim() || fallback,
+      island: String(profile.island || 'santiago'),
+      status: ['free', 'waiting', 'playing', 'watching'].includes(profile.status)
+        ? profile.status
+        : 'free',
+      bank_id: profile.bank_id || null,
+      bank_name: profile.bank_name || null,
+      seen_at: new Date().toISOString(),
+    };
+  }
+
   async connectLobby(profile) {
     if (!this.client || !this.user) return;
     if (this.lobbyChannel) await this.client.removeChannel(this.lobbyChannel);
 
-    this.lobbyChannel = this.client.channel('uril-lobby-v0', {
-      config: { presence: { key: this.user.id } },
+    this.lobbyChannel = this.client.channel('uril-lobby-v1', {
+      config: {
+        presence: { key: this.user.id },
+        broadcast: { self: false, ack: true },
+      },
     });
 
     this.lobbyChannel
@@ -56,6 +74,9 @@ export class MultiplayerService {
         }));
         this.onPresenceChange?.({ players, count: players.length });
       })
+      .on('broadcast', { event: 'invite' }, ({ payload }) => {
+        if (payload?.target_id === this.user?.id) this.onInvitation?.(payload);
+      })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'uril_rooms' },
@@ -63,22 +84,37 @@ export class MultiplayerService {
       )
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await this.lobbyChannel.track({
-            nick: profile.nick,
-            island: profile.island,
-            seen_at: new Date().toISOString(),
-          });
+          await this.lobbyChannel.track(this.normalisePresence(profile));
         }
       });
   }
 
   async updatePresence(profile) {
     if (!this.lobbyChannel) return;
-    await this.lobbyChannel.track({
-      nick: profile.nick,
-      island: profile.island,
-      seen_at: new Date().toISOString(),
+    await this.lobbyChannel.track(this.normalisePresence(profile));
+  }
+
+  async sendInvitation(targetUserId, room, profile) {
+    if (!this.lobbyChannel || !targetUserId || !room) {
+      throw new Error('O convite não encontrou o jogador ou o banco de Uril.');
+    }
+
+    const response = await this.lobbyChannel.send({
+      type: 'broadcast',
+      event: 'invite',
+      payload: {
+        invite_id: crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+        target_id: targetUserId,
+        inviter_id: this.user?.id,
+        inviter_nick: String(profile?.nick || room.host_nick || 'Jogador'),
+        inviter_island: String(profile?.island || room.host_island || 'santiago'),
+        bank_id: room.id,
+        bank_name: room.name,
+        sent_at: new Date().toISOString(),
+      },
     });
+
+    if (response !== 'ok') throw new Error('O serviço em tempo real não confirmou o convite.');
   }
 
   async listRooms() {
@@ -97,7 +133,7 @@ export class MultiplayerService {
 
   async createRoom({ name, profile, session }) {
     const payload = {
-      name: name || `Mesa de ${profile.nick}`,
+      name: name || `Banco de ${profile.nick}`,
       host_id: this.user.id,
       host_nick: profile.nick,
       host_island: profile.island,
@@ -174,7 +210,7 @@ export class MultiplayerService {
 
     await new Promise((resolve, reject) => {
       const timer = window.setTimeout(
-        () => reject(new Error('A ligação em tempo real à mesa excedeu o tempo previsto.')),
+        () => reject(new Error('A ligação em tempo real ao banco excedeu o tempo previsto.')),
         8000,
       );
 
@@ -185,7 +221,7 @@ export class MultiplayerService {
           resolve();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           window.clearTimeout(timer);
-          reject(new Error('Falhou a ligação em tempo real à mesa.'));
+          reject(new Error('Falhou a ligação em tempo real ao banco de Uril.'));
         }
       });
     });
@@ -219,8 +255,6 @@ export class MultiplayerService {
       .single();
     if (error) throw error;
 
-    // Broadcast reduz a latência da animação. A alteração da base de dados
-    // continua a ser a fonte oficial e recupera qualquer mensagem perdida.
     await this.broadcastRoomState(data);
     return data;
   }
