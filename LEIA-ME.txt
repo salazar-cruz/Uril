@@ -1,18 +1,19 @@
-URIL CABO VERDE — ACTUALIZAÇÃO V0.0.13
+URIL CABO VERDE — ACTUALIZAÇÃO V0.0.15
 
-Substitui no repositório os ficheiros deste pacote, conservando as mesmas pastas.
+Substitui no repositório os ficheiros deste pacote, mantendo as mesmas pastas.
 
-Este pacote NÃO contém js/config.js. A ligação actual ao Supabase fica intacta.
+IMPORTANTE:
+1. Este pacote não contém js/config.js. A configuração actual do Supabase fica intacta.
+2. No Supabase, abre SQL Editor e executa todo o conteúdo de:
+   supabase-sugestoes-v0.0.15.sql
+3. Depois faz o commit no GitHub.
+4. Quando o GitHub Pages terminar a publicação, actualiza com Ctrl + F5.
 
-Inclui:
-- banco público automático nas partidas contra o computador;
-- estado PC · AO VIVO na lista de bancos;
-- botão Ver jogar na lista lateral de nicks;
-- sincronização das jogadas do jogador e da IA com espectadores;
-- chat e convite WhatsApp para assistir;
-- retoma da partida contra o computador pelo anfitrião;
-- modo privado automático caso o Supabase esteja indisponível.
+A migração cria:
+- uril_suggestions;
+- uril_suggestion_replies;
+- políticas RLS;
+- actualização Realtime.
 
-Não é necessário executar novamente o supabase.sql.
-
-Depois do commit no GitHub Pages, actualiza os navegadores com Ctrl + F5.
+O antigo envio de sugestões por email foi retirado. As sugestões passam a ficar
+na página, identificadas pelo nick, ilha, data e hora, com respostas públicas.

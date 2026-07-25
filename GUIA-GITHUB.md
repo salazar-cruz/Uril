@@ -63,3 +63,16 @@ A chave pública fica no navegador por desenho do Supabase. Nunca coloques a `Se
 O chat dos bancos de Uril usa o mesmo Realtime já activado. Não é necessário executar novo SQL. As mensagens não ficam guardadas.
 
 A regra de repetição tripla é tratada pelo motor no navegador e sincronizada no estado do banco. Depois de actualizar os ficheiros, usa **Ctrl + F5** nos navegadores dos jogadores.
+
+## Activar sugestões públicas — v0.0.15
+
+Para um projecto Supabase criado antes da versão 0.0.15:
+
+1. Abre o projecto no Supabase.
+2. Entra em **SQL Editor**.
+3. Cria uma nova query.
+4. Cola todo o conteúdo de `supabase-sugestoes-v0.0.15.sql`.
+5. Carrega em **Run**.
+6. Regressa ao jogo e faz `Ctrl + F5`.
+
+Esta migração cria as sugestões, as respostas, as políticas RLS e as notificações em tempo real. Não substitui nem apaga os bancos de Uril existentes.

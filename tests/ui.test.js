@@ -52,7 +52,7 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.14/);
+  assert.match(html, /Versão 0\.0\.15/);
 });
 
 test('o visual do tabuleiro usa transparência real e um banco transversal', () => {
@@ -61,10 +61,14 @@ test('o visual do tabuleiro usa transparência real e um banco transversal', () 
   assert.match(css, /left:\s*36\.5%/);
 });
 
-test('o rodapé oferece um local para sugestões', () => {
+test('a página inclui um mural público de sugestões e respostas', () => {
   assert.match(html, /id="suggestionsButton"/);
-  assert.match(html, /id="suggestionsDialog"/);
-  assert.match(app, /sugestoes@devnexusdigital\.com/);
+  assert.match(html, /id="suggestionsSection"/);
+  assert.match(html, /id="suggestionsList"/);
+  assert.match(html, /id="suggestionForm"/);
+  assert.match(app, /function renderSuggestions\(\)/);
+  assert.match(app, /createSuggestionReply/);
+  assert.doesNotMatch(app, /mailto:sugestoes@devnexusdigital\.com/);
 });
 
 

@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.14';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.14';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.14';
-import { MultiplayerService } from './multiplayer.js?v=0.0.14';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.14';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.14';
+} from './engine.js?v=0.0.15';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.15';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.15';
+import { MultiplayerService } from './multiplayer.js?v=0.0.15';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.15';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.15';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -61,8 +61,11 @@ const elements = {
   resignCancel: $('#resignCancelButton'), resignConfirm: $('#resignConfirmButton'),
   aiResignDialog: $('#aiResignDialog'), aiResignWarning: $('#aiResignWarning'),
   aiResignReject: $('#aiResignRejectButton'), aiResignAccept: $('#aiResignAcceptButton'),
-  suggestionsDialog: $('#suggestionsDialog'), suggestionText: $('#suggestionText'),
-  suggestionForm: $('#suggestionForm'),
+  suggestionsSection: $('#suggestionsSection'), suggestionsList: $('#suggestionsList'),
+  suggestionsEmpty: $('#suggestionsEmpty'), suggestionsCount: $('#suggestionsCount'),
+  suggestionsStatus: $('#suggestionsStatus'), suggestionNickPreview: $('#suggestionNickPreview'),
+  suggestionText: $('#suggestionText'), suggestionForm: $('#suggestionForm'),
+  suggestionSubmit: $('#publishSuggestionButton'), refreshSuggestions: $('#refreshSuggestionsButton'),
   roundResult: $('#roundResult'), roundResultTitle: $('#roundResultTitle'),
   roundResultScore: $('#roundResultScore'), roundResultNext: $('#roundResultNext'),
   chatCard: $('#chatCard'), chatMessages: $('#chatMessages'), chatEmpty: $('#chatEmpty'),
@@ -100,6 +103,10 @@ const app = {
   lastRoomFingerprint: null,
   pendingResignationPlayer: null,
   aiResignResolver: null,
+  suggestions: [],
+  suggestionsLoading: false,
+  suggestionsReady: false,
+  suggestionRefreshTimer: null,
 };
 
 const ROUND_TRANSITION_TIMING = {
@@ -129,6 +136,7 @@ const multiplayer = new MultiplayerService({
     renderOnlinePlayers();
   },
   onInvitation: (invitation) => receiveInvitation(invitation),
+  onSuggestionsChange: () => scheduleSuggestionRefresh(),
 });
 
 function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinner = null) {
@@ -241,6 +249,8 @@ function applyLanguage(language = app.language) {
   if (!elements.roomsPanel.hidden) renderRooms(app.rooms);
   renderGame();
   renderSharedInvitePanel();
+  renderSuggestions();
+  updateSuggestionAuthorPreview();
 }
 
 function loadProfile() {
@@ -260,6 +270,7 @@ function saveProfile() {
   app.profile.island = elements.island.value;
   localStorage.setItem('uril-profile-v0', JSON.stringify(app.profile));
   document.body.dataset.island = app.profile.island;
+  updateSuggestionAuthorPreview();
   syncPresence();
 }
 
@@ -1568,7 +1579,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.14', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.15', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -1720,26 +1731,220 @@ function toast(message) {
   toast.timer = window.setTimeout(() => elements.toast.classList.remove('show'), 3200);
 }
 
-function openSuggestions() {
-  elements.suggestionsDialog.showModal();
-  window.setTimeout(() => elements.suggestionText.focus(), 50);
+function updateSuggestionAuthorPreview() {
+  if (!elements.suggestionNickPreview) return;
+  const nick = elements.nick?.value?.trim() || app.profile.nick || t('guest');
+  elements.suggestionNickPreview.textContent = `${nick} · ${islandName(elements.island?.value || app.profile.island)}`;
 }
 
-function submitSuggestion(event) {
+function suggestionDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(localeForLanguage(), {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function suggestionServiceMissing(error) {
+  const message = String(error?.message || '');
+  return error?.code === '42P01'
+    || /uril_suggestions|uril_suggestion_replies|does not exist|schema cache/i.test(message);
+}
+
+function setSuggestionsStatus(message, isError = false) {
+  if (!elements.suggestionsStatus) return;
+  elements.suggestionsStatus.textContent = message;
+  elements.suggestionsStatus.classList.toggle('error', isError);
+}
+
+function createSuggestionMeta(item) {
+  const meta = document.createElement('div');
+  meta.className = 'suggestion-meta';
+
+  const avatar = document.createElement('span');
+  avatar.className = 'suggestion-avatar';
+  avatar.textContent = initials(item.nick);
+
+  const identity = document.createElement('div');
+  const nick = document.createElement('strong');
+  nick.textContent = item.nick || t('guest');
+  const detail = document.createElement('small');
+  detail.textContent = `${islandName(item.island)} · ${suggestionDate(item.created_at)}`;
+  identity.append(nick, detail);
+  meta.append(avatar, identity);
+  return meta;
+}
+
+function createReplyElement(reply) {
+  const item = document.createElement('article');
+  item.className = 'suggestion-reply';
+  item.append(createSuggestionMeta(reply));
+  const body = document.createElement('p');
+  body.textContent = reply.body;
+  item.append(body);
+  return item;
+}
+
+function createReplyForm(suggestion) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'suggestion-reply-compose';
+  wrapper.hidden = true;
+
+  const form = document.createElement('form');
+  form.className = 'suggestion-reply-form';
+  const textarea = document.createElement('textarea');
+  textarea.maxLength = 800;
+  textarea.rows = 3;
+  textarea.placeholder = t('replyPlaceholder');
+  textarea.setAttribute('aria-label', t('replyAria', { nick: suggestion.nick }));
+
+  const actions = document.createElement('div');
+  actions.className = 'suggestion-reply-actions';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'text-button';
+  cancel.textContent = t('cancelReply');
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.className = 'primary-button compact';
+  submit.textContent = t('publishReply');
+  actions.append(cancel, submit);
+  form.append(textarea, actions);
+  wrapper.append(form);
+
+  cancel.addEventListener('click', () => {
+    wrapper.hidden = true;
+    textarea.value = '';
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!requireProfile()) return;
+    const text = textarea.value.trim();
+    if (!text) {
+      toast(t('replyEmpty'));
+      textarea.focus();
+      return;
+    }
+    submit.disabled = true;
+    try {
+      await multiplayer.createSuggestionReply(suggestion.id, app.profile, text);
+      textarea.value = '';
+      wrapper.hidden = true;
+      toast(t('replyPublished'));
+      await refreshSuggestions({ silent: true });
+    } catch (error) {
+      toast(suggestionServiceMissing(error) ? t('suggestionsMigrationNeeded') : t('replyPublishError', { error: error.message }));
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  return { wrapper, textarea };
+}
+
+function renderSuggestions() {
+  if (!elements.suggestionsList) return;
+  elements.suggestionsList.replaceChildren();
+  elements.suggestionsCount.textContent = String(app.suggestions.length);
+  elements.suggestionsEmpty.hidden = app.suggestionsLoading || app.suggestions.length > 0;
+
+  for (const suggestion of app.suggestions) {
+    const card = document.createElement('article');
+    card.className = 'suggestion-card';
+    card.append(createSuggestionMeta(suggestion));
+
+    const body = document.createElement('p');
+    body.className = 'suggestion-body';
+    body.textContent = suggestion.body;
+    card.append(body);
+
+    const replies = document.createElement('div');
+    replies.className = 'suggestion-replies';
+    const replyHead = document.createElement('div');
+    replyHead.className = 'suggestion-replies-head';
+    const replyCount = document.createElement('strong');
+    replyCount.textContent = t('replyCount', { count: suggestion.replies?.length || 0 });
+    const replyButton = document.createElement('button');
+    replyButton.type = 'button';
+    replyButton.className = 'text-button';
+    replyButton.textContent = t('reply');
+    replyHead.append(replyCount, replyButton);
+    replies.append(replyHead);
+
+    for (const reply of suggestion.replies || []) replies.append(createReplyElement(reply));
+
+    const replyForm = createReplyForm(suggestion);
+    replyButton.addEventListener('click', () => {
+      replyForm.wrapper.hidden = !replyForm.wrapper.hidden;
+      if (!replyForm.wrapper.hidden) window.setTimeout(() => replyForm.textarea.focus(), 20);
+    });
+    replies.append(replyForm.wrapper);
+    card.append(replies);
+    elements.suggestionsList.append(card);
+  }
+}
+
+async function refreshSuggestions({ silent = false } = {}) {
+  if (!multiplayer.configured || !multiplayer.client) {
+    app.suggestionsReady = false;
+    elements.suggestionSubmit.disabled = true;
+    setSuggestionsStatus(t('suggestionsNeedSupabase'), true);
+    renderSuggestions();
+    return;
+  }
+  if (app.suggestionsLoading) return;
+  app.suggestionsLoading = true;
+  if (!silent) setSuggestionsStatus(t('suggestionsLoading'));
+  try {
+    app.suggestions = await multiplayer.listSuggestions();
+    app.suggestionsReady = true;
+    elements.suggestionSubmit.disabled = false;
+    setSuggestionsStatus(t('suggestionsPublicNote'));
+  } catch (error) {
+    app.suggestionsReady = false;
+    elements.suggestionSubmit.disabled = true;
+    setSuggestionsStatus(
+      suggestionServiceMissing(error) ? t('suggestionsMigrationNeeded') : t('suggestionsLoadError', { error: error.message }),
+      true,
+    );
+  } finally {
+    app.suggestionsLoading = false;
+    renderSuggestions();
+  }
+}
+
+function scheduleSuggestionRefresh() {
+  window.clearTimeout(app.suggestionRefreshTimer);
+  app.suggestionRefreshTimer = window.setTimeout(() => refreshSuggestions({ silent: true }), 220);
+}
+
+function openSuggestions() {
+  elements.suggestionsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  updateSuggestionAuthorPreview();
+  window.setTimeout(() => elements.suggestionText?.focus(), 420);
+}
+
+async function submitSuggestion(event) {
   event?.preventDefault?.();
+  if (!requireProfile()) return;
   const text = elements.suggestionText.value.trim();
   if (text.length < 4) {
     toast(t('suggestionEmpty'));
+    elements.suggestionText.focus();
     return;
   }
-  const subject = t('suggestionSubject');
-  const body = `${text}
-
-${t('suggestionSignature', { version: '0.0.14', url: window.location.href })}`;
-  window.location.href = `mailto:sugestoes@devnexusdigital.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  elements.suggestionsDialog.close();
-  elements.suggestionText.value = '';
-  toast(t('suggestionPrepared'));
+  elements.suggestionSubmit.disabled = true;
+  try {
+    await multiplayer.createSuggestion(app.profile, text);
+    elements.suggestionText.value = '';
+    toast(t('suggestionPublished'));
+    await refreshSuggestions({ silent: true });
+  } catch (error) {
+    toast(suggestionServiceMissing(error) ? t('suggestionsMigrationNeeded') : t('suggestionPublishError', { error: error.message }));
+  } finally {
+    elements.suggestionSubmit.disabled = !app.suggestionsReady;
+  }
 }
 
 function bindEvents() {
@@ -1749,6 +1954,7 @@ function bindEvents() {
   elements.language.addEventListener('change', () => applyLanguage(elements.language.value));
   elements.island.addEventListener('change', saveProfile);
   elements.nick.addEventListener('change', saveProfile);
+  elements.nick.addEventListener('input', updateSuggestionAuthorPreview);
   $('#startPcButton').addEventListener('click', startPcGame);
   $('#startLocalButton').addEventListener('click', startLocalGame);
   $('#openRoomsButton').addEventListener('click', openRooms);
@@ -1770,7 +1976,7 @@ function bindEvents() {
   elements.aiResignAccept.addEventListener('click', () => resolveAIResignation(true));
   elements.aiResignDialog.addEventListener('cancel', (event) => { event.preventDefault(); resolveAIResignation(false); });
   $('#suggestionsButton').addEventListener('click', openSuggestions);
-  $('#closeSuggestionsButton').addEventListener('click', () => elements.suggestionsDialog.close());
+  elements.refreshSuggestions.addEventListener('click', () => refreshSuggestions());
   elements.suggestionForm.addEventListener('submit', submitSuggestion);
   $('#brandHome').addEventListener('click', () => app.mode ? leaveGame() : showScreen('home'));
   for (const selector of ['#rulesButton', '#sidebarRulesButton']) {
@@ -1789,12 +1995,16 @@ async function init() {
   await preloadClassicSprites();
   renderGame();
   renderOnlinePlayers();
+  renderSuggestions();
+  updateSuggestionAuthorPreview();
   try {
     const result = await multiplayer.init(app.profile);
     elements.setupNotice.hidden = result.configured;
     if (result.configured) {
-      await refreshRooms();
+      await Promise.all([refreshRooms(), refreshSuggestions()]);
       await prepareSharedInvite();
+    } else {
+      await refreshSuggestions();
     }
   } catch (error) {
     elements.setupNotice.hidden = false;

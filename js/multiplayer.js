@@ -22,17 +22,20 @@ function seenTime(value) {
 }
 
 export class MultiplayerService {
-  constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation }) {
+  constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation, onSuggestionsChange }) {
     this.url = url;
     this.anonKey = anonKey;
     this.onLobbyChange = onLobbyChange;
     this.onPresenceChange = onPresenceChange;
     this.onInvitation = onInvitation;
+    this.onSuggestionsChange = onSuggestionsChange;
     this.client = null;
     this.user = null;
     this.lobbyChannel = null;
     this.roomChannel = null;
     this.roomChannelReady = false;
+    this.suggestionsChannel = null;
+    this.suggestionsChannelReady = false;
     this.connectionId = makeId('uril');
     this.currentPresence = null;
     this.announcedPresence = new Map();
@@ -286,6 +289,108 @@ export class MultiplayerService {
     });
 
     if (response !== 'ok') throw new Error('O serviço em tempo real não confirmou o convite.');
+  }
+
+  subscribeSuggestions() {
+    if (!this.client || this.suggestionsChannel) return;
+    this.suggestionsChannel = this.client
+      .channel('uril-suggestions-v1')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'uril_suggestions' },
+        () => this.onSuggestionsChange?.(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'uril_suggestion_replies' },
+        () => this.onSuggestionsChange?.(),
+      )
+      .subscribe((status) => {
+        this.suggestionsChannelReady = status === 'SUBSCRIBED';
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.client?.removeChannel(this.suggestionsChannel).catch(() => {});
+          this.suggestionsChannel = null;
+          this.suggestionsChannelReady = false;
+        }
+      });
+  }
+
+  async listSuggestions(limit = 80) {
+    if (!this.client) return [];
+
+    const { data: suggestions, error: suggestionsError } = await this.client
+      .from('uril_suggestions')
+      .select('id,nick,island,body,created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (suggestionsError) throw suggestionsError;
+
+    const rows = suggestions || [];
+    this.subscribeSuggestions();
+    if (!rows.length) return [];
+
+    const suggestionIds = rows.map((suggestion) => suggestion.id);
+    const { data: replies, error: repliesError } = await this.client
+      .from('uril_suggestion_replies')
+      .select('id,suggestion_id,nick,island,body,created_at')
+      .in('suggestion_id', suggestionIds)
+      .order('created_at', { ascending: true });
+    if (repliesError) throw repliesError;
+
+    const repliesBySuggestion = new Map();
+    for (const reply of replies || []) {
+      const list = repliesBySuggestion.get(reply.suggestion_id) || [];
+      list.push(reply);
+      repliesBySuggestion.set(reply.suggestion_id, list);
+    }
+
+    return rows.map((suggestion) => ({
+      ...suggestion,
+      replies: repliesBySuggestion.get(suggestion.id) || [],
+    }));
+  }
+
+  async createSuggestion(profile, text) {
+    if (!this.client || !this.user) throw new Error('O serviço de sugestões ainda não está ligado.');
+    const body = String(text || '').trim().slice(0, 1200);
+    if (body.length < 4) throw new Error('Escreve uma sugestão com pelo menos quatro caracteres.');
+
+    const payload = {
+      author_id: this.user.id,
+      nick: String(profile?.nick || '').trim().slice(0, 18),
+      island: String(profile?.island || 'santiago'),
+      body,
+    };
+
+    const { data, error } = await this.client
+      .from('uril_suggestions')
+      .insert(payload)
+      .select('id,nick,island,body,created_at')
+      .single();
+    if (error) throw error;
+    return { ...data, replies: [] };
+  }
+
+  async createSuggestionReply(suggestionId, profile, text) {
+    if (!this.client || !this.user) throw new Error('O serviço de sugestões ainda não está ligado.');
+    const body = String(text || '').trim().slice(0, 800);
+    if (!body) throw new Error('Escreve uma resposta antes de enviar.');
+
+    const payload = {
+      suggestion_id: suggestionId,
+      author_id: this.user.id,
+      nick: String(profile?.nick || '').trim().slice(0, 18),
+      island: String(profile?.island || 'santiago'),
+      body,
+    };
+
+    const { data, error } = await this.client
+      .from('uril_suggestion_replies')
+      .insert(payload)
+      .select('id,suggestion_id,nick,island,body,created_at')
+      .single();
+    if (error) throw error;
+    return data;
   }
 
   async listRooms() {

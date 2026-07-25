@@ -875,7 +875,7 @@ body[data-online-player="true"] .player-summary.south::after {
 }
 
 
-/* V0.0.14 — mesa tradicional sem relva, com o banco apoiado num banquinho. */
+/* V0.0.15 — mesa tradicional sem relva, com o banco apoiado num banquinho. */
 body.game-active .island-background {
   background-image:
     radial-gradient(circle at 50% 8%, rgba(255,226,175,.18), transparent 38%),
@@ -941,7 +941,7 @@ body.game-active .island-background::after {
 }
 
 
-/* V0.0.14 — banco comprido transversal e tabuleiro com transparência real.
+/* V0.0.15 — banco comprido transversal e tabuleiro com transparência real.
    O tabuleiro mantém a orientação de jogo; o banco de assento cruza-o a 90 graus. */
 .board {
   isolation: isolate;
@@ -1028,4 +1028,158 @@ body.game-active .island-background::after {
     left: 36.5%;
     width: 27%;
   }
+}
+
+/* V0.0.15 — mural público de sugestões e respostas. */
+.suggestions-board {
+  margin-top: 20px;
+  border-radius: 22px;
+  padding: 24px;
+  scroll-margin-top: 92px;
+}
+.suggestions-heading {
+  align-items: flex-start;
+  gap: 20px;
+}
+.suggestions-heading p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.suggestion-compose {
+  margin-top: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(2, 15, 11, .34);
+}
+.suggestion-author-preview {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.suggestion-author-preview span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.suggestion-author-preview strong { font-size: 13px; }
+.suggestion-compose textarea,
+.suggestion-reply-form textarea {
+  width: 100%;
+  resize: vertical;
+  color: var(--ink);
+  background: rgba(1, 12, 9, .56);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 14px;
+  font: inherit;
+  line-height: 1.5;
+}
+.suggestion-compose textarea { min-height: 118px; }
+.suggestion-compose-actions,
+.suggestion-reply-actions,
+.suggestion-replies-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.suggestion-compose-actions { margin-top: 11px; }
+.suggestion-compose-actions small { color: var(--muted); }
+.suggestion-compose-actions small.error { color: #ffb5aa; }
+.suggestions-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 22px 0 12px;
+}
+.suggestions-summary strong { font-size: 22px; }
+.suggestions-summary span { color: var(--muted); font-size: 12px; }
+.suggestions-list { display: grid; gap: 14px; }
+.suggestions-empty {
+  margin: 16px 0 0;
+  color: var(--muted);
+  text-align: center;
+}
+.suggestion-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  background: linear-gradient(145deg, rgba(18, 47, 38, .76), rgba(4, 21, 16, .72));
+}
+.suggestion-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.suggestion-meta > div { min-width: 0; }
+.suggestion-meta strong,
+.suggestion-meta small { display: block; }
+.suggestion-meta strong { font-size: 13px; }
+.suggestion-meta small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.suggestion-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(100, 236, 178, .26);
+  background: rgba(61, 178, 128, .15);
+  font-weight: 900;
+}
+.suggestion-body {
+  margin: 14px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.suggestion-replies {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+.suggestion-replies-head strong {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.suggestion-reply {
+  margin: 11px 0 0 28px;
+  border-left: 2px solid rgba(80, 208, 151, .24);
+  padding: 9px 0 3px 13px;
+}
+.suggestion-reply .suggestion-avatar {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+  font-size: 11px;
+}
+.suggestion-reply p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.suggestion-reply-compose { margin: 13px 0 0 28px; }
+.suggestion-reply-compose[hidden] { display: none !important; }
+.suggestion-reply-form textarea { min-height: 82px; }
+.suggestion-reply-actions { justify-content: flex-end; margin-top: 9px; }
+
+@media (max-width: 640px) {
+  .suggestions-board { padding: 18px 14px; }
+  .suggestion-compose-actions { align-items: stretch; flex-direction: column; }
+  .suggestion-compose-actions button { width: 100%; }
+  .suggestion-reply,
+  .suggestion-reply-compose { margin-left: 10px; }
 }

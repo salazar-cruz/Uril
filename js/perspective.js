@@ -1,4 +1,4 @@
-import { SOUTH, NORTH } from './engine.js?v=0.0.14';
+import { SOUTH, NORTH } from './engine.js?v=0.0.15';
 
 /**
  * Devolve a disposição física dos índices do motor no tabuleiro.

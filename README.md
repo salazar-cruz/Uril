@@ -118,3 +118,11 @@ Desistência confirmada, pedido de desistência da IA, visual sem relva com banc
 - Fundo exterior do tabuleiro com transparência real.
 - Banco comprido de madeira colocado transversalmente, a 90 graus em relação ao tabuleiro.
 - Retirado o banquinho curto da versão anterior.
+
+## Alterações v0.0.15
+
+- Mural público de sugestões integrado na página.
+- Sugestões identificadas pelo nick, ilha, data e hora.
+- Respostas públicas encadeadas em cada sugestão.
+- Persistência e actualização em tempo real através do Supabase.
+- Migração para instalações existentes: `supabase-sugestoes-v0.0.15.sql`.
