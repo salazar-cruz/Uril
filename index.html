@@ -1,283 +1,232 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="pt-PT">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#122a22">
-  <meta name="description" content="Uril de Cabo Verde — jogo tradicional, computador e bancos de Uril online.">
-  <title>Uril de Cabo Verde</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=0.0.10">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<meta content="#122a22" name="theme-color"/>
+<meta content="Uril de Cabo Verde — jogo tradicional, computador e bancos de Uril online." name="description"/>
+<title>Uril de Cabo Verde</title>
+<link href="manifest.webmanifest" rel="manifest"/>
+<link href="assets/icons/favicon.svg" rel="icon" type="image/svg+xml"/>
+<link href="styles.css?v=0.0.11" rel="stylesheet"/>
 </head>
 <body data-island="santiago">
-  <div class="island-background" aria-hidden="true"></div>
-  <div class="page-shell">
-    <header class="topbar">
-      <button class="brand" id="brandHome" type="button" aria-label="Voltar ao início">
-        <span class="brand-mark">U</span>
-        <span><strong>URIL</strong><small>CABO VERDE</small></span>
-      </button>
-      <div class="topbar-actions">
-        <span class="online-pill" id="onlinePill"><i></i><b id="onlineCount">0</b> jogadores online</span>
-        <button class="icon-button" id="rulesButton" type="button" title="Ajuda e regras">?</button>
-      </div>
-    </header>
-
-    <div class="workspace">
-      <aside class="online-roster glass" aria-label="Jogadores online">
-        <div class="online-roster-head">
-          <div><span class="eyebrow">AO VIVO</span><h2>Jogadores online</h2></div>
-          <span class="roster-dot" aria-hidden="true"></span>
-        </div>
-        <p id="onlineRosterNote" class="online-roster-note">A ligar ao banco de jogadores…</p>
-        <div id="onlineRosterList" class="online-roster-list"></div>
-        <p class="online-roster-help">Os jogadores livres recebem convites directos para um banco de Uril.</p>
-      </aside>
-
-      <main>
-      <section id="homeScreen" class="screen active">
-        <div class="hero-panel glass">
-          <div class="hero-copy">
-            <span class="eyebrow">VERSÃO ZERO</span>
-            <h1>O jogo tradicional,<br><em>ilha por ilha.</em></h1>
-            <p>Escolhe o teu nome de jogo, a tua ilha e entra num banco de Uril. Sem conta, sem formulários intermináveis.</p>
-          </div>
-
-          <div class="profile-card">
-            <label for="nickInput">O teu nick</label>
-            <input id="nickInput" maxlength="18" autocomplete="nickname" placeholder="Ex.: Mindelense77">
-            <label for="islandSelect">A tua ilha</label>
-            <select id="islandSelect">
-              <option value="santiago">Santiago</option>
-              <option value="santo-antao">Santo Antão</option>
-              <option value="sao-vicente">São Vicente</option>
-              <option value="sao-nicolau">São Nicolau</option>
-              <option value="sal">Sal</option>
-              <option value="boa-vista">Boa Vista</option>
-              <option value="maio">Maio</option>
-              <option value="fogo">Fogo</option>
-              <option value="brava">Brava</option>
-              <option value="santa-luzia">Santa Luzia</option>
-            </select>
-            <p class="field-note" id="profileHint">O fundo acompanha a ilha escolhida.</p>
-          </div>
-        </div>
-
-        <div class="mode-grid">
-          <article class="mode-card glass featured">
-            <div class="mode-icon">◎</div>
-            <span class="mode-tag">JOGAR JÁ</span>
-            <h2>Contra o computador</h2>
-            <p>Treino individual com quatro níveis de dificuldade.</p>
-            <label for="levelSelect">Nível</label>
-            <select id="levelSelect">
-              <option value="apprentice">Aprendiz</option>
-              <option value="amateur" selected>Amador</option>
-              <option value="master">Mestre</option>
-              <option value="grandmaster">Grande Mestre</option>
-            </select>
-            <button class="primary-button" id="startPcButton" type="button">Começar partida</button>
-          </article>
-
-          <article class="mode-card glass">
-            <div class="mode-icon">◉</div>
-            <span class="mode-tag">AO VIVO</span>
-            <h2>Bancos de Uril online</h2>
-            <p>Cria um banco, convida outro jogador ou entra apenas para assistir.</p>
-            <button class="secondary-button" id="openRoomsButton" type="button">Ver bancos</button>
-          </article>
-
-          <article class="mode-card glass">
-            <div class="mode-icon">↔</div>
-            <span class="mode-tag">MESMO ECRÃ</span>
-            <h2>Dois jogadores</h2>
-            <p>Uma partida local, alternando no mesmo dispositivo.</p>
-            <button class="secondary-button" id="startLocalButton" type="button">Jogar localmente</button>
-          </article>
-        </div>
-
-        <section class="rooms-panel glass" id="roomsPanel" hidden>
-          <div class="section-heading">
-            <div>
-              <span class="eyebrow">BANCOS ABERTOS</span>
-              <h2>Bancos de Uril</h2>
-            </div>
-            <button class="text-button" id="refreshRoomsButton" type="button">Actualizar</button>
-          </div>
-
-          <div class="create-room-row">
-            <input id="roomNameInput" maxlength="28" placeholder="Nome do banco">
-            <button class="primary-button compact" id="createRoomButton" type="button">Criar banco</button>
-          </div>
-
-          <div id="onlineSetupNotice" class="setup-notice" hidden>
+<div aria-hidden="true" class="island-background"></div>
+<div class="page-shell">
+<header class="topbar">
+<button aria-label="Voltar ao início" class="brand" data-i18n-aria="brandHomeAria" id="brandHome" type="button">
+<span class="brand-mark">U</span>
+<span><strong>URIL</strong><small>CABO VERDE</small></span>
+</button>
+<div class="topbar-actions"><select aria-label="Idioma / Langue / Language" class="language-select" id="languageSelect"><option value="pt">PT</option><option value="fr">FR</option><option value="en">EN</option></select>
+<span class="online-pill" id="onlinePill"><i></i><b id="onlineCount">0</b><span data-i18n="onlinePlayers">jogadores online</span></span>
+<button class="icon-button" data-i18n-title="helpAndRules" id="rulesButton" title="Ajuda e regras" type="button">?</button>
+</div>
+</header>
+<div class="workspace">
+<aside aria-label="Jogadores online" class="online-roster glass" data-i18n-aria="onlineRosterTitle">
+<div class="online-roster-head">
+<div><span class="eyebrow" data-i18n="live">AO VIVO</span><h2 data-i18n="onlineRosterTitle">Jogadores online</h2></div>
+<span aria-hidden="true" class="roster-dot"></span>
+</div>
+<p class="online-roster-note" data-i18n="connectingPlayers" id="onlineRosterNote">A ligar ao banco de jogadores…</p>
+<div class="online-roster-list" id="onlineRosterList"></div>
+<p class="online-roster-help" data-i18n="rosterHelp">Os jogadores livres recebem convites directos para um banco de Uril.</p>
+</aside>
+<main>
+<section class="screen active" id="homeScreen">
+<div class="hero-panel glass">
+<div class="hero-copy">
+<span class="eyebrow" data-i18n="versionZero">VERSÃO ZERO</span>
+<h1 data-i18n-html="heroTitle">O jogo tradicional,<br/><em>ilha por ilha.</em></h1>
+<p data-i18n="heroIntro">Escolhe o teu nome de jogo, a tua ilha e entra num banco de Uril. Sem conta, sem formulários intermináveis.</p>
+<div class="variant-note"><span class="variant-note-label" data-i18n="variantLabel">AYO · AWALÉ · OWARE</span><p data-i18n="variantIntro">O Uril é a variante praticada em Cabo Verde da grande família africana Ayo/Awalé/Oware.</p></div></div>
+<div class="profile-card">
+<label data-i18n="nickLabel" for="nickInput">O teu nick</label>
+<input autocomplete="nickname" data-i18n-placeholder="nickPlaceholder" id="nickInput" maxlength="18" placeholder="Ex.: Mindelense77"/>
+<label data-i18n="islandLabel" for="islandSelect">A tua ilha</label>
+<select id="islandSelect">
+<option value="santiago">Santiago</option>
+<option value="santo-antao">Santo Antão</option>
+<option value="sao-vicente">São Vicente</option>
+<option value="sao-nicolau">São Nicolau</option>
+<option value="sal">Sal</option>
+<option value="boa-vista">Boa Vista</option>
+<option value="maio">Maio</option>
+<option value="fogo">Fogo</option>
+<option value="brava">Brava</option>
+<option value="santa-luzia">Santa Luzia</option>
+</select>
+<p class="field-note" data-i18n="backgroundHint" id="profileHint">O fundo acompanha a ilha escolhida.</p>
+</div>
+</div><section class="shared-invite-panel glass" hidden="" id="sharedInvitePanel">
+<div>
+<span class="eyebrow" data-i18n="whatsappInviteLabel">CONVITE WHATSAPP</span>
+<strong data-i18n="whatsappInviteDefault" id="sharedInviteText">Recebeste um convite para um banco de Uril.</strong>
+<p data-i18n="sharedInviteHelp">Escolhe o teu nick e a tua ilha; depois abre o convite.</p>
+</div>
+<button class="whatsapp-button" data-i18n="openWhatsappBank" id="openSharedInviteButton" type="button">Abrir convite</button>
+</section>
+<div class="mode-grid">
+<article class="mode-card glass featured">
+<div class="mode-icon">◎</div>
+<span class="mode-tag" data-i18n="playNow">JOGAR JÁ</span>
+<h2 data-i18n="versusComputer">Contra o computador</h2>
+<p data-i18n="versusComputerDesc">Treino individual com quatro níveis de dificuldade.</p>
+<label data-i18n="level" for="levelSelect">Nível</label>
+<select id="levelSelect">
+<option data-i18n="levelApprentice" value="apprentice">Aprendiz</option>
+<option data-i18n="levelAmateur" selected="" value="amateur">Amador</option>
+<option data-i18n="levelMaster" value="master">Mestre</option>
+<option data-i18n="levelGrandmaster" value="grandmaster">Grande Mestre</option>
+</select>
+<button class="primary-button" data-i18n="startMatch" id="startPcButton" type="button">Começar partida</button>
+</article>
+<article class="mode-card glass">
+<div class="mode-icon">◉</div>
+<span class="mode-tag" data-i18n="live">AO VIVO</span>
+<h2 data-i18n="banksOnline">Bancos de Uril online</h2>
+<p data-i18n="banksOnlineDesc">Cria um banco, convida outro jogador ou entra apenas para assistir.</p>
+<button class="secondary-button" data-i18n="viewBanks" id="openRoomsButton" type="button">Ver bancos</button>
+</article>
+<article class="mode-card glass">
+<div class="mode-icon">↔</div>
+<span class="mode-tag" data-i18n="sameScreen">MESMO ECRÃ</span>
+<h2 data-i18n="twoPlayers">Dois jogadores</h2>
+<p data-i18n="twoPlayersDesc">Uma partida local, alternando no mesmo dispositivo.</p>
+<button class="secondary-button" data-i18n="playLocally" id="startLocalButton" type="button">Jogar localmente</button>
+</article>
+</div>
+<section class="rooms-panel glass" hidden="" id="roomsPanel">
+<div class="section-heading">
+<div>
+<span class="eyebrow" data-i18n="openBanks">BANCOS ABERTOS</span>
+<h2 data-i18n="urilBanks">Bancos de Uril</h2>
+</div>
+<button class="text-button" data-i18n="refresh" id="refreshRoomsButton" type="button">Actualizar</button>
+</div>
+<div class="create-room-row">
+<input data-i18n-placeholder="bankNamePlaceholder" id="roomNameInput" maxlength="28" placeholder="Nome do banco"/>
+<button class="primary-button compact" data-i18n="createBank" id="createRoomButton" type="button">Criar banco</button>
+</div>
+<div class="setup-notice" data-i18n-html="setupNotice" hidden="" id="onlineSetupNotice">
             Os bancos de Uril online ainda não estão ligados ao Supabase. O jogo contra o computador e o modo local já funcionam. Consulta o ficheiro <strong>GUIA-GITHUB.md</strong> para activar esta área.
           </div>
-          <div class="room-list" id="roomList"></div>
-        </section>
-      </section>
-
-      <section id="gameScreen" class="screen">
-        <div class="game-layout">
-          <section class="game-main glass">
-            <div class="game-header">
-              <button class="text-button" id="leaveGameButton" type="button">← Sair do banco</button>
-              <div class="room-title">
-                <span id="gameModeLabel">PARTIDA</span>
-                <h2 id="roomTitle">Banco de Uril</h2>
-              </div>
-              <button class="secondary-button compact" id="newRoundButton" type="button" hidden>Arrumar agora</button>
-            </div>
-
-            <div class="match-strip">
-              <div class="player-summary north" id="northSummary">
-                <div class="avatar" id="northAvatar">N</div>
-                <div><strong id="northNick">Norte</strong><small id="northIsland">Cabo Verde</small></div>
-              </div>
-              <div class="match-counter">
-                <div class="quatro-box"><span>QUATROS</span><b id="northQuatros">0</b><i>—</i><b id="southQuatros">0</b></div>
-                <div class="run-score"><b id="northRun">0</b><span>CONTAGEM</span><b id="southRun">0</b></div>
-                <small id="cutStatus"></small>
-              </div>
-              <div class="player-summary south" id="southSummary">
-                <div><strong id="southNick">Sul</strong><small id="southIsland">Cabo Verde</small></div>
-                <div class="avatar" id="southAvatar">S</div>
-              </div>
-            </div>
-
-            <div class="score-row">
-              <span><span id="topScoreLabel">Colhidas por Norte</span> <b id="northScore">0</b></span>
-              <div id="turnBadge" class="turn-badge">Vez de Sul</div>
-              <span><b id="southScore">0</b> <span id="bottomScoreLabel">Colhidas por Sul</span></span>
-            </div>
-
-            <div class="board-wrap">
-              <div class="board" id="board" aria-label="Tabuleiro de Uril">
-                <div class="board-grain"></div>
-                <div class="pit-row north-row" id="northRow"></div>
-                <div class="board-centre">
-                  <span>URIL</span>
-                  <i>48 sementes · Cabo Verde</i>
-                </div>
-                <div class="pit-row south-row" id="southRow"></div>
-              </div>
-              <div class="round-result glass" id="roundResult" role="status" aria-live="assertive" hidden>
-                <span class="eyebrow">PARTIDA TERMINADA</span>
-                <strong id="roundResultTitle">Sul venceu a partida.</strong>
-                <b id="roundResultScore">Norte 0 — 0 Sul</b>
-                <small id="roundResultNext">O tabuleiro será arrumado.</small>
-              </div>
-            </div>
-
-            <div class="status-panel" id="statusPanel">
-              <strong id="statusTitle">A partida começou.</strong>
-              <span id="statusMessage">Sul joga primeiro.</span>
-            </div>
-          </section>
-
-          <aside class="game-sidebar">
-            <section class="glass sidebar-card">
-              <span class="eyebrow">ESTADO DO BANCO</span>
-              <div class="room-status" id="roomStatus">Partida local</div>
-              <p id="matchMessage">A contagem começa em 0–0.</p>
-            </section>
-            <section class="glass sidebar-card">
-              <span class="eyebrow">ÚLTIMA JOGADA</span>
-              <p id="lastMoveText">Ainda não houve jogadas.</p>
-            </section>
-            <section class="glass sidebar-card chat-card" id="chatCard" hidden>
-              <div class="chat-head">
-                <span class="eyebrow">CHAT DO BANCO</span>
-                <small>AO VIVO</small>
-              </div>
-              <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
-              <p class="chat-empty" id="chatEmpty">Ainda não há mensagens neste banco.</p>
-              <form class="chat-form" id="chatForm">
-                <input id="chatInput" maxlength="280" autocomplete="off" placeholder="Escrever no banco…" aria-label="Mensagem para o chat">
-                <button class="primary-button compact" id="chatSendButton" type="submit">Enviar</button>
-              </form>
-              <p class="chat-note">As mensagens são transmitidas em tempo real e não ficam arquivadas.</p>
-            </section>
-            <section class="glass sidebar-card rules-mini">
-              <span class="eyebrow">LEMBRETE</span>
-              <p>Distribuição anti-horária, sem deixar semente na casa de origem ao completar a volta. Colheita consecutiva de casas com 2 ou 3 sementes.</p>
-              <button class="text-button" id="sidebarRulesButton" type="button">Ler regras completas</button>
-              <p class="asset-credit">Tabuleiro e sementes do visual clássico: Oliver Merkel, licença CC BY-NC-SA 4.0.</p>
-            </section>
-          </aside>
-        </div>
-      </section>
-      </main>
-    </div>
-  </div>
-
-  <section class="invite-popup glass" id="invitePopup" role="alertdialog" aria-live="assertive" hidden>
-    <span class="eyebrow">CONVITE RECEBIDO</span>
-    <strong id="inviteText">Recebeste um convite para um banco de Uril.</strong>
-    <div class="invite-actions">
-      <button class="secondary-button compact" id="declineInviteButton" type="button">Recusar</button>
-      <button class="primary-button compact" id="acceptInviteButton" type="button">Entrar no banco</button>
-    </div>
-  </section>
-
-  <dialog id="rulesDialog">
-    <div class="dialog-head">
-      <div><span class="eyebrow">AJUDA V0.0.10</span><h2>Ajuda, bancos e regras</h2></div>
-      <button class="icon-button" id="closeRulesButton" type="button">×</button>
-    </div>
-    <div class="rules-content help-content">
-      <section>
-        <h3>Começar a jogar</h3>
-        <p>Escolhe um nick e a ilha. A ilha define o fundo do jogo. Não existe registo por email: no modo online é criada apenas uma sessão técnica anónima.</p>
-        <ul>
-          <li><strong>Contra o computador:</strong> níveis Aprendiz, Amador, Mestre e Grande Mestre.</li>
-          <li><strong>Dois jogadores:</strong> Sul e Norte alternam no mesmo dispositivo. As casas da fila superior pertencem a Norte.</li>
-          <li><strong>Bancos de Uril online:</strong> cria um banco, entra num banco à espera, retoma o teu banco ou assiste a uma partida em curso.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h3>Jogadores e bancos de Uril</h3>
-        <p>A coluna da esquerda actualiza-se em tempo real quando alguém entra, sai ou muda de modo. Mostra os estados: livre, a jogar contra o computador, a jogar no modo local, num banco à espera, num banco a jogar ou a ver jogar. Um jogador livre recebe um convite directo. Se já tens um banco à espera, o convite usa esse banco; caso contrário, é criado um novo.</p>
-        <p>Nos bancos online, cada jogador vê sempre o seu próprio campo na parte inferior. Os espectadores vêem Sul na parte inferior. As jogadas são sincronizadas e animadas semente a semente nos dois navegadores.</p>
-      </section>
-
-      <section>
-        <h3>Chat do banco</h3>
-        <p>O chat aparece dentro de um banco online e está disponível aos dois jogadores e aos espectadores. As mensagens circulam em tempo real, têm um máximo de 280 caracteres e não ficam guardadas na base de dados. Ao sair ou actualizar a página, o histórico local desaparece.</p>
-      </section>
-
-      <section>
-        <h3>Regras do Uril de Cabo Verde</h3>
-        <ol>
-          <li><strong>Tabuleiro.</strong> São 12 casas, seis para Sul e seis para Norte, com quatro sementes em cada casa.</li>
-          <li><strong>Orientação.</strong> A distribuição segue o sentido anti-horário. A casa 6 de cada lado encosta à casa 1 do adversário.</li>
-          <li><strong>Sementeira.</strong> Retiram-se todas as sementes de uma casa própria e distribui-se uma por casa. Ao completar a volta, a casa de origem é saltada.</li>
-          <li><strong>Casa com uma semente.</strong> Qualquer casa própria com uma ou mais sementes é jogável. Quando o adversário está sem sementes, escolhe-se uma jogada que o alimente, quando tal jogada existe.</li>
-          <li><strong>Colheita.</strong> Quando a última semente termina numa casa adversária com 2 ou 3 sementes, colhe-se essa casa e, para trás, as casas adversárias consecutivas que também tenham 2 ou 3.</li>
-          <li><strong>Alimentação.</strong> Com o campo adversário vazio, é obrigatório deixar-lhe pelo menos uma semente. Sem qualquer jogada de alimentação, a partida termina.</li>
-          <li><strong>As seis casas.</strong> É admitida a colheita das seis casas adversárias. A partida termina apenas quando o adversário fica sem jogada de alimentação.</li>
-          <li><strong>Fim normal.</strong> A partida não termina aos 25 pontos. Continua até deixarem de existir jogadas. As sementes restantes ficam com o jogador em cujo campo se encontram.</li>
-          <li><strong>Repetição tripla.</strong> Quando a mesma posição, com o mesmo jogador na vez, surge três vezes, a partida termina para impedir um ciclo infinito. Cada jogador fica com as sementes existentes no seu próprio campo.</li>
-          <li><strong>Capote.</strong> O jogador que terminar com menos de 12 sementes leva <em>Capote</em>. O Capote vale duas partidas na contagem.</li>
-          <li><strong>O Quatro.</strong> Quatro partidas consecutivas marcam um <em>Quatro</em>. O Quatro já marcado não desaparece.</li>
-          <li><strong>Corte depois do Quatro.</strong> O adversário corta com duas partidas consecutivas e passa a liderar por 2–0. Um Capote realiza o corte de imediato.</li>
-          <li><strong>Partida seguinte.</strong> O vencedor começa a partida seguinte. Num empate, volta a começar quem abriu a partida empatada.</li>
-        </ol>
-      </section>
-
-      <section>
-        <h3>Quando algo não sincroniza</h3>
-        <p>Confirma que ambos entraram no mesmo banco e que o estado indica “Banco online”. A lista de jogadores renova a presença automaticamente e volta a anunciá-la quando o separador recupera o foco. Depois de uma actualização do GitHub, usa <strong>Ctrl + F5</strong> nos dois navegadores para eliminar ficheiros antigos em cache.</p>
-      </section>
-
-      <p class="rules-note">Esta é a interpretação operacional da versão zero e continuará a ser ajustada com validação de jogadores experientes de Uril.</p>
-    </div>
-  </dialog>
-
-  <div class="toast" id="toast" role="status"></div>
-
-  <script type="module" src="js/app.js?v=0.0.10"></script>
+<div class="room-list" id="roomList"></div>
+</section>
+</section>
+<section class="screen" id="gameScreen">
+<div class="game-layout">
+<section class="game-main glass">
+<div class="game-header">
+<button class="text-button" data-i18n="leaveBank" id="leaveGameButton" type="button">← Sair do banco</button>
+<div class="room-title">
+<span data-i18n="match" id="gameModeLabel">PARTIDA</span>
+<h2 data-i18n="bankOfUril" id="roomTitle">Banco de Uril</h2>
+</div>
+<button class="secondary-button compact" data-i18n="arrangeNow" hidden="" id="newRoundButton" type="button">Arrumar agora</button>
+</div>
+<div class="match-strip">
+<div class="player-summary north" id="northSummary">
+<div class="avatar" id="northAvatar">N</div>
+<div><strong id="northNick">Norte</strong><small id="northIsland">Cabo Verde</small></div>
+</div>
+<div class="match-counter">
+<div class="quatro-box"><span data-i18n="quatros">QUATROS</span><b id="northQuatros">0</b><i>—</i><b id="southQuatros">0</b></div>
+<div class="run-score"><b id="northRun">0</b><span data-i18n="count">CONTAGEM</span><b id="southRun">0</b></div>
+<small id="cutStatus"></small>
+</div>
+<div class="player-summary south" id="southSummary">
+<div><strong id="southNick">Sul</strong><small id="southIsland">Cabo Verde</small></div>
+<div class="avatar" id="southAvatar">S</div>
+</div>
+</div>
+<div class="score-row">
+<span><span data-i18n="pickedNorth" id="topScoreLabel">Colhidas por Norte</span> <b id="northScore">0</b></span>
+<div class="turn-badge" data-i18n="turnSouth" id="turnBadge">Vez de Sul</div>
+<span><b id="southScore">0</b> <span data-i18n="pickedSouth" id="bottomScoreLabel">Colhidas por Sul</span></span>
+</div>
+<div class="board-wrap">
+<div aria-label="Tabuleiro de Uril" class="board" data-i18n-aria="boardAria" id="board">
+<div class="board-grain"></div>
+<div class="pit-row north-row" id="northRow"></div>
+<div class="board-centre">
+<span>URIL</span>
+<i data-i18n="seeds48">48 sementes · Cabo Verde</i>
+</div>
+<div class="pit-row south-row" id="southRow"></div>
+</div>
+<div aria-live="assertive" class="round-result glass" hidden="" id="roundResult" role="status">
+<span class="eyebrow" data-i18n="roundEnded">PARTIDA TERMINADA</span>
+<strong data-i18n="southWon" id="roundResultTitle">Sul venceu a partida.</strong>
+<b id="roundResultScore">Norte 0 — 0 Sul</b>
+<small data-i18n="boardWillReset" id="roundResultNext">O tabuleiro será arrumado.</small>
+</div>
+</div>
+<div class="status-panel" id="statusPanel">
+<strong data-i18n="matchStarted" id="statusTitle">A partida começou.</strong>
+<span data-i18n="southStarts" id="statusMessage">Sul joga primeiro.</span>
+</div>
+</section>
+<aside class="game-sidebar">
+<section class="glass sidebar-card">
+<span class="eyebrow" data-i18n="bankStatus">ESTADO DO BANCO</span>
+<div class="room-status" data-i18n="localMatch" id="roomStatus">Partida local</div>
+<p data-i18n="countStarts" id="matchMessage">A contagem começa em 0–0.</p>
+</section>
+<section class="glass sidebar-card">
+<span class="eyebrow" data-i18n="lastMove">ÚLTIMA JOGADA</span>
+<p data-i18n="noMoves" id="lastMoveText">Ainda não houve jogadas.</p>
+</section>
+<section class="glass sidebar-card chat-card" hidden="" id="chatCard">
+<div class="chat-head">
+<span class="eyebrow" data-i18n="bankChat">CHAT DO BANCO</span>
+<small data-i18n="live">AO VIVO</small>
+</div>
+<div aria-live="polite" class="chat-messages" id="chatMessages"></div>
+<p class="chat-empty" data-i18n="chatEmpty" id="chatEmpty">Ainda não há mensagens neste banco.</p>
+<form class="chat-form" id="chatForm">
+<input aria-label="Mensagem para o chat" autocomplete="off" data-i18n-aria="chatAria" data-i18n-placeholder="chatPlaceholder" id="chatInput" maxlength="280" placeholder="Escrever no banco…"/>
+<button class="primary-button compact" data-i18n="send" id="chatSendButton" type="submit">Enviar</button>
+</form>
+<p class="chat-note" data-i18n="chatNote">As mensagens são transmitidas em tempo real e não ficam arquivadas.</p>
+</section>
+<section class="glass sidebar-card share-card" hidden="" id="shareCard">
+<span class="eyebrow" data-i18n="whatsappShare">CONVIDAR VIA WHATSAPP</span>
+<p data-i18n="whatsappShareText">Partilha este banco directamente com outro jogador ou com alguém que queira assistir.</p>
+<div class="share-actions">
+<button class="whatsapp-button compact" data-i18n="inviteToPlayWhatsapp" id="sharePlayButton" type="button">Convidar para jogar</button>
+<button class="secondary-button compact" data-i18n="inviteToWatchWhatsapp" id="shareWatchButton" type="button">Convidar para assistir</button>
+</div>
+</section><section class="glass sidebar-card rules-mini">
+<span class="eyebrow" data-i18n="reminder">LEMBRETE</span>
+<p data-i18n="reminderText">Distribuição anti-horária, sem deixar semente na casa de origem ao completar a volta. Colheita consecutiva de casas com 2 ou 3 sementes.</p>
+<button class="text-button" data-i18n="fullRules" id="sidebarRulesButton" type="button">Ler regras completas</button>
+<p class="asset-credit" data-i18n="assetCredit">Tabuleiro e sementes do visual clássico: Oliver Merkel, licença CC BY-NC-SA 4.0.</p>
+</section>
+</aside>
+</div>
+</section>
+</main>
+</div>
+</div>
+<section aria-live="assertive" class="invite-popup glass" hidden="" id="invitePopup" role="alertdialog">
+<span class="eyebrow" data-i18n="invitationReceived">CONVITE RECEBIDO</span>
+<strong data-i18n="genericInvite" id="inviteText">Recebeste um convite para um banco de Uril.</strong>
+<div class="invite-actions">
+<button class="secondary-button compact" data-i18n="decline" id="declineInviteButton" type="button">Recusar</button>
+<button class="primary-button compact" data-i18n="enterBank" id="acceptInviteButton" type="button">Entrar no banco</button>
+</div>
+</section>
+<dialog id="rulesDialog">
+<div class="dialog-head">
+<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V0.0.11</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
+<button class="icon-button" data-i18n-aria="close" id="closeRulesButton" type="button">×</button>
+</div>
+<div class="rules-content help-content" data-i18n-html="helpContent"><section><h3>O que é o Uril</h3><p>O Uril é a variante cabo-verdiana da família Ayo/Awalé/Oware.</p></section></div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+<script src="js/app.js?v=0.0.11" type="module"></script>
 </body>
 </html>

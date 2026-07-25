@@ -15,6 +15,9 @@ Versão web do Uril de Cabo Verde, preparada para GitHub Pages.
 - perspectiva online com o próprio campo sempre na fila inferior;
 - sementeira e colheita animadas grão a grão;
 - chat em tempo real dentro de cada banco de Uril;
+- interface completa em Português, Francês e Inglês, com preferência guardada no navegador;
+- apresentação do Uril como a variante cabo-verdiana da família Ayo/Awalé/Oware;
+- convites por WhatsApp para jogar ou assistir directamente a um banco de Uril;
 - detecção de repetição tripla para impedir ciclos infinitos;
 - contagem de partidas, Capote, Quatros e corte.
 
@@ -56,8 +59,18 @@ Os convites directos e o chat utilizam o canal Realtime do Supabase e não exige
 npm test
 ```
 
-A versão 0.0.10 inclui 29 testes automáticos do motor, IA, presença, interface e perspectivas do tabuleiro.
+A versão 0.0.11 inclui 32 testes automáticos do motor, IA, presença, idiomas, convites, interface e perspectivas do tabuleiro.
 
+
+## Alterações v0.0.11
+
+- acrescenta selector **PT · FR · EN** no topo e traduz a interface, a ajuda, as mensagens do jogo e os estados online;
+- explica no átrio e na ajuda que o Uril é a variante praticada em Cabo Verde da família africana **Ayo/Awalé/Oware**;
+- acrescenta, dentro de cada banco online, convite WhatsApp para **jogar** enquanto o banco aguarda adversário;
+- acrescenta convite WhatsApp para **assistir** a um banco em espera ou a uma partida em curso;
+- os links WhatsApp abrem directamente o banco indicado e transportam o idioma escolhido;
+- quando um convite para jogar é aberto depois de a partida começar, o convidado entra como espectador em vez de receber um link morto;
+- mantém a configuração pública do Supabase e não exige alterações ao SQL.
 
 ## Alterações v0.0.10
 

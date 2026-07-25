@@ -13,7 +13,7 @@ import {
   registerGameResult,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=0.0.10';
+} from '../js/engine.js?v=0.0.11';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();

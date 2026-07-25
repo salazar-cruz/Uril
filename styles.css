@@ -470,7 +470,7 @@ input:focus, select:focus { border-color: rgba(230,184,92,.7); box-shadow: 0 0 0
 
 /* Perspectiva online: o próprio jogador ocupa sempre a fila inferior. */
 body[data-online-player="true"] .player-summary.south::after {
-  content: 'TU';
+  content: attr(data-you-label);
   display: inline-grid;
   place-items: center;
   min-width: 30px;
@@ -488,7 +488,7 @@ body[data-online-player="false"] .player-summary.south::after {
   content: none;
 }
 
-/* V0.0.10 — presença em tempo real, estados de jogo e convites. */
+/* V0.0.11 — idiomas, identidade cabo-verdiana e convites WhatsApp. */
 .page-shell { width: min(1680px, calc(100% - 36px)); }
 .workspace {
   display: grid;
@@ -782,4 +782,91 @@ body[data-online-player="false"] .player-summary.south::after {
 
 @media (max-width: 1050px) {
   .chat-messages { max-height: 180px; }
+}
+
+/* v0.0.11 — idiomas, identificação cultural e convites WhatsApp. */
+.language-select {
+  width: auto;
+  min-width: 68px;
+  padding: 9px 30px 9px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  background-color: rgba(9,23,19,.72);
+}
+
+.variant-note {
+  display: grid;
+  gap: 6px;
+  max-width: 690px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(230,184,92,.28);
+  border-radius: 15px;
+  background: rgba(230,184,92,.08);
+}
+.variant-note-label {
+  color: var(--gold-strong);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .18em;
+}
+.variant-note p {
+  margin: 0;
+  color: rgba(247,243,232,.86);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shared-invite-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 18px;
+  padding: 20px 22px;
+  border-radius: 20px;
+  border-color: rgba(52, 211, 112, .35);
+}
+.shared-invite-panel[hidden] { display: none !important; }
+.shared-invite-panel strong {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  color: var(--ink);
+}
+.shared-invite-panel p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.whatsapp-button {
+  border: 1px solid rgba(91, 238, 145, .48);
+  border-radius: 13px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #35d477, #1da95a);
+  color: #062b17;
+  cursor: pointer;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(29,169,90,.18);
+}
+.whatsapp-button:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.whatsapp-button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.share-card[hidden] { display: none !important; }
+.share-actions { display: grid; gap: 9px; margin-top: 13px; }
+.share-actions button { width: 100%; }
+
+/* O rótulo acompanha o idioma escolhido. */
+body[data-online-player="true"] .player-summary.south::after {
+  content: attr(data-you-label);
+}
+
+@media (max-width: 720px) {
+  .topbar-actions { gap: 7px; }
+  .online-pill span { display: none; }
+  .language-select { min-width: 60px; padding-right: 25px; }
+  .shared-invite-panel { align-items: stretch; flex-direction: column; }
+  .shared-invite-panel .whatsapp-button { width: 100%; }
 }

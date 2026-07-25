@@ -9,14 +9,14 @@ import {
   matchDisplay,
   nextRoundStarter,
   otherPlayer,
-  pitLabel,
   positionKey,
   registerGameResult,
-} from './engine.js?v=0.0.10';
-import { chooseMove, levelLabel } from './ai.js?v=0.0.10';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.10';
-import { MultiplayerService } from './multiplayer.js?v=0.0.10';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.10';
+} from './engine.js?v=0.0.11';
+import { chooseMove } from './ai.js?v=0.0.11';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.11';
+import { MultiplayerService } from './multiplayer.js?v=0.0.11';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.11';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.11';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -33,12 +33,15 @@ const ISLANDS = {
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
-  home: $('#homeScreen'), game: $('#gameScreen'),
+  home: $('#homeScreen'), game: $('#gameScreen'), language: $('#languageSelect'),
   nick: $('#nickInput'), island: $('#islandSelect'), level: $('#levelSelect'),
   roomsPanel: $('#roomsPanel'), roomList: $('#roomList'), roomName: $('#roomNameInput'),
   setupNotice: $('#onlineSetupNotice'), onlineCount: $('#onlineCount'),
   onlineRoster: $('#onlineRosterList'), onlineRosterNote: $('#onlineRosterNote'),
   invitePopup: $('#invitePopup'), inviteText: $('#inviteText'),
+  sharedInvitePanel: $('#sharedInvitePanel'), sharedInviteText: $('#sharedInviteText'),
+  openSharedInvite: $('#openSharedInviteButton'), shareCard: $('#shareCard'),
+  sharePlay: $('#sharePlayButton'), shareWatch: $('#shareWatchButton'),
   acceptInvite: $('#acceptInviteButton'), declineInvite: $('#declineInviteButton'),
   northRow: $('#northRow'), southRow: $('#southRow'),
   northNick: $('#northNick'), southNick: $('#southNick'),
@@ -60,6 +63,9 @@ const elements = {
 
 const app = {
   profile: loadProfile(),
+  language: getLanguage(),
+  sharedInvite: parseSharedInvite(),
+  sharedInviteRoom: null,
   mode: null,
   aiLevel: 'amateur',
   session: createSession(),
@@ -108,7 +114,7 @@ const multiplayer = new MultiplayerService({
     elements.onlineCount.textContent = String(count);
     elements.onlineCount.closest('.online-pill')?.setAttribute(
       'title',
-      `${count} jogador${count === 1 ? '' : 'es'} ligado${count === 1 ? '' : 's'}`,
+      count === 1 ? t('playersConnectedOne') : t('playersConnectedMany', { count }),
     );
     renderOnlinePlayers();
   },
@@ -128,9 +134,78 @@ function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinne
 
 function defaultPlayers() {
   return {
-    [SOUTH]: { nick: 'Sul', island: 'santiago' },
-    [NORTH]: { nick: 'Norte', island: 'sao-vicente' },
+    [SOUTH]: { nick: t('south'), island: 'santiago' },
+    [NORTH]: { nick: t('north'), island: 'sao-vicente' },
   };
+}
+
+function parseSharedInvite() {
+  const params = new URLSearchParams(window.location.search);
+  const bankId = params.get('bank');
+  const action = params.get('invite');
+  if (!bankId || !['play', 'watch'].includes(action)) return null;
+  return {
+    bankId,
+    action,
+    language: ['pt', 'fr', 'en'].includes(params.get('lang')) ? params.get('lang') : null,
+  };
+}
+
+function translatedLevelLabel(level) {
+  const keys = {
+    apprentice: 'levelApprentice',
+    amateur: 'levelAmateur',
+    player: 'levelAmateur',
+    master: 'levelMaster',
+    grandmaster: 'levelGrandmaster',
+  };
+  return t(keys[level] || 'levelAmateur');
+}
+
+function translatedPitLabel(index) {
+  const side = index < 6 ? t('south') : t('north');
+  const number = index < 6 ? index + 1 : index - 5;
+  return `${side} ${number}`;
+}
+
+function translatedGameReason(reason) {
+  const keys = {
+    'A mesma posição repetiu-se três vezes. Cada jogador fica com as sementes do seu campo.': 'reasonTriple',
+    'Colheita das seis casas; o adversário ficou sem jogada.': 'reasonSix',
+    'O adversário ficou sem sementes para jogar.': 'reasonEmpty',
+    'Não existe jogada que consiga alimentar o adversário.': 'reasonNoFeed',
+  };
+  return keys[reason] ? t(keys[reason]) : reason;
+}
+
+function translatedMatchMessage(match) {
+  if (!match?.gamesPlayed) return t('countStarts');
+  if (match.lastGameWinner === 'draw') return t('matchDrawKeep');
+  const winner = playerName(match.lastGameWinner);
+  let message = '';
+  if (match.protectedBy === match.lastGameWinner && !match.runOwner) {
+    message = t('quatroRecorded', { player: winner });
+  } else if (match.cutCandidate === match.lastGameWinner && match.cutWins === 1) {
+    message = t('firstCutWin', { player: winner });
+  } else if (match.runOwner) {
+    message = t('currentLead', { player: playerName(match.runOwner), wins: match.runWins });
+  } else {
+    message = t('wonMatch', { player: winner });
+  }
+  return match.lastGameCapote ? `${t('capotePrefix', { player: winner })} ${message}` : message;
+}
+
+function applyLanguage(language = app.language) {
+  app.language = setLanguage(language);
+  elements.language.value = app.language;
+  applyTranslations(document);
+  document.body.dataset.language = app.language;
+  const southSummary = document.querySelector('#southSummary');
+  if (southSummary) southSummary.dataset.youLabel = t('you');
+  renderOnlinePlayers();
+  if (!elements.roomsPanel.hidden) renderRooms(app.rooms);
+  renderGame();
+  renderSharedInvitePanel();
 }
 
 function loadProfile() {
@@ -157,7 +232,7 @@ function requireProfile() {
   saveProfile();
   if (app.profile.nick.length < 2) {
     elements.nick.focus();
-    toast('Escreve primeiro um nick com pelo menos dois caracteres.');
+    toast(t('profileTooShort'));
     return false;
   }
   return true;
@@ -174,11 +249,11 @@ function initials(nick) {
 }
 
 function playerName(player) {
-  return app.players[player]?.nick || (player === SOUTH ? 'Sul' : 'Norte');
+  return app.players[player]?.nick || (player === SOUTH ? t('south') : t('north'));
 }
 
 function islandName(code) {
-  return ISLANDS[code] || 'Cabo Verde';
+  return ISLANDS[code] || t('capeVerde');
 }
 
 function presencePayload() {
@@ -215,12 +290,12 @@ function syncPresence() {
 function onlineStatus(player) {
   const bank = player.bank_name ? ` · ${player.bank_name}` : '';
   switch (player.status) {
-    case 'pc': return 'A jogar contra o computador';
-    case 'local': return 'A jogar no modo local';
-    case 'waiting': return `Num banco de Uril, à espera${bank}`;
-    case 'playing': return `Num banco de Uril, a jogar${bank}`;
-    case 'watching': return `Num banco de Uril, a ver jogar${bank}`;
-    default: return 'Livre';
+    case 'pc': return t('statusPc');
+    case 'local': return t('statusLocal');
+    case 'waiting': return t('statusWaiting', { bank });
+    case 'playing': return t('statusPlaying', { bank });
+    case 'watching': return t('statusWatching', { bank });
+    default: return t('statusFree');
   }
 }
 
@@ -229,7 +304,7 @@ function renderOnlinePlayers() {
   elements.onlineRoster.replaceChildren();
 
   if (!multiplayer.configured) {
-    elements.onlineRosterNote.textContent = 'Liga o Supabase para ver os jogadores.';
+    elements.onlineRosterNote.textContent = t('connectSupabasePlayers');
     return;
   }
 
@@ -239,12 +314,12 @@ function renderOnlinePlayers() {
     if (left.user_id === currentUserId) return -1;
     if (right.user_id === currentUserId) return 1;
     const statusDiff = (order[left.status] ?? 9) - (order[right.status] ?? 9);
-    return statusDiff || String(left.nick || '').localeCompare(String(right.nick || ''), 'pt');
+    return statusDiff || String(left.nick || '').localeCompare(String(right.nick || ''), localeForLanguage());
   });
 
   elements.onlineRosterNote.textContent = players.length
-    ? `${players.length} jogador${players.length === 1 ? '' : 'es'} ligado${players.length === 1 ? '' : 's'}`
-    : 'Ainda não há jogadores ligados.';
+    ? players.length === 1 ? t('playersConnectedOne') : t('playersConnectedMany', { count: players.length })
+    : t('noPlayersConnected');
 
   for (const player of players) {
     const item = document.createElement('article');
@@ -256,7 +331,7 @@ function renderOnlinePlayers() {
 
     const info = document.createElement('div');
     const nick = document.createElement('strong');
-    nick.textContent = player.nick || 'Convidado';
+    nick.textContent = player.nick || t('guest');
     const detail = document.createElement('small');
     detail.textContent = `${islandName(player.island)} · ${onlineStatus(player)}`;
     info.append(nick, detail);
@@ -266,15 +341,15 @@ function renderOnlinePlayers() {
     action.type = 'button';
     action.className = 'roster-action';
     if (isSelf) {
-      action.textContent = 'TU';
+      action.textContent = t('you');
       action.disabled = true;
     } else if ((player.status || 'free') === 'free') {
       const lockedInMatch = app.mode === 'online' && !app.spectator && app.room?.status === 'playing';
-      action.textContent = lockedInMatch ? 'Em jogo' : 'Convidar';
+      action.textContent = lockedInMatch ? t('inGame') : t('invite');
       action.disabled = lockedInMatch;
       if (!lockedInMatch) action.addEventListener('click', () => inviteOnlinePlayer(player));
     } else {
-      action.textContent = 'Ocupado';
+      action.textContent = t('occupied');
       action.disabled = true;
     }
 
@@ -286,13 +361,114 @@ function renderOnlinePlayers() {
 function receiveInvitation(invitation) {
   if (!invitation?.bank_id) return;
   app.currentInvitation = invitation;
-  elements.inviteText.textContent = `${invitation.inviter_nick} convidou-te para o banco de Uril “${invitation.bank_name}”.`;
+  elements.inviteText.textContent = t('invitedToBank', { nick: invitation.inviter_nick, bank: invitation.bank_name });
   elements.invitePopup.hidden = false;
 }
 
 function closeInvitation() {
   app.currentInvitation = null;
   elements.invitePopup.hidden = true;
+}
+
+function bankInviteUrl(action) {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('bank', app.room.id);
+  url.searchParams.set('invite', action);
+  url.searchParams.set('lang', app.language);
+  return url.toString();
+}
+
+function shareBankViaWhatsApp(action) {
+  if (app.mode !== 'online' || !app.room) {
+    toast(t('shareOnlyOnline'));
+    return;
+  }
+  if (action === 'play' && (app.room.status !== 'waiting' || app.room.guest_id)) {
+    toast(t('sharePlayUnavailable'));
+    return;
+  }
+
+  const url = bankInviteUrl(action);
+  const message = action === 'play'
+    ? t('whatsappPlayMessage', { bank: app.room.name, url })
+    : t('whatsappWatchMessage', { bank: app.room.name, url });
+  const shareUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+  const popup = window.open(shareUrl, '_blank', 'noopener,noreferrer');
+  if (popup) popup.opener = null;
+}
+
+function renderShareCard() {
+  if (!elements.shareCard) return;
+  const enabled = app.mode === 'online' && Boolean(app.room);
+  elements.shareCard.hidden = !enabled;
+  if (!enabled) return;
+  const canInvitePlayer = !app.spectator && app.room.status === 'waiting' && !app.room.guest_id;
+  elements.sharePlay.hidden = !canInvitePlayer;
+  elements.sharePlay.disabled = !canInvitePlayer;
+  elements.shareWatch.disabled = false;
+}
+
+function renderSharedInvitePanel() {
+  if (!elements.sharedInvitePanel) return;
+  const invite = app.sharedInvite;
+  elements.sharedInvitePanel.hidden = !invite;
+  if (!invite) return;
+  const bankName = app.sharedInviteRoom?.name || t('bankOfUril');
+  elements.sharedInviteText.textContent = invite.action === 'play'
+    ? t('sharedPlayTitle', { bank: bankName })
+    : t('sharedWatchTitle', { bank: bankName });
+}
+
+async function prepareSharedInvite() {
+  if (!app.sharedInvite || !multiplayer.configured) {
+    renderSharedInvitePanel();
+    return;
+  }
+  try {
+    app.sharedInviteRoom = await multiplayer.getRoom(app.sharedInvite.bankId);
+  } catch {
+    app.sharedInviteRoom = null;
+  }
+  renderSharedInvitePanel();
+}
+
+function clearSharedInviteUrl() {
+  app.sharedInvite = null;
+  app.sharedInviteRoom = null;
+  const clean = new URL(window.location.href);
+  clean.search = '';
+  clean.hash = '';
+  window.history.replaceState({}, '', clean.toString());
+  renderSharedInvitePanel();
+}
+
+async function openSharedInvite() {
+  if (!app.sharedInvite || !requireProfile()) return;
+  try {
+    const room = await multiplayer.getRoom(app.sharedInvite.bankId);
+    if (app.mode) await leaveGame();
+
+    if (app.sharedInvite.action === 'play') {
+      const isPlayer = [room.host_id, room.guest_id].includes(multiplayer.user?.id);
+      if (isPlayer) {
+        await enterOnlineRoom(room, false);
+      } else if (room.status === 'waiting' && !room.guest_id) {
+        await enterOnlineRoom(await multiplayer.joinRoom(room.id, app.profile), false);
+      } else if (room.status === 'playing') {
+        toast(t('sharedBankStartedWatch'));
+        await enterOnlineRoom(room, true);
+      } else {
+        throw new Error(t('sharedBankMissing'));
+      }
+    } else {
+      await enterOnlineRoom(room, true);
+    }
+    clearSharedInviteUrl();
+  } catch (error) {
+    toast(error.message || t('sharedBankMissing'));
+  }
 }
 
 function resetChat() {
@@ -306,7 +482,7 @@ function normaliseChatMessage(message = {}) {
     id: String(message.id || `${message.user_id || 'anon'}-${message.sent_at || Date.now()}`),
     room_id: message.room_id || null,
     user_id: message.user_id || null,
-    nick: String(message.nick || 'Convidado').trim().slice(0, 18) || 'Convidado',
+    nick: String(message.nick || t('guest')).trim().slice(0, 18) || t('guest'),
     island: String(message.island || 'santiago'),
     text: String(message.text || '').trim().slice(0, 280),
     sent_at: message.sent_at || new Date().toISOString(),
@@ -335,7 +511,7 @@ function renderChat() {
   const ready = Boolean(multiplayer.roomChannelReady);
   elements.chatInput.disabled = !ready;
   elements.chatSend.disabled = !ready;
-  elements.chatInput.placeholder = ready ? 'Escrever no banco…' : 'A ligar ao chat…';
+  elements.chatInput.placeholder = ready ? t('chatReady') : t('chatConnecting');
   elements.chatMessages.replaceChildren();
   elements.chatEmpty.hidden = app.chatMessages.length > 0;
 
@@ -352,7 +528,7 @@ function renderChat() {
     const date = new Date(message.sent_at);
     time.textContent = Number.isNaN(date.getTime())
       ? ''
-      : date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+      : date.toLocaleTimeString(localeForLanguage(), { hour: '2-digit', minute: '2-digit' });
     head.append(nick, time);
 
     const body = document.createElement('p');
@@ -377,7 +553,7 @@ async function sendChatMessage(event) {
     appendChatMessage(message);
     elements.chatInput.value = '';
   } catch (error) {
-    toast(`Chat: ${error.message}`);
+    toast(t('chatError', { error: error.message }));
   } finally {
     renderChat();
     elements.chatInput.focus();
@@ -393,23 +569,23 @@ async function acceptInvitation() {
     if (app.mode) await leaveGame();
     const bank = await multiplayer.getRoom(invitation.bank_id);
     if (bank.status !== 'waiting' || bank.guest_id) {
-      throw new Error('Esse banco de Uril já não está livre.');
+      throw new Error(t('bankNotFree'));
     }
     const joined = await multiplayer.joinRoom(bank.id, app.profile);
     await enterOnlineRoom(joined, false);
   } catch (error) {
-    toast(`Não foi possível aceitar o convite: ${error.message}`);
+    toast(t('acceptInviteError', { error: error.message }));
   }
 }
 
 async function inviteOnlinePlayer(player) {
   if (!requireProfile()) return;
   if (!multiplayer.client || !multiplayer.user) {
-    toast('O modo online ainda não está ligado.');
+    toast(t('onlineNotReady'));
     return;
   }
   if ((player.status || 'free') !== 'free') {
-    toast(`${player.nick} já está num banco de Uril.`);
+    toast(t('playerAlreadyBusy', { nick: player.nick }));
     return;
   }
 
@@ -420,7 +596,7 @@ async function inviteOnlinePlayer(player) {
 
     if (!bank) {
       bank = await multiplayer.createRoom({
-        name: `Banco de ${app.profile.nick}`,
+        name: t('defaultBankName', { nick: app.profile.nick }),
         profile: app.profile,
         session: createSession(SOUTH),
       });
@@ -434,9 +610,9 @@ async function inviteOnlinePlayer(player) {
     }
 
     await multiplayer.sendInvitation(player, bank, app.profile);
-    toast(`Convite enviado a ${player.nick}.`);
+    toast(t('invitationSent', { nick: player.nick }));
   } catch (error) {
-    toast(`Não foi possível enviar o convite: ${error.message}`);
+    toast(t('sendInviteError', { error: error.message }));
     await refreshRooms();
   }
 }
@@ -522,7 +698,7 @@ function scheduleRoundTransition() {
   app.roundKey = key;
   app.roundTimer = window.setTimeout(() => {
     newRound({ automatic: true, scheduledKey: key }).catch((error) => {
-      toast(`Não foi possível arrumar o tabuleiro: ${error.message}`);
+      toast(t('resetError', { error: error.message }));
     });
   }, roundTransitionDelay());
 }
@@ -633,7 +809,7 @@ function startPcGame() {
   resetChat();
   app.players = {
     [SOUTH]: { ...app.profile },
-    [NORTH]: { nick: `PC · ${levelLabel(app.aiLevel)}`, island: 'santa-luzia' },
+    [NORTH]: { nick: `PC · ${translatedLevelLabel(app.aiLevel)}`, island: 'santa-luzia' },
   };
   app.session = createSession(SOUTH);
   showScreen('game');
@@ -643,7 +819,7 @@ function startPcGame() {
 
 function startLocalGame() {
   if (!requireProfile()) return;
-  const guest = (window.prompt('Nick do jogador Norte:', 'Convidado') || 'Convidado').trim().slice(0, 18);
+  const guest = (window.prompt(t('localGuestPrompt'), t('guest')) || t('guest')).trim().slice(0, 18);
   app.mode = 'local';
   app.side = null;
   app.spectator = false;
@@ -651,7 +827,7 @@ function startLocalGame() {
   resetChat();
   app.players = {
     [SOUTH]: { ...app.profile },
-    [NORTH]: { nick: guest || 'Convidado', island: app.profile.island },
+    [NORTH]: { nick: guest || t('guest'), island: app.profile.island },
   };
   app.session = createSession(SOUTH);
   showScreen('game');
@@ -678,18 +854,18 @@ async function refreshRooms() {
     if (!elements.roomsPanel.hidden) renderRooms(app.rooms);
     renderOnlinePlayers();
   } catch (error) {
-    toast(`Não foi possível actualizar os bancos de Uril: ${error.message}`);
+    toast(t('refreshBanksError', { error: error.message }));
   }
 }
 
 function renderRooms(rooms) {
   elements.roomList.replaceChildren();
   if (!multiplayer.configured) {
-    elements.roomList.append(emptyState('Liga o Supabase para abrir os bancos de Uril online.'));
+    elements.roomList.append(emptyState(t('connectSupabaseBanks')));
     return;
   }
   if (!rooms.length) {
-    elements.roomList.append(emptyState('Ainda não há bancos de Uril. Cria o primeiro banco.'));
+    elements.roomList.append(emptyState(t('noBanks')));
     return;
   }
 
@@ -707,14 +883,14 @@ function renderRooms(rooms) {
 
     const state = document.createElement('span');
     state.className = 'room-state';
-    state.textContent = room.status === 'waiting' ? 'À ESPERA' : 'EM JOGO';
+    state.textContent = room.status === 'waiting' ? t('waitingUpper') : t('playingUpper');
 
     const button = document.createElement('button');
     button.className = room.status === 'waiting' ? 'primary-button compact' : 'secondary-button compact';
     const isPlayer = multiplayer.user && [room.host_id, room.guest_id].includes(multiplayer.user.id);
-    if (isPlayer) button.textContent = 'Retomar';
-    else if (room.status === 'waiting') button.textContent = 'Jogar';
-    else button.textContent = 'Ver jogar';
+    if (isPlayer) button.textContent = t('resume');
+    else if (room.status === 'waiting') button.textContent = t('play');
+    else button.textContent = t('watchPlay');
     button.addEventListener('click', () => enterRoomFromList(room, isPlayer));
     item.append(info, state, button);
     elements.roomList.append(item);
@@ -731,7 +907,7 @@ function emptyState(text) {
 async function createRoom() {
   if (!requireProfile()) return;
   if (!multiplayer.configured || !multiplayer.client) {
-    toast('Os bancos de Uril online precisam da configuração Supabase incluída no pacote.');
+    toast(t('supabaseRequired'));
     return;
   }
   try {
@@ -742,7 +918,7 @@ async function createRoom() {
     });
     await enterOnlineRoom(room, false);
   } catch (error) {
-    toast(`Erro ao criar banco de Uril: ${error.message}`);
+    toast(t('createBankError', { error: error.message }));
   }
 }
 
@@ -757,7 +933,7 @@ async function enterRoomFromList(room, isPlayer) {
       await enterOnlineRoom(await multiplayer.getRoom(room.id), true);
     }
   } catch (error) {
-    toast(`Não foi possível entrar no banco de Uril: ${error.message}`);
+    toast(t('enterBankError', { error: error.message }));
     await refreshRooms();
   }
 }
@@ -771,7 +947,7 @@ async function enterOnlineRoom(room, spectator) {
   app.session = normaliseSession(room.game_state);
   app.players = {
     [SOUTH]: { nick: room.host_nick, island: room.host_island },
-    [NORTH]: { nick: room.guest_nick || 'À espera…', island: room.guest_island || 'santa-luzia' },
+    [NORTH]: { nick: room.guest_nick || t('awaitingGuest'), island: room.guest_island || 'santa-luzia' },
   };
   app.side = spectator ? null : room.host_id === multiplayer.user.id ? SOUTH : NORTH;
   app.lastRoomFingerprint = roomFingerprint(room);
@@ -781,7 +957,7 @@ async function enterOnlineRoom(room, spectator) {
     (updated) => {
       app.remoteUpdateQueue = app.remoteUpdateQueue
         .then(() => applyRemoteRoomUpdate(updated))
-        .catch((error) => toast(`Erro ao sincronizar o banco de Uril: ${error.message}`));
+        .catch((error) => toast(t('syncBankError', { error: error.message })));
     },
     (message) => appendChatMessage(message),
   );
@@ -817,7 +993,7 @@ async function applyRemoteRoomUpdate(updated) {
   app.room = updated;
   app.players = {
     [SOUTH]: { nick: updated.host_nick, island: updated.host_island },
-    [NORTH]: { nick: updated.guest_nick || 'À espera…', island: updated.guest_island || 'santa-luzia' },
+    [NORTH]: { nick: updated.guest_nick || t('awaitingGuest'), island: updated.guest_island || 'santa-luzia' },
   };
 
   // A actualização chega por Broadcast e também pelo Postgres Realtime. O
@@ -900,8 +1076,9 @@ function updatePitElement(index, game, moves, lastPit) {
   }
 
   button.dataset.seeds = String(seedTotal);
-  button.title = `${pitLabel(index)}: ${seedTotal} sementes`;
-  button.setAttribute('aria-label', `${pitLabel(index)}: ${seedTotal} sementes`);
+  const pitDescription = t('pitSeeds', { pit: translatedPitLabel(index), count: seedTotal });
+  button.title = pitDescription;
+  button.setAttribute('aria-label', pitDescription);
   button.disabled = !moves.includes(index);
   button.classList.toggle('legal', moves.includes(index));
   button.classList.toggle('last', lastPit === index);
@@ -955,46 +1132,47 @@ function renderGame() {
   elements.southAvatar.textContent = initials(playerName(bottom));
   elements.northScore.textContent = String(game.scores[top]);
   elements.southScore.textContent = String(game.scores[bottom]);
-  elements.topScoreLabel.textContent = `Colhidas por ${playerName(top)}`;
-  elements.bottomScoreLabel.textContent = `Colhidas por ${playerName(bottom)}`;
+  elements.topScoreLabel.textContent = t('collectedBy', { player: playerName(top) });
+  elements.bottomScoreLabel.textContent = t('collectedBy', { player: playerName(bottom) });
   elements.northQuatros.textContent = String(display.quatros[top]);
   elements.southQuatros.textContent = String(display.quatros[bottom]);
   elements.northRun.textContent = String(display.score[top]);
   elements.southRun.textContent = String(display.score[bottom]);
   elements.cutStatus.textContent = display.cutCandidate
-    ? `Corte: ${playerName(display.cutCandidate)} ${display.cutWins}/2`
+    ? t('cut', { player: playerName(display.cutCandidate), wins: display.cutWins })
     : display.protectedBy
-      ? `Quatro protegido por ${playerName(display.protectedBy)}`
+      ? t('protectedFour', { player: playerName(display.protectedBy) })
       : '';
-  elements.matchMessage.textContent = display.message;
+  elements.matchMessage.textContent = translatedMatchMessage(match);
 
-  elements.roomTitle.textContent = app.mode === 'online' ? app.room?.name || 'Banco online' : 'Banco de Uril';
+  elements.roomTitle.textContent = app.mode === 'online' ? app.room?.name || t('bankOnline') : t('bankOfUril');
   elements.gameModeLabel.textContent =
-    app.mode === 'pc' ? `CONTRA O PC · ${levelLabel(app.aiLevel).toUpperCase()}` :
-    app.mode === 'online' ? (app.spectator ? 'A ASSISTIR' : 'BANCO ONLINE') : 'DOIS JOGADORES';
+    app.mode === 'pc' ? t('versusPcMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() }) :
+    app.mode === 'online' ? (app.spectator ? t('watchingMode') : t('onlineBankMode')) : t('twoPlayersMode');
 
   elements.turnBadge.textContent = game.status === 'finished'
-    ? 'Partida terminada'
-    : `Vez de ${playerName(game.currentPlayer)}`;
+    ? t('matchFinished')
+    : t('turnOf', { player: playerName(game.currentPlayer) });
 
   renderStatus();
   renderLastMove();
   renderBoard();
   renderRoundResult();
   renderChat();
+  renderShareCard();
 
   elements.newRound.hidden = game.status !== 'finished' || app.spectator;
 
   if (app.mode === 'online') {
     elements.roomStatus.textContent = app.room?.status === 'waiting'
-      ? 'Banco à espera de adversário'
+      ? t('bankWaitingOpponent')
       : app.spectator
-        ? 'A ver o banco · Sul em baixo'
-        : `O teu lado está em baixo · ${playerName(app.side)}`;
+        ? t('watchingBank')
+        : t('yourSideBelow', { player: playerName(app.side) });
   } else if (app.mode === 'pc') {
-    elements.roomStatus.textContent = `Computador no nível ${levelLabel(app.aiLevel)}`;
+    elements.roomStatus.textContent = t('computerLevel', { level: translatedLevelLabel(app.aiLevel) });
   } else {
-    elements.roomStatus.textContent = 'Banco local no mesmo dispositivo';
+    elements.roomStatus.textContent = t('localBank');
   }
 
   scheduleRoundTransition();
@@ -1013,100 +1191,106 @@ function renderRoundResult() {
   const starter = nextRoundStarter(game, app.session.firstPlayer || SOUTH);
   elements.roundResult.hidden = false;
   elements.roundResultTitle.textContent = isDraw
-    ? 'A partida terminou empatada.'
+    ? t('roundDraw')
     : game.resultValue === 2
-      ? `${playerName(winner)} venceu com CAPOTE.`
-      : `${playerName(winner)} venceu a partida.`;
+      ? t('roundCapote', { player: playerName(winner) })
+      : t('roundWin', { player: playerName(winner) });
   elements.roundResultScore.textContent =
     `${playerName(NORTH)} ${game.scores[NORTH]} — ${game.scores[SOUTH]} ${playerName(SOUTH)}`;
   elements.roundResultNext.textContent = isDraw
-    ? `O tabuleiro será arrumado. ${playerName(starter)} começa a próxima partida.`
+    ? t('nextDraw', { player: playerName(starter) })
     : game.resultValue === 2
-      ? `O Capote vale duas partidas. O tabuleiro será arrumado e ${playerName(winner)} começa.`
-      : `O tabuleiro será arrumado. ${playerName(winner)} começa a próxima partida.`;
+      ? t('nextCapote', { player: playerName(winner) })
+      : t('nextWin', { player: playerName(winner) });
 }
 
 function renderStatus() {
   const game = displayedGame();
   if (app.animation?.phase === 'lifting') {
-    elements.statusTitle.textContent = `${playerName(app.animation.player)} levantou as sementes.`;
-    elements.statusMessage.textContent = 'A casa de origem fica vazia antes da distribuição.';
+    elements.statusTitle.textContent = t('liftingTitle', { player: playerName(app.animation.player) });
+    elements.statusMessage.textContent = t('liftingText');
     return;
   }
   if (app.animation?.phase === 'sowing') {
-    elements.statusTitle.textContent = `${playerName(app.animation.player)} está a semear.`;
-    elements.statusMessage.textContent = `Semente ${app.animation.step} de ${app.animation.total}.`;
+    elements.statusTitle.textContent = t('sowingTitle', { player: playerName(app.animation.player) });
+    elements.statusMessage.textContent = t('sowingText', { step: app.animation.step, total: app.animation.total });
     return;
   }
   if (app.animation?.phase === 'capture') {
-    elements.statusTitle.textContent = `${playerName(app.animation.player)} está a colher.`;
-    elements.statusMessage.textContent = `${app.animation.captured} sementes recolhidas desta casa.`;
+    elements.statusTitle.textContent = t('captureTitle', { player: playerName(app.animation.player) });
+    elements.statusMessage.textContent = t('captureText', { count: app.animation.captured });
     return;
   }
   if (app.animation?.phase === 'settling') {
-    elements.statusTitle.textContent = 'Jogada concluída.';
-    elements.statusMessage.textContent = 'O tabuleiro está a passar a vez.';
+    elements.statusTitle.textContent = t('moveDone');
+    elements.statusMessage.textContent = t('passingTurn');
     return;
   }
   if (app.mode === 'online' && app.room?.status === 'waiting') {
-    elements.statusTitle.textContent = 'Banco criado.';
-    elements.statusMessage.textContent = 'À espera que outro jogador aceite o convite ou entre.';
+    elements.statusTitle.textContent = t('bankCreated');
+    elements.statusMessage.textContent = t('waitingInvitation');
     return;
   }
   if (game.status === 'finished') {
     elements.statusTitle.textContent = game.winner === 'draw'
-      ? 'Empate.'
+      ? t('draw')
       : game.resultValue === 2
-        ? `${playerName(game.winner)} venceu com Capote.`
-        : `${playerName(game.winner)} venceu a partida.`;
-    elements.statusMessage.textContent = `${game.scores[NORTH]}–${game.scores[SOUTH]}. ${game.reason}`;
+        ? t('wonCapote', { player: playerName(game.winner) })
+        : t('wonMatch', { player: playerName(game.winner) });
+    elements.statusMessage.textContent = `${game.scores[NORTH]}–${game.scores[SOUTH]}. ${translatedGameReason(game.reason)}`;
     return;
   }
   if (!game.lastMove && app.session.previousWinner) {
-    elements.statusTitle.textContent = `${playerName(app.session.previousWinner)} venceu a partida anterior.`;
-    elements.statusMessage.textContent = `Tabuleiro arrumado. ${playerName(game.currentPlayer)} joga primeiro.`;
+    elements.statusTitle.textContent = t('previousWin', { player: playerName(app.session.previousWinner) });
+    elements.statusMessage.textContent = t('boardResetStarter', { player: playerName(game.currentPlayer) });
     return;
   }
   if (app.spectator) {
-    elements.statusTitle.textContent = 'Estás a assistir.';
-    elements.statusMessage.textContent = `${playerName(game.currentPlayer)} tem a vez.`;
+    elements.statusTitle.textContent = t('watchingTitle');
+    elements.statusMessage.textContent = t('playerTurn', { player: playerName(game.currentPlayer) });
     return;
   }
   if (app.mode === 'online' && app.side !== game.currentPlayer) {
-    elements.statusTitle.textContent = 'Aguarda a jogada adversária.';
-    elements.statusMessage.textContent = `${playerName(game.currentPlayer)} tem a vez.`;
+    elements.statusTitle.textContent = t('waitOpponent');
+    elements.statusMessage.textContent = t('playerTurn', { player: playerName(game.currentPlayer) });
     return;
   }
   if (app.mode === 'pc' && game.currentPlayer === NORTH) {
-    elements.statusTitle.textContent = 'O computador está a pensar.';
-    elements.statusMessage.textContent = 'A avaliar as casas disponíveis.';
+    elements.statusTitle.textContent = t('computerThinking');
+    elements.statusMessage.textContent = t('evaluatingMoves');
     return;
   }
-  elements.statusTitle.textContent = `${playerName(game.currentPlayer)}, escolhe uma casa.`;
-  elements.statusMessage.textContent = 'As casas válidas ficam realçadas.';
+  elements.statusTitle.textContent = t('choosePit', { player: playerName(game.currentPlayer) });
+  elements.statusMessage.textContent = t('legalHighlighted');
 }
 
 function renderLastMove() {
   if (app.animation?.phase === 'sowing') {
-    elements.lastMoveText.textContent = `${playerName(app.animation.player)} distribui as sementes uma a uma.`;
+    elements.lastMoveText.textContent = t('sowingLast', { player: playerName(app.animation.player) });
     return;
   }
   if (app.animation?.phase === 'capture') {
-    elements.lastMoveText.textContent = `${playerName(app.animation.player)} recolhe as casas válidas.`;
+    elements.lastMoveText.textContent = t('capturingLast', { player: playerName(app.animation.player) });
     return;
   }
   const move = app.session.game.lastMove;
   if (!move) {
-    elements.lastMoveText.textContent = 'Ainda não houve jogadas.';
+    elements.lastMoveText.textContent = t('noMoves');
     return;
   }
   const capture = move.capturedSeeds
-    ? ` e colheu ${move.capturedSeeds} sementes${move.grandSlam ? ' nas seis casas' : ''}`
+    ? t('captureDescription', {
+        count: move.capturedSeeds,
+        grandSlam: move.grandSlam ? t('sixPits') : '',
+      })
     : '';
-  const repetition = move.repetitionTriggered
-    ? ' A posição repetiu-se pela terceira vez e a partida terminou.'
-    : '';
-  elements.lastMoveText.textContent = `${playerName(move.player)} jogou ${pitLabel(move.pitIndex)}${capture}.${repetition}`;
+  const repetition = move.repetitionTriggered ? t('repetitionDescription') : '';
+  elements.lastMoveText.textContent = t('moveDescription', {
+    player: playerName(move.player),
+    pit: translatedPitLabel(move.pitIndex),
+    capture,
+    repetition,
+  });
 }
 
 async function playMove(index) {
@@ -1137,7 +1321,7 @@ async function playMove(index) {
         app.session = normaliseSession(app.room.game_state);
       } catch {}
     }
-    toast(error.message || 'A jogada não foi aceite.');
+    toast(error.message || t('moveRejected'));
   } finally {
     app.busy = false;
     renderGame();
@@ -1151,12 +1335,12 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.10', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.11', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
       worker.terminate();
-      reject(new Error('A análise da jogada excedeu o tempo previsto.'));
+      reject(new Error(t('aiTimeout')));
     }, level === 'grandmaster' ? 6000 : 3500);
 
     const finish = () => {
@@ -1167,12 +1351,12 @@ function chooseMoveAsync(game, level) {
     worker.addEventListener('message', (event) => {
       finish();
       if (event.data?.ok) resolve(event.data.move);
-      else reject(new Error(event.data?.error || 'A inteligência artificial falhou.'));
+      else reject(new Error(event.data?.error || t('aiFailed')));
     }, { once: true });
 
     worker.addEventListener('error', (event) => {
       finish();
-      reject(new Error(event.message || 'Não foi possível iniciar a inteligência artificial.'));
+      reject(new Error(event.message || t('aiStartFailed')));
     }, { once: true });
 
     worker.postMessage({ game: cloneValue(game), level });
@@ -1199,7 +1383,7 @@ function maybeRunAI() {
         app.session = next;
       }
     } catch (error) {
-      toast(`Erro do computador: ${error.message}`);
+      toast(t('computerError', { error: error.message }));
     } finally {
       app.busy = false;
       renderGame();
@@ -1283,6 +1467,7 @@ function bindEvents() {
   elements.nick.value = app.profile.nick;
   elements.island.value = app.profile.island;
   document.body.dataset.island = app.profile.island;
+  elements.language.addEventListener('change', () => applyLanguage(elements.language.value));
   elements.island.addEventListener('change', saveProfile);
   elements.nick.addEventListener('change', saveProfile);
   $('#startPcButton').addEventListener('click', startPcGame);
@@ -1293,6 +1478,9 @@ function bindEvents() {
   elements.acceptInvite.addEventListener('click', acceptInvitation);
   elements.declineInvite.addEventListener('click', closeInvitation);
   elements.chatForm.addEventListener('submit', sendChatMessage);
+  elements.openSharedInvite.addEventListener('click', openSharedInvite);
+  elements.sharePlay.addEventListener('click', () => shareBankViaWhatsApp('play'));
+  elements.shareWatch.addEventListener('click', () => shareBankViaWhatsApp('watch'));
   $('#leaveGameButton').addEventListener('click', leaveGame);
   elements.newRound.addEventListener('click', newRound);
   $('#brandHome').addEventListener('click', () => app.mode ? leaveGame() : showScreen('home'));
@@ -1307,16 +1495,21 @@ function bindEvents() {
 
 async function init() {
   bindEvents();
+  if (app.sharedInvite?.language) app.language = app.sharedInvite.language;
+  applyLanguage(app.language);
   await preloadClassicSprites();
   renderGame();
   renderOnlinePlayers();
   try {
     const result = await multiplayer.init(app.profile);
     elements.setupNotice.hidden = result.configured;
-    if (result.configured) await refreshRooms();
+    if (result.configured) {
+      await refreshRooms();
+      await prepareSharedInvite();
+    }
   } catch (error) {
     elements.setupNotice.hidden = false;
-    toast(`Os bancos de Uril online não arrancaram: ${error.message}`);
+    toast(`Supabase: ${error.message}`);
   }
 }
 
