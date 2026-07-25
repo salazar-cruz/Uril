@@ -1,4 +1,4 @@
-Uril de Cabo Verde — Versão 0.0.21
+Uril de Cabo Verde — Versão 0.0.22
 Copyright (c) 2026 Salazar da Cruz. Todos os direitos reservados sobre o conceito, o código específico desta versão e os elementos gráficos próprios.
 
 Conceito, desenvolvimento e direcção: Salazar da Cruz
@@ -6,7 +6,7 @@ Publicação: DevNexus Digital
 
 ELEMENTOS GRÁFICOS DE TERCEIROS
 
-Os ficheiros de sementes em assets/classic/ e assets/integrated-v21/ derivam do visual criado por Oliver Merkel para o projecto OMerkel/Oware. A imagem board01-polished.png é uma adaptação com fundo transparente e acabamento de madeira polida, mantendo a geometria do tabuleiro original.
+Os ficheiros de tabuleiro e sementes em assets/classic/ derivam do visual criado por Oliver Merkel para o projecto OMerkel/Oware. A imagem board01-polished.png é uma adaptação com fundo transparente e acabamento de madeira polida, mantendo a geometria do tabuleiro original.
 
 Estes elementos são utilizados ao abrigo da licença Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
 

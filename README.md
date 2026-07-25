@@ -156,15 +156,8 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Mantido apenas o novo acabamento de madeira do tabuleiro.
 
 
-## Alterações v0.0.20
+## Alterações v0.0.22
 
-- Implementado o visual aprovado pelo autor.
-- Tabuleiro único em madeira clara e polida, com cavidades integradas.
-- Sprites das sementes com fundo transparente, sem recoloração.
-
-
-## Alterações v0.0.21
-
-- Implementação real do visual aprovado.
-- Madeira clara e polida, com cavidades orgânicas integradas.
-- Sementes originais separadas das antigas tigelas escuras.
+- Tabuleiro final em madeira clara e polida.
+- Cavidades integradas na madeira.
+- Sementes em elementos DOM, sem tigelas nem halos negros.

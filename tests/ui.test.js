@@ -52,17 +52,14 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.21/);
+  assert.match(html, /Versão 0\.0\.22/);
 });
 
-test('o visual aprovado separa madeira, cavidades e sementes', () => {
-  assert.match(css, /assets\/integrated-v21\/board-organic\.png/);
-  assert.match(css, /background-image:\s*var\(--seed-image\)/);
-  assert.match(app, /style\.setProperty\('--seed-image'/);
+test('o visual final usa o tabuleiro aprovado em madeira clara', () => {
+  assert.match(css, /assets\/approved-v22\/board-warm-polished\.png/);
+  assert.match(css, /aspect-ratio:\s*1200 \/ 620/);
   assert.match(css, /linear-gradient\(180deg, #102a22 0%, #081813 58%, #030907 100%\)/);
-  assert.match(css, /\.board::before,\s*\.board::after\s*\{[^}]*content:\s*none/s);
   assert.doesNotMatch(css, /board01-bench\.jpg/);
-  assert.doesNotMatch(css, /height:\s*106%/);
 });
 
 test('a página inclui um mural público de sugestões e respostas', () => {
@@ -96,13 +93,16 @@ test('a ajuda explica o banco público contra o computador nos três idiomas', (
   assert.match(i18n, /public bank that can be watched live/);
 });
 
-test('as sementes usam sprites transparentes sem a tigela clássica', () => {
-  assert.match(app, /assets\/integrated-v21\/seeds-/);
-  assert.doesNotMatch(app, /assets\/premium\/trou-bonduc/);
+test('as sementes são elementos limpos e não imagens de tigelas', () => {
+  assert.match(app, /className = 'seed-pile'/);
+  assert.match(app, /className = 'uril-seed'/);
+  assert.match(css, /\.uril-seed\s*\{/);
+  assert.doesNotMatch(app, /trou-bonduc/);
+  assert.doesNotMatch(app, /--seed-image/);
 });
 
-test('o tabuleiro orgânico usa sementes transparentes sobre cavidades integradas', () => {
-  assert.match(css, /assets\/integrated-v21\/board-organic\.png/);
-  assert.match(app, /assets\/integrated-v21\/seeds-/);
-  assert.doesNotMatch(app, /assets\/classic\/trou-bonduc/);
+test('as cavidades pertencem ao tabuleiro e os botões não desenham discos escuros', () => {
+  assert.match(css, /pit\.classic-pit::before,[\s\S]*content:\s*none\s*!important/);
+  assert.match(css, /north-row \.pit:nth-child\(1\)/);
+  assert.match(css, /south-row \.pit:nth-child\(6\)/);
 });

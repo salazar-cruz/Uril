@@ -1,19 +1,5 @@
-URIL CABO VERDE — ACTUALIZAÇÃO V0.0.15
+URIL CABO VERDE — CORRECÇÃO V0.0.22
 
-Substitui no repositório os ficheiros deste pacote, mantendo as mesmas pastas.
-
-IMPORTANTE:
-1. Este pacote não contém js/config.js. A configuração actual do Supabase fica intacta.
-2. No Supabase, abre SQL Editor e executa todo o conteúdo de:
-   supabase-sugestoes-v0.0.15.sql
-3. Depois faz o commit no GitHub.
-4. Quando o GitHub Pages terminar a publicação, actualiza com Ctrl + F5.
-
-A migração cria:
-- uril_suggestions;
-- uril_suggestion_replies;
-- políticas RLS;
-- actualização Realtime.
-
-O antigo envio de sugestões por email foi retirado. As sugestões passam a ficar
-na página, identificadas pelo nick, ilha, data e hora, com respostas públicas.
+Substitui os ficheiros mantendo a estrutura das pastas.
+O pacote não contém js/config.js e mantém a configuração Supabase existente.
+Não há SQL novo. Depois do commit no GitHub, faz Ctrl + F5.

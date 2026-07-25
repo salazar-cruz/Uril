@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.21';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.21';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.21';
-import { MultiplayerService } from './multiplayer.js?v=0.0.21';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.21';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.21';
+} from './engine.js?v=0.0.22';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.22';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.22';
+import { MultiplayerService } from './multiplayer.js?v=0.0.22';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.22';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.22';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1158,24 +1158,38 @@ async function applyRemoteRoomUpdate(updated) {
   syncPresence();
 }
 
-function classicSpriteUrl(seedTotal) {
-  const spriteTotal = Math.min(Math.max(Number(seedTotal) || 0, 0), 15);
-  const spriteName = String(spriteTotal).padStart(2, '0');
-  return new URL(`../assets/integrated-v21/seeds-${spriteName}.png`, import.meta.url).href;
+const SEED_LAYOUTS = Object.freeze({
+  0: [],
+  1: [[50, 50, -8, 1.10]],
+  2: [[39, 49, -18, 1.02], [62, 49, 14, 1.02]],
+  3: [[36, 40, -18, .98], [63, 40, 14, .98], [51, 62, 2, 1.03]],
+  4: [[34, 39, -18, .94], [61, 37, 13, .95], [46, 57, 5, 1.00], [66, 59, -11, .94]],
+  5: [[31, 38, -19, .89], [55, 34, 11, .92], [73, 45, -10, .88], [43, 59, 7, .94], [65, 63, -14, .91]],
+  6: [[29, 37, -19, .83], [50, 31, 10, .86], [70, 38, -9, .83], [37, 57, 8, .88], [58, 55, -5, .90], [72, 65, 14, .83]],
+});
+
+const DENSE_SEED_POSITIONS = Object.freeze([
+  [26, 34, -18], [47, 28, 11], [68, 34, -9],
+  [34, 50, 7], [56, 47, -4], [76, 51, 15],
+  [25, 67, 12], [47, 66, -13], [68, 68, 6],
+  [39, 39, 18], [60, 36, -17], [44, 55, -2],
+  [63, 57, 13], [38, 72, -10], [58, 74, 4],
+]);
+
+function seedLayout(seedTotal) {
+  const total = Math.min(Math.max(Number(seedTotal) || 0, 0), 15);
+  if (SEED_LAYOUTS[total]) return SEED_LAYOUTS[total];
+  const scale = total <= 9 ? .76 : total <= 12 ? .68 : .60;
+  return DENSE_SEED_POSITIONS.slice(0, total).map(([x, y, rotation], index) => [
+    x,
+    y,
+    rotation,
+    scale * (index % 4 === 0 ? 1.04 : 1),
+  ]);
 }
 
 async function preloadClassicSprites() {
-  const loads = [];
-  for (let total = 0; total <= 15; total += 1) {
-    const image = new Image();
-    app.spriteCache.set(total, image);
-    loads.push(new Promise((resolve) => {
-      image.addEventListener('load', resolve, { once: true });
-      image.addEventListener('error', resolve, { once: true });
-      image.src = classicSpriteUrl(total);
-    }));
-  }
-  await Promise.all(loads);
+  // A versão aprovada desenha sementes limpas no DOM; não há sprites de tigelas.
 }
 
 function createPitElement(index) {
@@ -1183,6 +1197,11 @@ function createPitElement(index) {
   button.className = 'pit classic-pit';
   button.type = 'button';
   button.dataset.index = String(index);
+
+  const pile = document.createElement('span');
+  pile.className = 'seed-pile';
+  pile.setAttribute('aria-hidden', 'true');
+  button.append(pile);
 
   const count = document.createElement('span');
   count.className = 'seed-count';
@@ -1206,21 +1225,34 @@ function ensurePitElements() {
   document.body.dataset.onlinePlayer = app.mode === 'online' && !app.spectator ? 'true' : 'false';
 }
 
+function updateSeedPile(button, seedTotal) {
+  const visibleTotal = Math.min(Math.max(Number(seedTotal) || 0, 0), 15);
+  if (button.dataset.seedLayout === String(visibleTotal)) return;
+
+  const pile = button.querySelector('.seed-pile');
+  if (!pile) return;
+
+  const seeds = seedLayout(visibleTotal).map(([x, y, rotation, scale], index) => {
+    const seed = document.createElement('i');
+    seed.className = 'uril-seed';
+    seed.style.setProperty('--seed-x', `${x}%`);
+    seed.style.setProperty('--seed-y', `${y}%`);
+    seed.style.setProperty('--seed-r', `${rotation}deg`);
+    seed.style.setProperty('--seed-s', String(scale));
+    seed.dataset.variant = String((index % 3) + 1);
+    return seed;
+  });
+
+  pile.replaceChildren(...seeds);
+  button.dataset.seedLayout = String(visibleTotal);
+}
+
 function updatePitElement(index, game, moves, lastPit) {
   const button = app.pitButtons.get(index);
   if (!button) return;
 
   const seedTotal = game.board[index];
-  const spriteTotal = Math.min(seedTotal, 15);
-  const spriteName = String(spriteTotal).padStart(2, '0');
-
-  // O elemento permanece no DOM. A imagem só muda quando muda o número de
-  // sementes, evitando o clarão de uma casa vazia a cada refrescamento.
-  if (button.dataset.sprite !== spriteName) {
-    button.style.setProperty('--seed-image', `url("${classicSpriteUrl(spriteTotal)}")`);
-    button.style.removeProperty('background-image');
-    button.dataset.sprite = spriteName;
-  }
+  updateSeedPile(button, seedTotal);
 
   button.dataset.seeds = String(seedTotal);
   const pitDescription = t('pitSeeds', { pit: translatedPitLabel(index), count: seedTotal });
@@ -1580,7 +1612,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.21', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.22', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
