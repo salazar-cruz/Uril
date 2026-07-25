@@ -154,3 +154,10 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 
 - Repostas as sementes originais, sem qualquer tratamento ou recoloração.
 - Mantido apenas o novo acabamento de madeira do tabuleiro.
+
+
+## Alterações v0.0.20
+
+- Implementado o visual aprovado pelo autor.
+- Tabuleiro único em madeira clara e polida, com cavidades integradas.
+- Sprites das sementes com fundo transparente, sem recoloração.

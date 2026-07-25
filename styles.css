@@ -961,7 +961,7 @@ body.game-active .island-background::after {
   z-index: 1;
   inset: 0;
   pointer-events: none;
-  background: url('assets/premium/board-teak-polished.png') center / 100% 100% no-repeat;
+  background: url('assets/integrated/board-approved.png') center / 100% 100% no-repeat;
   filter:
     drop-shadow(0 26px 28px rgba(0,0,0,.68))
     drop-shadow(0 0 16px rgba(232,168,79,.13));
@@ -1134,3 +1134,11 @@ body.game-active .island-background::after {
   pointer-events: none;
 }
 .board-wrap > * { position: relative; z-index: 1; }
+
+/* V0.0.20 — tabuleiro único aprovado e sementes sobre transparência. */
+.pit.classic-pit {
+  background-size: 88% 88%;
+  background-position: center 52%;
+}
+.pit.classic-pit.legal:hover,
+.pit.classic-pit.legal:focus-visible { transform: scale(1.025); }

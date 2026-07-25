@@ -52,11 +52,11 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.19/);
+  assert.match(html, /Versão 0\.0\.20/);
 });
 
 test('o visual usa madeira de teca polida com contraste sobre fundo escuro', () => {
-  assert.match(css, /assets\/premium\/board-teak-polished\.png/);
+  assert.match(css, /assets\/integrated\/board-approved\.png/);
   assert.match(css, /linear-gradient\(180deg, #102a22 0%, #081813 58%, #030907 100%\)/);
   assert.match(css, /\.board::before,\s*\.board::after\s*\{[^}]*content:\s*none/s);
   assert.doesNotMatch(css, /board01-bench\.jpg/);
@@ -95,6 +95,13 @@ test('a ajuda explica o banco público contra o computador nos três idiomas', (
 });
 
 test('as sementes usam novamente os sprites clássicos originais', () => {
-  assert.match(app, /assets\/classic\/trou-bonduc/);
+  assert.match(app, /assets\/integrated\/seeds-/);
   assert.doesNotMatch(app, /assets\/premium\/trou-bonduc/);
+});
+
+
+test('o tabuleiro aprovado usa sementes transparentes sobre cavidades integradas', () => {
+  assert.match(css, /assets\/integrated\/board-approved\.png/);
+  assert.match(app, /assets\/integrated\/seeds-/);
+  assert.doesNotMatch(app, /assets\/classic\/trou-bonduc/);
 });

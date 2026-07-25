@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.19';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.19';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.19';
-import { MultiplayerService } from './multiplayer.js?v=0.0.19';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.19';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.19';
+} from './engine.js?v=0.0.20';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.20';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.20';
+import { MultiplayerService } from './multiplayer.js?v=0.0.20';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.20';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.20';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1161,7 +1161,7 @@ async function applyRemoteRoomUpdate(updated) {
 function classicSpriteUrl(seedTotal) {
   const spriteTotal = Math.min(Math.max(Number(seedTotal) || 0, 0), 15);
   const spriteName = String(spriteTotal).padStart(2, '0');
-  return new URL(`../assets/classic/trou-bonduc${spriteName}.png`, import.meta.url).href;
+  return new URL(`../assets/integrated/seeds-${spriteName}.png`, import.meta.url).href;
 }
 
 async function preloadClassicSprites() {
@@ -1579,7 +1579,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.19', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.20', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
