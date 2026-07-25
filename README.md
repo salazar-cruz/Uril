@@ -126,3 +126,10 @@ Desistência confirmada, pedido de desistência da IA, visual sem relva com banc
 - Respostas públicas encadeadas em cada sugestão.
 - Persistência e actualização em tempo real através do Supabase.
 - Migração para instalações existentes: `supabase-sugestoes-v0.0.15.sql`.
+
+
+## Alterações v0.0.16
+
+- Retirado o banco inferior.
+- Acabamento de madeira realista e polida, sem alterar as coordenadas do jogo.
+- Fundo exterior transparente.

@@ -52,13 +52,14 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.15/);
+  assert.match(html, /Versão 0\.0\.16/);
 });
 
-test('o visual do tabuleiro usa transparência real e um banco transversal', () => {
-  assert.match(css, /board01-transparent\.png/);
-  assert.match(css, /\.board::before\s*\{[^}]*height:\s*106%/s);
-  assert.match(css, /left:\s*36\.5%/);
+test('o visual usa um tabuleiro de madeira polida sem banco inferior', () => {
+  assert.match(css, /board01-polished\.png/);
+  assert.match(css, /\.board::before,\s*\.board::after\s*\{[^}]*content:\s*none/s);
+  assert.doesNotMatch(css, /board01-bench\.jpg/);
+  assert.doesNotMatch(css, /height:\s*106%/);
 });
 
 test('a página inclui um mural público de sugestões e respostas', () => {
