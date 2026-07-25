@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.18';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.18';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.18';
-import { MultiplayerService } from './multiplayer.js?v=0.0.18';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.18';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.18';
+} from './engine.js?v=0.0.19';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.19';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.19';
+import { MultiplayerService } from './multiplayer.js?v=0.0.19';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.19';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.19';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1579,7 +1579,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.18', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.19', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

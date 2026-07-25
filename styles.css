@@ -878,15 +878,15 @@ body[data-online-player="true"] .player-summary.south::after {
 /* V0.0.17 — cenário do jogo sem relva; tabuleiro isolado sobre o fundo da interface. */
 body.game-active .island-background {
   background-image:
-    radial-gradient(circle at 50% 8%, rgba(255,226,175,.18), transparent 38%),
-    linear-gradient(180deg, #76553b 0%, #513927 64%, #34251c 100%);
+    radial-gradient(circle at 50% 36%, rgba(62, 118, 91, .22), transparent 34%),
+    linear-gradient(180deg, #102a22 0%, #081813 58%, #030907 100%);
   filter: none;
   transform: none;
 }
 body.game-active .island-background::after {
   background:
-    repeating-linear-gradient(91deg, rgba(255,255,255,.018) 0 2px, transparent 2px 37px),
-    radial-gradient(circle at 50% 15%, transparent 0 20%, rgba(18,10,7,.48) 100%);
+    repeating-linear-gradient(92deg, rgba(255,255,255,.012) 0 1px, transparent 1px 42px),
+    radial-gradient(circle at 50% 42%, transparent 0 24%, rgba(0, 5, 3, .70) 100%);
 }
 .game-header-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
@@ -961,8 +961,10 @@ body.game-active .island-background::after {
   z-index: 1;
   inset: 0;
   pointer-events: none;
-  background: url('assets/premium/board-premium.png') center / 100% 100% no-repeat;
-  filter: drop-shadow(0 22px 24px rgba(0,0,0,.52));
+  background: url('assets/premium/board-teak-polished.png') center / 100% 100% no-repeat;
+  filter:
+    drop-shadow(0 26px 28px rgba(0,0,0,.68))
+    drop-shadow(0 0 16px rgba(232,168,79,.13));
 }
 
 .board .pit-row { z-index: 2; }
@@ -1120,3 +1122,15 @@ body.game-active .island-background::after {
   .suggestion-reply,
   .suggestion-reply-compose { margin-left: 10px; }
 }
+
+/* V0.0.19 — contraste entre a madeira dourada e o cenário verde-escuro. */
+.board-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 7% 2% 5%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,.48), rgba(0,0,0,0) 70%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+.board-wrap > * { position: relative; z-index: 1; }

@@ -1,4 +1,4 @@
-Uril de Cabo Verde — Versão 0.0.18
+Uril de Cabo Verde — Versão 0.0.19
 Copyright (c) 2026 Salazar da Cruz. Todos os direitos reservados sobre o conceito, o código específico desta versão e os elementos gráficos próprios.
 
 Conceito, desenvolvimento e direcção: Salazar da Cruz
