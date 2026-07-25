@@ -161,3 +161,10 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Implementado o visual aprovado pelo autor.
 - Tabuleiro único em madeira clara e polida, com cavidades integradas.
 - Sprites das sementes com fundo transparente, sem recoloração.
+
+
+## Alterações v0.0.21
+
+- Implementação real do visual aprovado.
+- Madeira clara e polida, com cavidades orgânicas integradas.
+- Sementes originais separadas das antigas tigelas escuras.

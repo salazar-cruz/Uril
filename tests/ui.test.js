@@ -52,11 +52,13 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.20/);
+  assert.match(html, /Versão 0\.0\.21/);
 });
 
-test('o visual usa madeira de teca polida com contraste sobre fundo escuro', () => {
-  assert.match(css, /assets\/integrated\/board-approved\.png/);
+test('o visual aprovado separa madeira, cavidades e sementes', () => {
+  assert.match(css, /assets\/integrated-v21\/board-organic\.png/);
+  assert.match(css, /background-image:\s*var\(--seed-image\)/);
+  assert.match(app, /style\.setProperty\('--seed-image'/);
   assert.match(css, /linear-gradient\(180deg, #102a22 0%, #081813 58%, #030907 100%\)/);
   assert.match(css, /\.board::before,\s*\.board::after\s*\{[^}]*content:\s*none/s);
   assert.doesNotMatch(css, /board01-bench\.jpg/);
@@ -94,14 +96,13 @@ test('a ajuda explica o banco público contra o computador nos três idiomas', (
   assert.match(i18n, /public bank that can be watched live/);
 });
 
-test('as sementes usam novamente os sprites clássicos originais', () => {
-  assert.match(app, /assets\/integrated\/seeds-/);
+test('as sementes usam sprites transparentes sem a tigela clássica', () => {
+  assert.match(app, /assets\/integrated-v21\/seeds-/);
   assert.doesNotMatch(app, /assets\/premium\/trou-bonduc/);
 });
 
-
-test('o tabuleiro aprovado usa sementes transparentes sobre cavidades integradas', () => {
-  assert.match(css, /assets\/integrated\/board-approved\.png/);
-  assert.match(app, /assets\/integrated\/seeds-/);
+test('o tabuleiro orgânico usa sementes transparentes sobre cavidades integradas', () => {
+  assert.match(css, /assets\/integrated-v21\/board-organic\.png/);
+  assert.match(app, /assets\/integrated-v21\/seeds-/);
   assert.doesNotMatch(app, /assets\/classic\/trou-bonduc/);
 });

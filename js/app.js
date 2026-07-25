@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.20';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.20';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.20';
-import { MultiplayerService } from './multiplayer.js?v=0.0.20';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.20';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.20';
+} from './engine.js?v=0.0.21';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.21';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.21';
+import { MultiplayerService } from './multiplayer.js?v=0.0.21';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.21';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.21';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1161,7 +1161,7 @@ async function applyRemoteRoomUpdate(updated) {
 function classicSpriteUrl(seedTotal) {
   const spriteTotal = Math.min(Math.max(Number(seedTotal) || 0, 0), 15);
   const spriteName = String(spriteTotal).padStart(2, '0');
-  return new URL(`../assets/integrated/seeds-${spriteName}.png`, import.meta.url).href;
+  return new URL(`../assets/integrated-v21/seeds-${spriteName}.png`, import.meta.url).href;
 }
 
 async function preloadClassicSprites() {
@@ -1217,7 +1217,8 @@ function updatePitElement(index, game, moves, lastPit) {
   // O elemento permanece no DOM. A imagem só muda quando muda o número de
   // sementes, evitando o clarão de uma casa vazia a cada refrescamento.
   if (button.dataset.sprite !== spriteName) {
-    button.style.backgroundImage = `url("${classicSpriteUrl(spriteTotal)}")`;
+    button.style.setProperty('--seed-image', `url("${classicSpriteUrl(spriteTotal)}")`);
+    button.style.removeProperty('background-image');
     button.dataset.sprite = spriteName;
   }
 
@@ -1579,7 +1580,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.20', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.21', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

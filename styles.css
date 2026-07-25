@@ -961,7 +961,7 @@ body.game-active .island-background::after {
   z-index: 1;
   inset: 0;
   pointer-events: none;
-  background: url('assets/integrated/board-approved.png') center / 100% 100% no-repeat;
+  background: url('assets/integrated-v21/board-organic.png') center / 100% 100% no-repeat;
   filter:
     drop-shadow(0 26px 28px rgba(0,0,0,.68))
     drop-shadow(0 0 16px rgba(232,168,79,.13));
@@ -1141,4 +1141,52 @@ body.game-active .island-background::after {
   background-position: center 52%;
 }
 .pit.classic-pit.legal:hover,
-.pit.classic-pit.legal:focus-visible { transform: scale(1.025); }
+.pit.classic-pit.legal:focus-visible {
+  transform: scale(1.025);
+}
+
+
+/* V0.0.21 — madeira aprovada, cavidades integradas e sementes sem tigela. */
+.pit.classic-pit {
+  --seed-image: none;
+  overflow: visible;
+  background-image: none !important;
+  isolation: isolate;
+}
+
+/* Sombra e profundidade da cavidade, sem disco preto nem aro artificial. */
+.pit.classic-pit::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 4.5% 5.5%;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 40% 35%,
+      rgba(255, 205, 135, .055) 0%,
+      rgba(112, 52, 17, .055) 43%,
+      rgba(51, 16, 4, .15) 70%,
+      rgba(18, 4, 1, .38) 100%);
+  box-shadow:
+    inset 9px 11px 15px rgba(13, 3, 0, .38),
+    inset -7px -8px 11px rgba(244, 168, 83, .13),
+    0 2px 4px rgba(240, 176, 96, .12);
+}
+
+/* A imagem contém apenas sementes originais sobre transparência. */
+.pit.classic-pit::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 1%;
+  border-radius: 50%;
+  pointer-events: none;
+  background-image: var(--seed-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 96% 96%;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, .18));
+}
+
+.pit.classic-pit .seed-count { z-index: 4; }
