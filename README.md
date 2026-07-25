@@ -128,8 +128,23 @@ Desistência confirmada, pedido de desistência da IA, visual sem relva com banc
 - Migração para instalações existentes: `supabase-sugestoes-v0.0.15.sql`.
 
 
-## Alterações v0.0.16
+## Alterações v0.0.17
 
 - Retirado o banco inferior.
 - Acabamento de madeira realista e polida, sem alterar as coordenadas do jogo.
 - Fundo exterior transparente.
+
+
+## Alterações v0.0.17
+
+- Novo tabuleiro em madeira de nogueira/mogno, realista e polida.
+- Rebordos trabalhados, verniz, veios naturais e dobradiças em latão.
+- Casas das sementes harmonizadas com a madeira do tabuleiro.
+- Sem alterações às regras, animações ou coordenadas.
+
+
+## Autoria
+
+**Conceito, desenvolvimento e direcção:** Salazar da Cruz.
+
+Desenvolvimento assistido por ferramentas de inteligência artificial.

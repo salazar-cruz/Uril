@@ -52,11 +52,11 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.16/);
+  assert.match(html, /Versão 0\.0\.17/);
 });
 
-test('o visual usa um tabuleiro de madeira polida sem banco inferior', () => {
-  assert.match(css, /board01-polished\.png/);
+test('o visual usa o tabuleiro premium em madeira sem banco inferior', () => {
+  assert.match(css, /assets\/premium\/board-premium\.png/);
   assert.match(css, /\.board::before,\s*\.board::after\s*\{[^}]*content:\s*none/s);
   assert.doesNotMatch(css, /board01-bench\.jpg/);
   assert.doesNotMatch(css, /height:\s*106%/);
