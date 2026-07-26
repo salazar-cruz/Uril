@@ -52,14 +52,14 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.25/);
+  assert.match(html, /Versão 0\.0\.27/);
 });
 
-test('o visual final usa o tabuleiro aprovado em madeira clara', () => {
-  assert.match(css, /assets\/approved-v25\/board-monoblock-realistic\.png/);
+test('o visual final usa um tabuleiro monobloco construído em CSS', () => {
+  assert.doesNotMatch(css, /approved-v25\/board-monoblock-realistic\.png/);
+  assert.match(css, /V0\.0\.27 — tabuleiro monobloco construído integralmente em CSS/);
   assert.match(css, /aspect-ratio:\s*1200 \/ 620/);
-  assert.match(css, /linear-gradient\(180deg, #102a22 0%, #081813 58%, #030907 100%\)/);
-  assert.doesNotMatch(css, /board01-bench\.jpg/);
+  assert.match(css, /inset 16px 17px 23px/);
 });
 
 test('a página inclui um mural público de sugestões e respostas', () => {

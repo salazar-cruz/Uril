@@ -163,8 +163,14 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Sementes em elementos DOM, sem tigelas nem halos negros.
 
 
-## Alterações v0.0.25
+## Alterações v0.0.27
 
 - Novo banco monobloco em madeira quase realista.
 - 12 cavidades integradas na mesma peça, sem dobradiças nem corte central.
 - Geometria dos botões ajustada às novas cavidades.
+
+
+## Alterações v0.0.27
+
+- Tabuleiro monobloco criado apenas com CSS; sem imagem de tabuleiro.
+- Doze cavidades integradas visualmente na mesma prancha de madeira.

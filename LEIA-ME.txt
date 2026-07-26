@@ -1,6 +1,1 @@
-URIL CABO VERDE — CORRECÇÃO V0.0.25
-
-Substitui os ficheiros conservando as pastas.
-Inclui o novo banco monobloco em madeira, com 12 cavidades integradas.
-Não inclui js/config.js; a ligação ao Supabase fica intacta.
-Depois do commit no GitHub, faz Ctrl + F5.
+V0.0.27: tabuleiro monobloco construído em CSS. Não inclui js/config.js. Depois do commit faz Ctrl + F5.
