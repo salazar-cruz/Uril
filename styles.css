@@ -1123,7 +1123,7 @@ body.game-active .island-background::after {
   .suggestion-reply-compose { margin-left: 10px; }
 }
 
-/* V0.0.28 — contraste entre a madeira monobloco e o cenário verde-escuro. */
+/* V0.0.29 — contraste entre a madeira monobloco e o cenário verde-escuro. */
 .board-wrap::before {
   content: "";
   position: absolute;
@@ -1136,7 +1136,7 @@ body.game-active .island-background::after {
 .board-wrap > * { position: relative; z-index: 1; }
 
 
-/* V0.0.28 — banco monobloco quase realista, com cavidades integradas. */
+/* V0.0.29 — banco monobloco quase realista, com cavidades integradas. */
 .board-wrap::before {
   inset: 12% 4% 7%;
   background: radial-gradient(ellipse at center, rgba(0,0,0,.52), rgba(0,0,0,0) 72%);
@@ -1277,7 +1277,7 @@ body.game-active .island-background::after {
 }
 
 
-/* V0.0.28 — tabuleiro monobloco construído integralmente em CSS.
+/* V0.0.29 — tabuleiro monobloco construído integralmente em CSS.
    Uma única prancha de madeira contínua; as cavidades são escavadas visualmente
    com sombras internas. Não existe imagem de tabuleiro nem peças circulares coladas. */
 .board-wrap::before {
@@ -1287,47 +1287,45 @@ body.game-active .island-background::after {
 }
 
 .board {
-  width: min(100%, 1120px);
-  aspect-ratio: 1200 / 620;
+  width: min(92%, 980px);
+  aspect-ratio: 1200 / 540;
   overflow: visible;
-  border-radius: 10.5% / 19%;
+  border-radius: 10.5% / 18.2%;
   background:
-    linear-gradient(90deg, rgba(255,255,255,.05), transparent 13% 87%, rgba(42,14,3,.16)),
-    repeating-linear-gradient(
-      2deg,
-      rgba(78,31,8,.10) 0 1px,
-      rgba(255,190,90,.045) 2px 4px,
-      rgba(91,39,12,.075) 5px 7px,
-      transparent 8px 13px
-    ),
-    linear-gradient(178deg, #9c511f 0%, #7d3914 38%, #6d2f0f 59%, #8b461b 100%);
-  border: 2px solid rgba(55,21,6,.92);
+    linear-gradient(180deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.03) 12%, rgba(0,0,0,0) 42%, rgba(23,8,2,.22) 100%),
+    linear-gradient(90deg, rgba(73,27,7,.24) 0%, rgba(0,0,0,0) 8%, rgba(0,0,0,0) 92%, rgba(53,18,4,.28) 100%),
+    repeating-linear-gradient(4deg, rgba(131,68,24,.15) 0 2px, rgba(255,190,120,.07) 2px 4px, rgba(92,41,14,.10) 4px 8px, rgba(120,61,22,.08) 8px 13px),
+    linear-gradient(180deg, #c4772d 0%, #a65d20 22%, #874615 51%, #94511b 72%, #bf742d 100%);
+  border: 2px solid rgba(63,24,6,.95);
   box-shadow:
-    inset 0 0 0 3px rgba(220,143,67,.30),
-    inset 0 16px 22px rgba(255,192,105,.12),
-    inset 0 -20px 30px rgba(44,14,3,.34),
-    0 30px 34px rgba(0,0,0,.52),
-    0 0 22px rgba(205,120,45,.16);
+    inset 0 0 0 2px rgba(246,191,112,.24),
+    inset 0 14px 18px rgba(255,210,144,.15),
+    inset 0 -22px 26px rgba(53,18,4,.30),
+    inset 14px 0 20px rgba(68,24,7,.07),
+    inset -14px 0 20px rgba(68,24,7,.07),
+    0 28px 32px rgba(0,0,0,.48),
+    0 0 20px rgba(211,128,49,.12);
 }
 
 .board::before {
   content: "" !important;
   display: block !important;
   position: absolute;
-  inset: 2.2%;
-  border-radius: 9.5% / 18%;
+  inset: 2.1%;
+  border-radius: 9.4% / 17.2%;
   pointer-events: none;
   background:
     repeating-linear-gradient(
-      0deg,
-      transparent 0 11px,
-      rgba(43,13,2,.11) 12px 13px,
-      rgba(255,184,90,.035) 14px 16px,
-      transparent 17px 25px
-    );
+      1deg,
+      rgba(84,34,10,.04) 0 10px,
+      rgba(44,13,3,.15) 10px 11px,
+      rgba(255,194,122,.035) 11px 13px,
+      transparent 13px 23px
+    ),
+    linear-gradient(180deg, rgba(255,255,255,.04), transparent 26%, transparent 78%, rgba(35,10,2,.10));
   mix-blend-mode: multiply;
-  opacity: .78;
-  box-shadow: inset 0 0 16px rgba(40,12,2,.18);
+  opacity: .84;
+  box-shadow: inset 0 0 20px rgba(45,15,4,.14);
 }
 
 .board::after {
@@ -1338,8 +1336,8 @@ body.game-active .island-background::after {
   border-radius: inherit;
   pointer-events: none;
   background:
-    linear-gradient(106deg, transparent 0 31%, rgba(255,200,120,.035) 42%, transparent 56%),
-    linear-gradient(180deg, rgba(255,255,255,.055), transparent 20%, transparent 78%, rgba(30,8,1,.14));
+    linear-gradient(104deg, transparent 0 30%, rgba(255,220,164,.05) 42%, transparent 56%),
+    linear-gradient(180deg, rgba(255,255,255,.07), transparent 18%, transparent 82%, rgba(28,8,1,.12));
 }
 
 .board-grain {
@@ -1361,7 +1359,7 @@ body.game-active .island-background::after {
 .board .pit.classic-pit {
   position: absolute;
   width: 13.7%;
-  height: 27.2%;
+  height: 26.8%;
   padding: 0;
   overflow: visible;
   border: 0;
@@ -1397,18 +1395,18 @@ body.game-active .island-background::after {
   display: none !important;
 }
 
-.north-row .pit:nth-child(1) { left: 76.15%; top: 10.9%; }
-.north-row .pit:nth-child(2) { left: 62.15%; top: 10.9%; }
-.north-row .pit:nth-child(3) { left: 48.15%; top: 10.9%; }
-.north-row .pit:nth-child(4) { left: 34.15%; top: 10.9%; }
-.north-row .pit:nth-child(5) { left: 20.15%; top: 10.9%; }
-.north-row .pit:nth-child(6) { left: 6.15%; top: 10.9%; }
-.south-row .pit:nth-child(1) { left: 76.15%; top: 61.7%; }
-.south-row .pit:nth-child(2) { left: 62.15%; top: 61.7%; }
-.south-row .pit:nth-child(3) { left: 48.15%; top: 61.7%; }
-.south-row .pit:nth-child(4) { left: 34.15%; top: 61.7%; }
-.south-row .pit:nth-child(5) { left: 20.15%; top: 61.7%; }
-.south-row .pit:nth-child(6) { left: 6.15%; top: 61.7%; }
+.north-row .pit:nth-child(1) { left: 76.15%; top: 14.2%; }
+.north-row .pit:nth-child(2) { left: 62.15%; top: 14.2%; }
+.north-row .pit:nth-child(3) { left: 48.15%; top: 14.2%; }
+.north-row .pit:nth-child(4) { left: 34.15%; top: 14.2%; }
+.north-row .pit:nth-child(5) { left: 20.15%; top: 14.2%; }
+.north-row .pit:nth-child(6) { left: 6.15%; top: 14.2%; }
+.south-row .pit:nth-child(1) { left: 76.15%; top: 51.8%; }
+.south-row .pit:nth-child(2) { left: 62.15%; top: 51.8%; }
+.south-row .pit:nth-child(3) { left: 48.15%; top: 51.8%; }
+.south-row .pit:nth-child(4) { left: 34.15%; top: 51.8%; }
+.south-row .pit:nth-child(5) { left: 20.15%; top: 51.8%; }
+.south-row .pit:nth-child(6) { left: 6.15%; top: 51.8%; }
 
 .seed-pile {
   inset: 16%;
@@ -1431,7 +1429,7 @@ body.game-active .island-background::after {
 }
 
 
-/* V0.0.28 — tabuleiro mais estreito e contagem central acima de 9 sementes. */
+/* V0.0.29 — tabuleiro mais baixo, filas mais próximas e madeira mais polida. */
 .board {
   width: min(92%, 980px);
 }

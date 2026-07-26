@@ -1,4 +1,4 @@
-# Uril Cabo Verde v0.0.28
+# Uril Cabo Verde v0.0.29
 
 - Banco de Uril redesenhado como uma peça monobloco de madeira.
 - Doze cavidades escavadas directamente na mesma peça, sem tigelas sobrepostas.

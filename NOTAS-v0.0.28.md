@@ -1,4 +1,4 @@
-# Uril Cabo Verde v0.0.28
+# Uril Cabo Verde v0.0.29
 
 - Tabuleiro reduzido de largura no ecrã.
 - Buracos com mais de 9 sementes mostram a quantidade no centro.

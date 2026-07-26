@@ -1,0 +1,13 @@
+{
+  "name": "Uril de Cabo Verde",
+  "short_name": "Uril CV",
+  "description": "Jogo tradicional de Uril de Cabo Verde.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#10231d",
+  "theme_color": "#10231d",
+  "lang": "pt-PT",
+  "icons": [
+    { "src": "assets/icons/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
