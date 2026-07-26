@@ -197,3 +197,14 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Help ampliado com uma explicação em primeira pessoa sobre o motor Minimax.
 - Descrição dos níveis de profundidade, tempos máximos, poda Alpha-Beta, aprofundamento iterativo e avaliação das posições.
 - Registadas as simplificações deliberadas que deixam espaço para um jogador humano vencer.
+
+
+## Alterações v0.0.35
+
+- Bancos filtrados por Jogos Live, ainda abertos e concluídos.
+- Jogos Live assinalados a verde.
+- Data/hora de início e da última jogada visíveis em cada banco.
+- O botão Ver jogar aparece apenas em jogos Live.
+- Partidas concluídas abrem em modo de consulta.
+- Histórico de posições guardado no estado da partida.
+- Controlador sob o tabuleiro para avançar e recuar jogada a jogada.

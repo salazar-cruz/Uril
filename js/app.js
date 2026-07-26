@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.34';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.34';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.34';
-import { MultiplayerService } from './multiplayer.js?v=0.0.34';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.34';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.34';
+} from './engine.js?v=0.0.35';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.35';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.35';
+import { MultiplayerService } from './multiplayer.js?v=0.0.35';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.35';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.35';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -38,6 +38,7 @@ const elements = {
   home: $('#homeScreen'), game: $('#gameScreen'), language: $('#languageSelect'),
   nick: $('#nickInput'), island: $('#islandSelect'), level: $('#levelSelect'),
   roomsPanel: $('#roomsPanel'), roomList: $('#roomList'), roomName: $('#roomNameInput'),
+  roomFilters: $('#roomFilters'),
   setupNotice: $('#onlineSetupNotice'), onlineCount: $('#onlineCount'),
   onlineRoster: $('#onlineRosterList'), onlineRosterNote: $('#onlineRosterNote'),
   invitePopup: $('#invitePopup'), inviteText: $('#inviteText'),
@@ -73,6 +74,9 @@ const elements = {
   roundResultScore: $('#roundResultScore'), roundResultNext: $('#roundResultNext'),
   chatCard: $('#chatCard'), chatMessages: $('#chatMessages'), chatEmpty: $('#chatEmpty'),
   chatForm: $('#chatForm'), chatInput: $('#chatInput'), chatSend: $('#chatSendButton'),
+  reviewController: $('#reviewController'), reviewPosition: $('#reviewPosition'), reviewTime: $('#reviewTime'),
+  reviewSlider: $('#reviewSlider'), reviewFirst: $('#reviewFirstButton'), reviewPrevious: $('#reviewPreviousButton'),
+  reviewNext: $('#reviewNextButton'), reviewLast: $('#reviewLastButton'),
 };
 
 const app = {
@@ -96,6 +100,9 @@ const app = {
   roundKey: null,
   roundTransitionBusy: false,
   rooms: [],
+  roomFilter: 'playing',
+  reviewMode: false,
+  reviewIndex: 0,
   onlinePlayers: [],
   currentInvitation: null,
   chatMessages: [],
@@ -143,15 +150,20 @@ const multiplayer = new MultiplayerService({
 });
 
 function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinner = null) {
-  return {
+  const createdAt = new Date().toISOString();
+  const session = {
     game: createGame({ firstPlayer }),
     match,
     firstPlayer,
     previousWinner,
     roundRegistered: false,
     aiResignationDeclined: false,
-    createdAt: new Date().toISOString(),
+    createdAt,
+    lastMoveAt: null,
+    history: [],
   };
+  session.history.push(createHistoryEntry(session, 'start', createdAt));
+  return session;
 }
 
 function createPcSession(firstPlayer = SOUTH, match = createMatch(), previousWinner = null, aiLevel = app.aiLevel) {
@@ -322,6 +334,10 @@ function presencePayload() {
     bankName = app.room?.name || null;
   } else if (app.mode === 'local') {
     status = 'local';
+  } else if (app.mode === 'review' && app.room) {
+    bankId = app.room.id;
+    bankName = app.room.name;
+    status = 'watching';
   } else if (app.mode === 'online' && app.room) {
     bankId = app.room.id;
     bankName = app.room.name;
@@ -474,7 +490,7 @@ function shareBankViaWhatsApp(action) {
 
 function renderShareCard() {
   if (!elements.shareCard) return;
-  const enabled = ['online', 'pc'].includes(app.mode) && Boolean(app.room);
+  const enabled = !app.reviewMode && ['online', 'pc'].includes(app.mode) && Boolean(app.room);
   elements.shareCard.hidden = !enabled;
   if (!enabled) return;
   const canInvitePlayer = app.mode === 'online' && !app.spectator && app.room.status === 'waiting' && !app.room.guest_id;
@@ -536,7 +552,8 @@ async function openSharedInvite() {
         throw new Error(t('sharedBankMissing'));
       }
     } else {
-      await enterOnlineRoom(room, true);
+      if (room.status === 'finished') await consultRoom(room);
+      else await enterOnlineRoom(room, true);
     }
     clearSharedInviteUrl();
   } catch (error) {
@@ -577,7 +594,7 @@ function appendChatMessage(rawMessage) {
 
 function renderChat() {
   if (!elements.chatCard) return;
-  const enabled = ['online', 'pc'].includes(app.mode) && Boolean(app.room);
+  const enabled = !app.reviewMode && ['online', 'pc'].includes(app.mode) && Boolean(app.room);
   elements.chatCard.hidden = !enabled;
   if (!enabled) return;
 
@@ -726,8 +743,59 @@ function cloneValue(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function createHistoryEntry(session, type = 'move', at = new Date().toISOString()) {
+  return {
+    type,
+    at,
+    game: cloneValue(session.game),
+    match: cloneValue(session.match),
+    firstPlayer: session.firstPlayer,
+    previousWinner: session.previousWinner ?? null,
+  };
+}
+
+function appendSessionHistory(session, type = 'move', at = new Date().toISOString()) {
+  if (!Array.isArray(session.history)) session.history = [];
+  if (type === 'move' || type === 'resignation') session.lastMoveAt = at;
+  session.history.push(createHistoryEntry(session, type, at));
+  if (session.history.length > 800) session.history.splice(0, session.history.length - 800);
+  return session;
+}
+
+function reviewEntry() {
+  if (!app.reviewMode || !Array.isArray(app.session.history) || !app.session.history.length) return null;
+  const index = Math.min(Math.max(Number(app.reviewIndex) || 0, 0), app.session.history.length - 1);
+  return app.session.history[index] || null;
+}
+
 function displayedGame() {
-  return app.animationGame || app.session.game;
+  return app.animationGame || reviewEntry()?.game || app.session.game;
+}
+
+function displayedMatch() {
+  return reviewEntry()?.match || app.session.match;
+}
+
+function displayedFirstPlayer() {
+  return reviewEntry()?.firstPlayer || app.session.firstPlayer || SOUTH;
+}
+
+function formatDateTime(value) {
+  const date = new Date(value || '');
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString(localeForLanguage(), {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function roomLastMoveAt(room) {
+  const session = room?.game_state || {};
+  if (session.lastMoveAt) return session.lastMoveAt;
+  const history = Array.isArray(session.history) ? session.history : [];
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (['move', 'resignation'].includes(history[index]?.type)) return history[index].at || null;
+  }
+  return null;
 }
 
 function sleep(milliseconds) {
@@ -875,6 +943,8 @@ function settleRound(session) {
 async function startPcGame() {
   if (!requireProfile()) return;
   app.mode = 'pc';
+  app.reviewMode = false;
+  app.reviewIndex = 0;
   app.aiLevel = elements.level.value;
   app.side = SOUTH;
   app.spectator = false;
@@ -936,6 +1006,8 @@ function startLocalGame() {
   if (!requireProfile()) return;
   const guest = (window.prompt(t('localGuestPrompt'), t('guest')) || t('guest')).trim().slice(0, 18);
   app.mode = 'local';
+  app.reviewMode = false;
+  app.reviewIndex = 0;
   app.side = null;
   app.spectator = false;
   app.room = null;
@@ -979,41 +1051,83 @@ function renderRooms(rooms) {
     elements.roomList.append(emptyState(t('connectSupabaseBanks')));
     return;
   }
-  if (!rooms.length) {
-    elements.roomList.append(emptyState(t('noBanks')));
+
+  const filtered = rooms.filter((room) => room.status === app.roomFilter);
+  for (const button of elements.roomFilters?.querySelectorAll('[data-room-filter]') || []) {
+    const active = button.dataset.roomFilter === app.roomFilter;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  }
+
+  if (!filtered.length) {
+    const emptyKey = app.roomFilter === 'playing'
+      ? 'noLiveBanks'
+      : app.roomFilter === 'waiting'
+        ? 'noOpenBanks'
+        : 'noFinishedBanks';
+    elements.roomList.append(emptyState(t(emptyKey)));
     return;
   }
 
-  for (const room of rooms) {
+  for (const room of filtered) {
     const item = document.createElement('article');
-    item.className = 'room-item';
+    item.className = `room-item room-${room.status}`;
+
     const info = document.createElement('div');
+    info.className = 'room-info';
     const title = document.createElement('h3');
     title.textContent = room.name;
     const detail = document.createElement('p');
     const host = `${room.host_nick} · ${islandName(room.host_island)}`;
     const guest = room.guest_nick ? ` vs ${room.guest_nick} · ${islandName(room.guest_island)}` : '';
     detail.textContent = host + guest;
-    info.append(title, detail);
+
+    const dates = document.createElement('div');
+    dates.className = 'room-dates';
+    const started = document.createElement('span');
+    started.textContent = t('bankStartedAt', { date: formatDateTime(room.created_at || room.game_state?.createdAt) });
+    const lastMoveAt = roomLastMoveAt(room);
+    const lastMove = document.createElement('span');
+    lastMove.textContent = lastMoveAt
+      ? t('bankLastMoveAt', { date: formatDateTime(lastMoveAt) })
+      : t('bankNoMovesYet');
+    dates.append(started, lastMove);
+    info.append(title, detail, dates);
 
     const state = document.createElement('span');
-    state.className = 'room-state';
-    state.textContent = isComputerRoom(room)
-      ? t('pcBankUpper')
-      : room.status === 'waiting'
-        ? t('waitingUpper')
-        : t('playingUpper');
+    state.className = `room-state ${room.status === 'playing' ? 'live' : ''}`;
+    if (room.status === 'playing') {
+      const dot = document.createElement('i');
+      dot.className = 'live-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      state.append(dot, document.createTextNode(isComputerRoom(room) ? t('pcBankUpper') : t('playingUpper')));
+    } else {
+      state.textContent = room.status === 'waiting' ? t('waitingUpper') : t('finishedUpper');
+    }
 
     const button = document.createElement('button');
-    button.className = room.status === 'waiting' ? 'primary-button compact' : 'secondary-button compact';
     const isPlayer = multiplayer.user && [room.host_id, room.guest_id].includes(multiplayer.user.id);
-    if (isPlayer) button.textContent = t('resume');
-    else if (room.status === 'waiting') button.textContent = t('play');
-    else button.textContent = t('watchPlay');
-    button.addEventListener('click', () => enterRoomFromList(room, isPlayer));
+    if (room.status === 'finished') {
+      button.className = 'secondary-button compact';
+      button.textContent = t('consultMoves');
+      button.addEventListener('click', () => consultRoom(room));
+    } else {
+      button.className = room.status === 'waiting' ? 'primary-button compact' : 'secondary-button compact';
+      if (isPlayer) button.textContent = t('resume');
+      else if (room.status === 'waiting') button.textContent = t('play');
+      else button.textContent = t('watchPlay');
+      button.addEventListener('click', () => enterRoomFromList(room, isPlayer));
+    }
+
     item.append(info, state, button);
     elements.roomList.append(item);
   }
+}
+
+function setRoomFilter(filter) {
+  if (!['playing', 'waiting', 'finished'].includes(filter)) return;
+  app.roomFilter = filter;
+  renderRooms(app.rooms);
 }
 
 function emptyState(text) {
@@ -1041,6 +1155,32 @@ async function createRoom() {
   }
 }
 
+async function consultRoom(room) {
+  if (!requireProfile()) return;
+  try {
+    const current = await multiplayer.getRoom(room.id);
+    app.remoteUpdateQueue = Promise.resolve();
+    app.mode = 'review';
+    app.reviewMode = true;
+    app.room = current;
+    app.spectator = true;
+    app.side = null;
+    resetChat();
+    app.session = normaliseSession(current.game_state);
+    app.reviewIndex = Math.max(0, app.session.history.length - 1);
+    app.players = {
+      [SOUTH]: { nick: current.host_nick, island: current.host_island },
+      [NORTH]: { nick: current.guest_nick || t('awaitingGuest'), island: current.guest_island || 'santa-luzia' },
+    };
+    invalidateBoardView();
+    showScreen('game');
+    renderGame();
+    syncPresence();
+  } catch (error) {
+    toast(t('consultBankError', { error: error.message }));
+  }
+}
+
 async function enterRoomFromList(room, isPlayer) {
   if (!requireProfile()) return;
   try {
@@ -1062,6 +1202,8 @@ async function enterRoomFromList(room, isPlayer) {
 async function resumeComputerRoom(room) {
   app.remoteUpdateQueue = Promise.resolve();
   app.mode = 'pc';
+  app.reviewMode = false;
+  app.reviewIndex = 0;
   resetChat();
   app.room = room;
   app.spectator = false;
@@ -1093,6 +1235,8 @@ async function resumeComputerRoom(room) {
 async function enterOnlineRoom(room, spectator) {
   app.remoteUpdateQueue = Promise.resolve();
   app.mode = 'online';
+  app.reviewMode = false;
+  app.reviewIndex = 0;
   resetChat();
   app.room = room;
   app.spectator = spectator;
@@ -1124,6 +1268,19 @@ function normaliseSession(value) {
   if (!('previousWinner' in session)) session.previousWinner = null;
   if (!('aiResignationDeclined' in session)) session.aiResignationDeclined = false;
   if (session.mode === 'pc' && !session.aiLevel) session.aiLevel = 'amateur';
+  if (!session.createdAt) session.createdAt = new Date().toISOString();
+  if (!Array.isArray(session.history) || !session.history.length) {
+    session.history = [createHistoryEntry(session, 'legacy', session.createdAt)];
+  }
+  if (!('lastMoveAt' in session)) {
+    session.lastMoveAt = null;
+    for (let index = session.history.length - 1; index >= 0; index -= 1) {
+      if (['move', 'resignation'].includes(session.history[index]?.type)) {
+        session.lastMoveAt = session.history[index].at || null;
+        break;
+      }
+    }
+  }
   if (!session.game.repetitionCounts || typeof session.game.repetitionCounts !== 'object') {
     session.game.repetitionCounts = { [positionKey(session.game)]: 1 };
     session.game.lastRepetitionCount = 1;
@@ -1295,6 +1452,7 @@ function updatePitElement(index, game, moves, lastPit) {
 }
 
 function canLocalPlayerAct() {
+  if (app.reviewMode) return false;
   const game = app.session.game;
   if (game.status !== 'playing' || app.busy) return false;
   if (app.mode === 'local') return true;
@@ -1317,7 +1475,7 @@ function renderBoard() {
 }
 
 function resignationPlayer() {
-  if (app.spectator || app.session.game.status !== 'playing') return null;
+  if (app.reviewMode || app.spectator || app.session.game.status !== 'playing') return null;
   if (app.mode === 'pc') return SOUTH;
   if (app.mode === 'local') return app.session.game.currentPlayer;
   if (app.mode === 'online' && app.room?.status === 'playing') return app.side;
@@ -1357,6 +1515,7 @@ async function performResignation(player) {
     let next = cloneValue(app.session);
     next.game = resignGame(next.game, player);
     next = settleRound(next);
+    appendSessionHistory(next, 'resignation');
     if (hasSyncedBank()) {
       app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
       app.lastRoomFingerprint = roomFingerprint(app.room);
@@ -1398,7 +1557,7 @@ function askAIResignation() {
 
 function renderGame() {
   const game = displayedGame();
-  const { match } = app.session;
+  const match = displayedMatch();
   const display = matchDisplay(match);
   const seats = currentSeats();
   const top = seats.top;
@@ -1428,12 +1587,15 @@ function renderGame() {
   elements.matchMessage.textContent = translatedMatchMessage(match);
 
   elements.roomTitle.textContent = app.room?.name || (app.mode === 'online' ? t('bankOnline') : t('bankOfUril'));
-  elements.gameModeLabel.textContent =
-    app.mode === 'pc'
+  elements.gameModeLabel.textContent = app.reviewMode
+    ? t('reviewMode')
+    : app.mode === 'pc'
       ? (app.room
           ? t('versusPcLiveMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() })
-          : t('versusPcMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() })) :
-    app.mode === 'online' ? (app.spectator ? t('watchingMode') : t('onlineBankMode')) : t('twoPlayersMode');
+          : t('versusPcMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() }))
+      : app.mode === 'online'
+        ? (app.spectator ? t('watchingMode') : t('onlineBankMode'))
+        : t('twoPlayersMode');
 
   elements.turnBadge.textContent = game.status === 'finished'
     ? t('matchFinished')
@@ -1447,9 +1609,11 @@ function renderGame() {
   renderShareCard();
   renderResignButton();
 
-  elements.newRound.hidden = game.status !== 'finished' || app.spectator;
+  elements.newRound.hidden = app.reviewMode || game.status !== 'finished' || app.spectator;
 
-  if (app.mode === 'online') {
+  if (app.reviewMode) {
+    elements.roomStatus.textContent = t('reviewingBank');
+  } else if (app.mode === 'online') {
     elements.roomStatus.textContent = app.room?.status === 'waiting'
       ? t('bankWaitingOpponent')
       : app.spectator
@@ -1463,12 +1627,43 @@ function renderGame() {
     elements.roomStatus.textContent = t('localBank');
   }
 
-  scheduleRoundTransition();
-  maybeRunAI();
+  renderReviewController();
+  if (!app.reviewMode) {
+    scheduleRoundTransition();
+    maybeRunAI();
+  }
+}
+
+function setReviewIndex(index) {
+  if (!app.reviewMode || !Array.isArray(app.session.history) || !app.session.history.length) return;
+  app.reviewIndex = Math.min(Math.max(Number(index) || 0, 0), app.session.history.length - 1);
+  app.animation = null;
+  app.animationGame = null;
+  renderGame();
+}
+
+function renderReviewController() {
+  if (!elements.reviewController) return;
+  const history = Array.isArray(app.session.history) ? app.session.history : [];
+  const enabled = app.reviewMode && history.length > 0;
+  elements.reviewController.hidden = !enabled;
+  if (!enabled) return;
+  const max = history.length - 1;
+  const index = Math.min(Math.max(app.reviewIndex, 0), max);
+  app.reviewIndex = index;
+  elements.reviewSlider.min = '0';
+  elements.reviewSlider.max = String(max);
+  elements.reviewSlider.value = String(index);
+  elements.reviewPosition.textContent = t('reviewPosition', { current: index, total: max });
+  elements.reviewTime.textContent = formatDateTime(history[index]?.at);
+  elements.reviewFirst.disabled = index <= 0;
+  elements.reviewPrevious.disabled = index <= 0;
+  elements.reviewNext.disabled = index >= max;
+  elements.reviewLast.disabled = index >= max;
 }
 
 function renderRoundResult() {
-  const game = app.session.game;
+  const game = displayedGame();
   if (game.status !== 'finished') {
     elements.roundResult.hidden = true;
     return;
@@ -1476,7 +1671,7 @@ function renderRoundResult() {
 
   const winner = game.winner;
   const isDraw = winner === 'draw';
-  const starter = nextRoundStarter(game, app.session.firstPlayer || SOUTH);
+  const starter = nextRoundStarter(game, displayedFirstPlayer());
   elements.roundResult.hidden = false;
   elements.roundResultTitle.textContent = game.resignedBy
     ? t('roundResignation', { loser: playerName(game.resignedBy), winner: playerName(winner) })
@@ -1520,9 +1715,17 @@ function renderStatus() {
     elements.statusMessage.textContent = t('passingTurn');
     return;
   }
-  if (app.mode === 'online' && app.room?.status === 'waiting') {
+  if (!app.reviewMode && app.mode === 'online' && app.room?.status === 'waiting') {
     elements.statusTitle.textContent = t('bankCreated');
     elements.statusMessage.textContent = t('waitingInvitation');
+    return;
+  }
+  if (app.reviewMode) {
+    const entry = reviewEntry();
+    elements.statusTitle.textContent = entry?.type === 'round-start' || entry?.type === 'start'
+      ? t('reviewStartPosition')
+      : t('reviewMovePosition', { current: app.reviewIndex, total: Math.max(0, app.session.history.length - 1) });
+    elements.statusMessage.textContent = entry?.at ? formatDateTime(entry.at) : t('reviewNoDate');
     return;
   }
   if (game.status === 'finished') {
@@ -1573,7 +1776,7 @@ function renderLastMove() {
     elements.lastMoveText.textContent = t('capturingLast', { player: playerName(app.animation.player) });
     return;
   }
-  const move = app.session.game.lastMove;
+  const move = displayedGame().lastMove;
   if (!move) {
     elements.lastMoveText.textContent = t('noMoves');
     return;
@@ -1601,6 +1804,7 @@ async function playMove(index) {
     let next = cloneValue(app.session);
     next.game = applyMove(next.game, index);
     next = settleRound(next);
+    appendSessionHistory(next, 'move');
 
     if (hasSyncedBank()) {
       // Grava e transmite primeiro. Assim os navegadores reproduzem a
@@ -1635,7 +1839,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.34', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.35', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -1679,6 +1883,7 @@ function maybeRunAI() {
           let next = cloneValue(app.session);
           next.game = resignGame(next.game, NORTH);
           next = settleRound(next);
+          appendSessionHistory(next, 'resignation');
           if (hasPublicPcBank()) {
             app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
             app.lastRoomFingerprint = roomFingerprint(app.room);
@@ -1696,6 +1901,7 @@ function maybeRunAI() {
         let next = cloneValue(app.session);
         next.game = applyMove(next.game, move);
         next = settleRound(next);
+        appendSessionHistory(next, 'move');
         if (hasPublicPcBank()) {
           app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
           app.lastRoomFingerprint = roomFingerprint(app.room);
@@ -1726,6 +1932,10 @@ async function newRound(options = {}) {
   const next = app.mode === 'pc'
     ? createPcSession(nextFirst, app.session.match, previousWinner, app.aiLevel)
     : createSession(nextFirst, app.session.match, previousWinner);
+  next.createdAt = app.session.createdAt || next.createdAt;
+  next.lastMoveAt = app.session.lastMoveAt || null;
+  next.history = cloneValue(app.session.history || []);
+  appendSessionHistory(next, 'round-start');
 
   window.clearTimeout(app.roundTimer);
   app.roundTimer = null;
@@ -1769,6 +1979,8 @@ async function leaveGame() {
     await multiplayer.leaveRoomChannel();
   }
   app.mode = null;
+  app.reviewMode = false;
+  app.reviewIndex = 0;
   document.body.dataset.onlinePlayer = 'false';
   app.room = null;
   resetChat();
@@ -2015,6 +2227,10 @@ function bindEvents() {
   $('#startLocalButton').addEventListener('click', startLocalGame);
   $('#openRoomsButton').addEventListener('click', openRooms);
   $('#refreshRoomsButton').addEventListener('click', refreshRooms);
+  elements.roomFilters?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-room-filter]');
+    if (button) setRoomFilter(button.dataset.roomFilter);
+  });
   $('#createRoomButton').addEventListener('click', createRoom);
   elements.acceptInvite.addEventListener('click', acceptInvitation);
   elements.declineInvite.addEventListener('click', closeInvitation);
@@ -2024,6 +2240,11 @@ function bindEvents() {
   elements.shareWatch.addEventListener('click', () => shareBankViaWhatsApp('watch'));
   $('#leaveGameButton').addEventListener('click', leaveGame);
   elements.newRound.addEventListener('click', newRound);
+  elements.reviewFirst.addEventListener('click', () => setReviewIndex(0));
+  elements.reviewPrevious.addEventListener('click', () => setReviewIndex(app.reviewIndex - 1));
+  elements.reviewNext.addEventListener('click', () => setReviewIndex(app.reviewIndex + 1));
+  elements.reviewLast.addEventListener('click', () => setReviewIndex((app.session.history?.length || 1) - 1));
+  elements.reviewSlider.addEventListener('input', () => setReviewIndex(Number(elements.reviewSlider.value)));
   elements.resign.addEventListener('click', openResignDialog);
   elements.resignCancel.addEventListener('click', closeResignDialog);
   elements.resignConfirm.addEventListener('click', confirmResignation);

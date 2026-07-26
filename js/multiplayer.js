@@ -395,14 +395,14 @@ export class MultiplayerService {
 
   async listRooms() {
     if (!this.client) return [];
-    const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await this.client
       .from('uril_rooms')
       .select('*')
-      .in('status', ['waiting', 'playing'])
-      .gte('updated_at', since)
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .in('status', ['waiting', 'playing', 'finished'])
+      .gte('created_at', since)
+      .order('updated_at', { ascending: false })
+      .limit(100);
     if (error) throw error;
     return data || [];
   }

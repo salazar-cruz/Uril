@@ -52,7 +52,7 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.34/);
+  assert.match(html, /Versão 0\.0\.35/);
 });
 
 test('o visual final usa um tabuleiro monobloco construído em CSS', () => {
@@ -169,4 +169,47 @@ test('a ajuda mostra os níveis reforçados e a profundidade 24 do Grande Mestre
   assert.match(i18n, /Grande Mestre<\/strong><span>Profundidade 24 · 12 s/);
   assert.match(i18n, /Grand Maître<\/strong><span>Profondeur 24 · 12 s/);
   assert.match(i18n, /Grand Master<\/strong><span>Depth 24 · 12 s/);
+});
+
+
+test('os bancos têm filtros Live, ainda abertos e concluídos', () => {
+  assert.match(html, /data-room-filter="playing"/);
+  assert.match(html, /data-room-filter="waiting"/);
+  assert.match(html, /data-room-filter="finished"/);
+  assert.match(app, /roomFilter: 'playing'/);
+  assert.match(app, /function setRoomFilter/);
+});
+
+test('os jogos Live têm sinalização verde e Ver jogar fica reservado ao Live', () => {
+  assert.match(css, /\.room-state\.live/);
+  assert.match(css, /\.live-dot/);
+  assert.match(app, /room\.status === 'playing'/);
+  assert.match(app, /else button\.textContent = t\('watchPlay'\)/);
+  assert.match(app, /room\.status === 'finished'[\s\S]*t\('consultMoves'\)/);
+});
+
+test('cada banco apresenta início e hora da última jogada', () => {
+  assert.match(app, /bankStartedAt/);
+  assert.match(app, /bankLastMoveAt/);
+  assert.match(app, /function roomLastMoveAt/);
+  assert.match(i18n, /Iniciado: \{date\}/);
+  assert.match(i18n, /Última jogada: \{date\}/);
+});
+
+test('partidas concluídas têm controlador para consultar jogadas', () => {
+  assert.match(html, /id="reviewController"/);
+  assert.match(html, /id="reviewPreviousButton"/);
+  assert.match(html, /id="reviewNextButton"/);
+  assert.match(html, /id="reviewSlider"/);
+  assert.match(app, /async function consultRoom/);
+  assert.match(app, /function setReviewIndex/);
+  assert.match(app, /function renderReviewController/);
+});
+
+test('o estado da partida mantém histórico persistente de posições', () => {
+  assert.match(app, /history: \[\]/);
+  assert.match(app, /function createHistoryEntry/);
+  assert.match(app, /function appendSessionHistory/);
+  assert.match(app, /appendSessionHistory\(next, 'move'\)/);
+  assert.match(app, /appendSessionHistory\(next, 'round-start'\)/);
 });
