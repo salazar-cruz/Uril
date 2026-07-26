@@ -399,6 +399,9 @@ export function registerGameResult(match, winner, value = 1) {
 }
 
 function registerWinUnit(next, winner) {
+  // Depois de 4–0, a contagem vencedora continua visível e só é cortada
+  // por duas vitórias consecutivas do adversário. A primeira tentativa de
+  // corte não apaga nem reduz a contagem já alcançada.
   if (next.protectedBy && winner !== next.protectedBy) {
     if (next.cutCandidate === winner) next.cutWins += 1;
     else {
@@ -412,31 +415,33 @@ function registerWinUnit(next, winner) {
       next.runWins = 2;
       next.cutCandidate = null;
       next.cutWins = 0;
-      return `${labelPlayer(winner)} cortou a contagem e lidera por 2–0.`;
+      return `${labelPlayer(winner)} cortou a contagem protegida e lidera por 2–0.`;
     }
 
-    return `${labelPlayer(winner)} conseguiu a primeira vitória necessária para cortar a contagem. Falta mais uma consecutiva.`;
+    return `${labelPlayer(winner)} conseguiu a primeira vitória necessária para cortar a contagem. A contagem de ${labelPlayer(next.runOwner)} mantém-se em ${next.runWins}–0.`;
   }
 
   if (next.protectedBy === winner) {
     next.cutCandidate = null;
     next.cutWins = 0;
+    next.runWins += 1;
+    return `${labelPlayer(winner)} prolongou a contagem para ${next.runWins}–0.`;
   }
 
+  // Antes de 4–0, uma vitória do adversário corta de imediato a sequência
+  // anterior e abre uma nova contagem em 1–0.
   if (next.runOwner === winner) next.runWins += 1;
   else {
     next.runOwner = winner;
     next.runWins = 1;
   }
 
-  if (next.runWins >= 4) {
+  if (next.runWins === 4) {
     next.quatros[winner] += 1;
     next.protectedBy = winner;
-    next.runOwner = null;
-    next.runWins = 0;
     next.cutCandidate = null;
     next.cutWins = 0;
-    return `${labelPlayer(winner)} marcou um Quatro. O Quatro fica registado e só há corte com duas partidas consecutivas do adversário.`;
+    return `${labelPlayer(winner)} marcou um Quatro e mantém a contagem em 4–0. A partir daqui, o adversário precisa de duas vitórias consecutivas para cortar.`;
   }
 
   return `${labelPlayer(winner)} lidera a contagem actual por ${next.runWins}–0.`;

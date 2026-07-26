@@ -1,4 +1,4 @@
-# Uril Cabo Verde v0.0.30
+# Uril Cabo Verde v0.0.31
 
 - Regra do Frouxo aplicada no motor.
 - Fogo só é válido quando, na jogada seguinte, o jogador já não consegue alimentar o adversário.

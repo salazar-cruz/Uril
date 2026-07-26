@@ -15,7 +15,7 @@ import {
   resignationValue,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=0.0.30';
+} from '../js/engine.js?v=0.0.32';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();
@@ -170,25 +170,57 @@ test('o valor de resultado reconhece um Capote', () => {
   assert.equal(gameResultValue(game), 2);
 });
 
-test('um Quatro fica registado após quatro vitórias consecutivas', () => {
+test('um Quatro fica registado e a contagem permanece em 4–0', () => {
   let match = createMatch();
   for (let i = 0; i < 4; i += 1) match = registerGameResult(match, SOUTH);
   assert.equal(match.quatros[SOUTH], 1);
   assert.equal(match.protectedBy, SOUTH);
-  assert.equal(match.runOwner, null);
+  assert.equal(match.runOwner, SOUTH);
+  assert.equal(match.runWins, 4);
 });
 
-test('o adversário corta a contagem apenas com duas vitórias consecutivas', () => {
+test('a contagem continua depois do Quatro', () => {
   let match = createMatch();
-  for (let i = 0; i < 4; i += 1) match = registerGameResult(match, SOUTH);
+  for (let i = 0; i < 6; i += 1) match = registerGameResult(match, SOUTH);
+  assert.equal(match.quatros[SOUTH], 1);
+  assert.equal(match.protectedBy, SOUTH);
+  assert.equal(match.runOwner, SOUTH);
+  assert.equal(match.runWins, 6);
+});
+
+test('antes do Quatro uma vitória adversária corta e abre 1–0', () => {
+  let match = createMatch();
+  for (let i = 0; i < 3; i += 1) match = registerGameResult(match, SOUTH);
+  match = registerGameResult(match, NORTH);
+  assert.equal(match.protectedBy, null);
+  assert.equal(match.runOwner, NORTH);
+  assert.equal(match.runWins, 1);
+});
+
+test('depois de 4–0 o adversário corta apenas com duas vitórias consecutivas', () => {
+  let match = createMatch();
+  for (let i = 0; i < 5; i += 1) match = registerGameResult(match, SOUTH);
   match = registerGameResult(match, NORTH);
   assert.equal(match.cutWins, 1);
-  assert.equal(match.runOwner, null);
+  assert.equal(match.runOwner, SOUTH);
+  assert.equal(match.runWins, 5);
   match = registerGameResult(match, NORTH);
   assert.equal(match.protectedBy, null);
   assert.equal(match.runOwner, NORTH);
   assert.equal(match.runWins, 2);
   assert.equal(match.quatros[SOUTH], 1);
+});
+
+test('uma tentativa de corte falhada mantém e prolonga a contagem protegida', () => {
+  let match = createMatch();
+  for (let i = 0; i < 5; i += 1) match = registerGameResult(match, SOUTH);
+  match = registerGameResult(match, NORTH);
+  match = registerGameResult(match, SOUTH);
+  assert.equal(match.protectedBy, SOUTH);
+  assert.equal(match.runOwner, SOUTH);
+  assert.equal(match.runWins, 6);
+  assert.equal(match.cutCandidate, null);
+  assert.equal(match.cutWins, 0);
 });
 
 test('o vencedor começa sempre a partida seguinte', () => {

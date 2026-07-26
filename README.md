@@ -176,9 +176,17 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Doze cavidades integradas visualmente na mesma prancha de madeira.
 
 
-## Alterações v0.0.30
+## Alterações v0.0.31
 
 - Corrigida a regra do fogo: só vale quando, na jogada seguinte, quem deu fogo já não consegue alimentar o adversário. Se ainda conseguir, é Frouxo e perde.
 - Reduzida a altura visual do tabuleiro e a quantidade de madeira em cima e em baixo.
 - As duas filas ficaram visualmente mais compactas.
 - Os números nas casas com mais de 9 sementes passaram para um estilo semi-transparente e discreto.
+
+
+## Alterações v0.0.32
+
+- Interface do jogo ajustada para telemóveis, com dimensões, tipografia e painéis consistentes.
+- Dois buracos laterais integrados no tabuleiro para representar as sementes ganhas pelos jogadores.
+- Os buracos laterais acompanham automaticamente a perspectiva do jogador e mostram as sementes e a contagem exacta.
+- O tabuleiro mantém os 12 buracos jogáveis; os dois novos buracos são apenas depósitos de pontuação.

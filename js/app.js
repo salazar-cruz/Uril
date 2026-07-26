@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.30';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.30';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.30';
-import { MultiplayerService } from './multiplayer.js?v=0.0.30';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.30';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.30';
+} from './engine.js?v=0.0.32';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.32';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.32';
+import { MultiplayerService } from './multiplayer.js?v=0.0.32';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.32';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.32';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -51,6 +51,9 @@ const elements = {
   northAvatar: $('#northAvatar'), southAvatar: $('#southAvatar'),
   northScore: $('#northScore'), southScore: $('#southScore'),
   topScoreLabel: $('#topScoreLabel'), bottomScoreLabel: $('#bottomScoreLabel'),
+  topCapturedPit: $('#topCapturedPit'), bottomCapturedPit: $('#bottomCapturedPit'),
+  topCapturedPitLabel: $('#topCapturedPitLabel'), bottomCapturedPitLabel: $('#bottomCapturedPitLabel'),
+  topCapturedPitCount: $('#topCapturedPitCount'), bottomCapturedPitCount: $('#bottomCapturedPitCount'),
   northQuatros: $('#northQuatros'), southQuatros: $('#southQuatros'),
   northRun: $('#northRun'), southRun: $('#southRun'), cutStatus: $('#cutStatus'),
   turnBadge: $('#turnBadge'), roomTitle: $('#roomTitle'), gameModeLabel: $('#gameModeLabel'),
@@ -227,7 +230,11 @@ function translatedMatchMessage(match) {
   if (match.lastGameWinner === 'draw') return t('matchDrawKeep');
   const winner = playerName(match.lastGameWinner);
   let message = '';
-  if (match.protectedBy === match.lastGameWinner && !match.runOwner) {
+  if (
+    match.protectedBy === match.lastGameWinner &&
+    match.runOwner === match.lastGameWinner &&
+    match.runWins === 4
+  ) {
     message = t('quatroRecorded', { player: winner });
   } else if (match.cutCandidate === match.lastGameWinner && match.cutWins === 1) {
     message = t('firstCutWin', { player: winner });
@@ -1248,6 +1255,19 @@ function updateSeedPile(button, seedTotal) {
   button.dataset.seedLayout = String(visibleTotal);
 }
 
+function updateCapturedPit(pit, countElement, labelElement, player, seedTotal) {
+  if (!pit || !countElement || !labelElement) return;
+  const total = Math.max(Number(seedTotal) || 0, 0);
+  updateSeedPile(pit, total);
+  countElement.textContent = String(total);
+  labelElement.textContent = playerName(player);
+  const description = t('capturedSeedsPit', { player: playerName(player), count: total });
+  pit.setAttribute('aria-label', description);
+  pit.title = description;
+  pit.dataset.player = player;
+  pit.classList.toggle('has-many-seeds', total > 9);
+}
+
 function updatePitElement(index, game, moves, lastPit) {
   const button = app.pitButtons.get(index);
   if (!button) return;
@@ -1394,6 +1414,8 @@ function renderGame() {
   elements.southScore.textContent = String(game.scores[bottom]);
   elements.topScoreLabel.textContent = t('collectedBy', { player: playerName(top) });
   elements.bottomScoreLabel.textContent = t('collectedBy', { player: playerName(bottom) });
+  updateCapturedPit(elements.topCapturedPit, elements.topCapturedPitCount, elements.topCapturedPitLabel, top, game.scores[top]);
+  updateCapturedPit(elements.bottomCapturedPit, elements.bottomCapturedPitCount, elements.bottomCapturedPitLabel, bottom, game.scores[bottom]);
   elements.northQuatros.textContent = String(display.quatros[top]);
   elements.southQuatros.textContent = String(display.quatros[bottom]);
   elements.northRun.textContent = String(display.score[top]);
@@ -1613,7 +1635,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.30', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.32', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

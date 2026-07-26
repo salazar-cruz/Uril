@@ -52,12 +52,12 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.30/);
+  assert.match(html, /Versão 0\.0\.32/);
 });
 
 test('o visual final usa um tabuleiro monobloco construído em CSS', () => {
   assert.doesNotMatch(css, /approved-v25\/board-monoblock-realistic\.png/);
-  assert.match(css, /V0\.0\.30 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos/);
+  assert.match(css, /V0\.0\.31 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos/);
   assert.match(css, /aspect-ratio:\s*1200 \/ 500/);
   assert.match(css, /inset 16px 16px 22px/);
 });
@@ -109,7 +109,7 @@ test('as cavidades pertencem ao tabuleiro e os botões não desenham discos escu
 
 
 test('o tabuleiro fica mais estreito no ecrã', () => {
-  assert.match(css, /V0\.0\.30 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos/);
+  assert.match(css, /V0\.0\.31 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos/);
   assert.match(css, /width:\s*min\(92%,\s*980px\)/);
 });
 
@@ -124,4 +124,21 @@ test('a ajuda menciona a regra do Frouxo nos três idiomas', () => {
   assert.match(i18n, /quem deu fogo/);
   assert.match(i18n, /a donné le feu/);
   assert.match(i18n, /cleared all six pits/);
+});
+
+
+test('o tabuleiro inclui dois buracos laterais para as sementes ganhas', () => {
+  assert.match(html, /id="topCapturedPit"/);
+  assert.match(html, /id="bottomCapturedPit"/);
+  assert.match(app, /function updateCapturedPit/);
+  assert.match(app, /game\.scores\[top\]/);
+  assert.match(css, /\.score-pit-top/);
+  assert.match(css, /\.score-pit-bottom/);
+});
+
+test('o design do jogo tem regras específicas para telemóveis', () => {
+  assert.match(css, /V0\.0\.32 — tabuleiro com dois buracos laterais e interface móvel consistente/);
+  assert.match(css, /@media \(max-width: 560px\)[\s\S]*body\.game-active \.page-shell/);
+  assert.match(css, /@media \(max-width: 380px\)/);
+  assert.match(css, /aspect-ratio:\s*1400 \/ 610/);
 });

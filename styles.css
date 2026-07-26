@@ -1465,7 +1465,7 @@ body.game-active .island-background::after {
 }
 
 
-/* V0.0.30 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos. */
+/* V0.0.31 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos. */
 .board-wrap::before {
   inset: 10% 4% 3%;
   background: radial-gradient(ellipse at center, rgba(0,0,0,.56), rgba(0,0,0,0) 73%);
@@ -1539,4 +1539,180 @@ body.game-active .island-background::after {
   color: rgba(255, 244, 219, .88);
   text-shadow: 0 1px 2px rgba(0,0,0,.28);
   backdrop-filter: blur(1px);
+}
+
+
+/* V0.0.32 — tabuleiro com dois buracos laterais e interface móvel consistente. */
+.score-row {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding-bottom: 8px;
+}
+.score-row > span { display: none; }
+
+.board {
+  width: min(100%, 1040px);
+  aspect-ratio: 1400 / 540;
+  border-radius: 8.8% / 20%;
+  overflow: hidden;
+}
+
+.board .pit.classic-pit {
+  width: 11.5%;
+  height: 34%;
+}
+
+.north-row .pit:nth-child(1) { left: 74.85%; top: 10%; }
+.north-row .pit:nth-child(2) { left: 62.20%; top: 10%; }
+.north-row .pit:nth-child(3) { left: 49.55%; top: 10%; }
+.north-row .pit:nth-child(4) { left: 36.90%; top: 10%; }
+.north-row .pit:nth-child(5) { left: 24.25%; top: 10%; }
+.north-row .pit:nth-child(6) { left: 11.60%; top: 10%; }
+.south-row .pit:nth-child(1) { left: 74.85%; top: 56%; }
+.south-row .pit:nth-child(2) { left: 62.20%; top: 56%; }
+.south-row .pit:nth-child(3) { left: 49.55%; top: 56%; }
+.south-row .pit:nth-child(4) { left: 36.90%; top: 56%; }
+.south-row .pit:nth-child(5) { left: 24.25%; top: 56%; }
+.south-row .pit:nth-child(6) { left: 11.60%; top: 56%; }
+
+.score-pit {
+  position: absolute;
+  z-index: 4;
+  top: 12%;
+  width: 8.8%;
+  height: 76%;
+  overflow: hidden;
+  border-radius: 48% / 24%;
+  pointer-events: none;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 58% 57%, rgba(152,83,37,.78) 0 15%, rgba(105,48,17,.94) 44%, rgba(60,20,5,.99) 76%, rgba(27,7,1,1) 100%);
+  box-shadow:
+    inset 13px 13px 20px rgba(24,6,0,.80),
+    inset -7px -8px 13px rgba(235,157,88,.13),
+    inset 0 0 0 2px rgba(45,14,3,.54),
+    0 1px 0 rgba(255,222,172,.11);
+}
+.score-pit-top { left: 1.7%; }
+.score-pit-bottom { right: 1.7%; }
+.score-pit .seed-pile {
+  inset: 13% 12%;
+  opacity: .72;
+  filter: brightness(.90);
+}
+.score-pit .uril-seed {
+  width: 42%;
+  height: 19%;
+}
+.score-pit-label {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  max-width: 88%;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: rgba(255,241,213,.82);
+  background: rgba(31,15,7,.36);
+  font-size: clamp(7px, .78vw, 10px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.score-pit-top .score-pit-label { top: 6%; }
+.score-pit-bottom .score-pit-label { bottom: 6%; }
+.score-pit-count {
+  position: absolute;
+  z-index: 8;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  min-width: clamp(26px, 3.2vw, 42px);
+  min-height: clamp(26px, 3.2vw, 42px);
+  padding: 0 5px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255,239,204,.30);
+  border-radius: 999px;
+  color: rgba(255,246,226,.90);
+  background: rgba(16,20,17,.38);
+  box-shadow: 0 2px 8px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.07);
+  font-size: clamp(14px, 2vw, 24px);
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0,0,0,.30);
+  backdrop-filter: blur(1px);
+}
+
+@media (max-width: 820px) {
+  .page-shell { width: min(100% - 12px, 1440px); }
+  .game-main { padding: 14px; border-radius: 20px; }
+  .game-header { gap: 8px; }
+  .match-strip { margin: 14px 0 8px; gap: 8px; padding: 9px; }
+  .match-counter { width: 100%; }
+  .board-wrap { padding: 5px 0 7px; }
+  .board { width: 100%; aspect-ratio: 1400 / 570; }
+  .score-pit { top: 11%; height: 78%; }
+  .score-pit-label { font-size: 7px; padding: 2px 4px; }
+  .score-pit-count { min-width: 28px; min-height: 28px; font-size: 15px; }
+  .status-panel { margin-top: 8px; }
+  .game-sidebar { gap: 10px; }
+}
+
+@media (max-width: 560px) {
+  body.game-active .page-shell { width: calc(100% - 6px); }
+  .game-main { padding: 8px; border-radius: 15px; }
+  .game-header { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .game-header-actions { display: flex; gap: 5px; }
+  .game-header-actions button,
+  .game-header > button { min-height: 38px; padding: 8px 10px; font-size: 11px; }
+  .room-title h2 { font-size: 21px; }
+  .match-strip { margin: 9px 0 5px; padding: 7px; border-radius: 14px; }
+  .player-summary { gap: 6px; min-width: 0; }
+  .player-summary .avatar { width: 30px; height: 30px; font-size: 12px; }
+  .player-summary strong { display: block; max-width: 104px; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  .player-summary small { display: none; }
+  .quatro-box, .run-score { gap: 6px; }
+  .quatro-box span, .run-score span { font-size: 8px; }
+  .quatro-box b, .run-score b { font-size: 16px; }
+  .score-row { padding: 0 0 4px; }
+  .turn-badge { padding: 6px 10px; font-size: 9px; }
+  .board { aspect-ratio: 1400 / 610; border-width: 1px; border-radius: 7.5% / 18%; }
+  .board .pit.classic-pit { width: 11.55%; height: 35.2%; }
+  .north-row .pit:nth-child(1) { left: 74.85%; top: 9%; }
+  .north-row .pit:nth-child(2) { left: 62.20%; top: 9%; }
+  .north-row .pit:nth-child(3) { left: 49.55%; top: 9%; }
+  .north-row .pit:nth-child(4) { left: 36.90%; top: 9%; }
+  .north-row .pit:nth-child(5) { left: 24.25%; top: 9%; }
+  .north-row .pit:nth-child(6) { left: 11.60%; top: 9%; }
+  .south-row .pit:nth-child(1) { left: 74.85%; top: 55.8%; }
+  .south-row .pit:nth-child(2) { left: 62.20%; top: 55.8%; }
+  .south-row .pit:nth-child(3) { left: 49.55%; top: 55.8%; }
+  .south-row .pit:nth-child(4) { left: 36.90%; top: 55.8%; }
+  .south-row .pit:nth-child(5) { left: 24.25%; top: 55.8%; }
+  .south-row .pit:nth-child(6) { left: 11.60%; top: 55.8%; }
+  .score-pit { top: 9.5%; width: 8.9%; height: 81%; }
+  .score-pit-top { left: 1.55%; }
+  .score-pit-bottom { right: 1.55%; }
+  .score-pit .seed-pile { inset: 15% 10%; }
+  .score-pit .uril-seed { width: 48%; height: 18%; }
+  .score-pit-label { display: none; }
+  .score-pit-count { min-width: 24px; min-height: 24px; padding: 0 3px; font-size: 13px; }
+  .pit.classic-pit.overflow-count .seed-count { width: 25px; min-width: 25px; height: 25px; padding: 0 3px; font-size: 13px; }
+  .status-panel { padding: 10px; border-radius: 12px; font-size: 12px; }
+  .sidebar-card { padding: 14px; border-radius: 16px; }
+  .chat-form { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+@media (max-width: 380px) {
+  .topbar { height: 62px; }
+  .brand-copy small { display: none; }
+  .online-pill span:last-child { display: none; }
+  .game-main { padding: 6px; }
+  .room-title h2 { font-size: 18px; }
+  .player-summary strong { max-width: 82px; }
+  .board { aspect-ratio: 1400 / 640; }
+  .score-pit-count { min-width: 22px; min-height: 22px; font-size: 12px; }
 }
