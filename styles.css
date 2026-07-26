@@ -1716,3 +1716,61 @@ body.game-active .island-background::after {
   .board { aspect-ratio: 1400 / 640; }
   .score-pit-count { min-width: 22px; min-height: 22px; font-size: 12px; }
 }
+
+/* V0.0.33 — explicação do motor Minimax no help. */
+.help-ai-section {
+  padding: 18px 0 8px !important;
+}
+
+.help-ai-section > p {
+  margin: 10px 0;
+}
+
+.help-levels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 16px;
+}
+
+.help-levels > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 13px;
+  border: 1px solid rgba(230,184,92,.24);
+  border-radius: 13px;
+  background: rgba(230,184,92,.065);
+}
+
+.help-levels strong {
+  color: var(--gold-strong);
+  font-size: 14px;
+}
+
+.help-levels span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.help-levels small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.help-ai-note {
+  padding: 14px 15px;
+  border: 1px solid rgba(61,197,139,.24);
+  border-radius: 14px;
+  background: rgba(61,197,139,.075);
+}
+
+@media (max-width: 640px) {
+  .help-levels {
+    grid-template-columns: 1fr;
+  }
+
+  .help-content h3 {
+    font-size: 18px;
+  }
+}

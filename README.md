@@ -190,3 +190,10 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Dois buracos laterais integrados no tabuleiro para representar as sementes ganhas pelos jogadores.
 - Os buracos laterais acompanham automaticamente a perspectiva do jogador e mostram as sementes e a contagem exacta.
 - O tabuleiro mantém os 12 buracos jogáveis; os dois novos buracos são apenas depósitos de pontuação.
+
+
+## Alterações v0.0.34
+
+- Help ampliado com uma explicação em primeira pessoa sobre o motor Minimax.
+- Descrição dos níveis de profundidade, tempos máximos, poda Alpha-Beta, aprofundamento iterativo e avaliação das posições.
+- Registadas as simplificações deliberadas que deixam espaço para um jogador humano vencer.

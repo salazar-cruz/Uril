@@ -6,31 +6,31 @@ import {
   otherPlayer,
   playerPits,
   rowSeedCount,
-} from './engine.js?v=0.0.32';
+} from './engine.js?v=0.0.34';
 
 const LEVELS = {
   apprentice: {
     label: 'Aprendiz',
-    maxDepth: 1,
-    timeMs: 40,
-    randomness: 1,
-  },
-  amateur: {
-    label: 'Amador',
     maxDepth: 4,
     timeMs: 320,
     randomness: 0.12,
   },
-  master: {
-    label: 'Mestre',
+  amateur: {
+    label: 'Amador',
     maxDepth: 8,
     timeMs: 950,
     randomness: 0,
   },
-  grandmaster: {
-    label: 'Grande Mestre',
+  master: {
+    label: 'Mestre',
     maxDepth: 12,
     timeMs: 2600,
+    randomness: 0,
+  },
+  grandmaster: {
+    label: 'Grande Mestre',
+    maxDepth: 24,
+    timeMs: 12000,
     randomness: 0,
   },
 };
@@ -51,6 +51,10 @@ function normaliseLevel(level) {
 
 export function levelLabel(level) {
   return LEVELS[normaliseLevel(level)].label;
+}
+
+export function levelConfig(level) {
+  return { ...LEVELS[normaliseLevel(level)] };
 }
 
 export function shouldOfferResignation(game, player = NORTH) {

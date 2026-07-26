@@ -52,7 +52,7 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.32/);
+  assert.match(html, /Versão 0\.0\.34/);
 });
 
 test('o visual final usa um tabuleiro monobloco construído em CSS', () => {
@@ -141,4 +141,32 @@ test('o design do jogo tem regras específicas para telemóveis', () => {
   assert.match(css, /@media \(max-width: 560px\)[\s\S]*body\.game-active \.page-shell/);
   assert.match(css, /@media \(max-width: 380px\)/);
   assert.match(css, /aspect-ratio:\s*1400 \/ 610/);
+});
+
+
+test('a ajuda explica em primeira pessoa como construí o Minimax', () => {
+  assert.match(i18n, /Como construí o adversário do computador/);
+  assert.match(i18n, /Eu construí o computador/);
+  assert.match(i18n, /Minimax com poda Alpha-Beta/);
+  assert.match(i18n, /aprofundamento iterativo/);
+  assert.match(i18n, /Profundidade 12 · 2,6 s/);
+  assert.match(i18n, /Porque deixei um humano ganhar/);
+  assert.match(i18n, /não usei livro de aberturas/);
+});
+
+test('a explicação do Minimax existe também em francês e inglês', () => {
+  assert.match(i18n, /Comment j’ai construit l’adversaire informatique/);
+  assert.match(i18n, /How I built the computer opponent/);
+  assert.match(i18n, /Alpha-Beta pruning/);
+  assert.match(css, /V0\.0\.33 — explicação do motor Minimax no help/);
+});
+
+
+test('a ajuda mostra os níveis reforçados e a profundidade 24 do Grande Mestre', () => {
+  assert.match(i18n, /Aprendiz<\/strong><span>Profundidade 4 · 320 ms/);
+  assert.match(i18n, /Amador<\/strong><span>Profundidade 8 · 950 ms/);
+  assert.match(i18n, /Mestre<\/strong><span>Profundidade 12 · 2,6 s/);
+  assert.match(i18n, /Grande Mestre<\/strong><span>Profundidade 24 · 12 s/);
+  assert.match(i18n, /Grand Maître<\/strong><span>Profondeur 24 · 12 s/);
+  assert.match(i18n, /Grand Master<\/strong><span>Depth 24 · 12 s/);
 });

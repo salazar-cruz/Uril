@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { MultiplayerService } from '../js/multiplayer.js?v=0.0.32';
+import { MultiplayerService } from '../js/multiplayer.js?v=0.0.34';
 
 function service() {
   const instance = new MultiplayerService({ url: 'x', anonKey: 'y' });

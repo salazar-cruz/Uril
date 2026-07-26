@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseMove, levelLabel, shouldOfferResignation } from '../js/ai.js?v=0.0.32';
-import { NORTH, SOUTH, createGame } from '../js/engine.js?v=0.0.32';
+import { chooseMove, levelConfig, levelLabel, shouldOfferResignation } from '../js/ai.js?v=0.0.34';
+import { NORTH, SOUTH, createGame } from '../js/engine.js?v=0.0.34';
 
 test('o segundo nível chama-se Amador, incluindo o nome antigo guardado em cache', () => {
   assert.equal(levelLabel('amateur'), 'Amador');
@@ -30,4 +30,20 @@ test('a IA pede desistência apenas quando já não existe vitória matemática'
   open.scores = { [SOUTH]: 20, [NORTH]: 10 };
   open.board = [2,2,2,2,2,2,4,4,2,2,2,2];
   assert.equal(shouldOfferResignation(open, NORTH), false);
+});
+
+
+test('os quatro níveis foram elevados e o Grande Mestre usa profundidade 24', () => {
+  assert.deepEqual(levelConfig('apprentice'), {
+    label: 'Aprendiz', maxDepth: 4, timeMs: 320, randomness: 0.12,
+  });
+  assert.deepEqual(levelConfig('amateur'), {
+    label: 'Amador', maxDepth: 8, timeMs: 950, randomness: 0,
+  });
+  assert.deepEqual(levelConfig('master'), {
+    label: 'Mestre', maxDepth: 12, timeMs: 2600, randomness: 0,
+  });
+  assert.deepEqual(levelConfig('grandmaster'), {
+    label: 'Grande Mestre', maxDepth: 24, timeMs: 12000, randomness: 0,
+  });
 });
