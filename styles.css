@@ -1123,7 +1123,7 @@ body.game-active .island-background::after {
   .suggestion-reply-compose { margin-left: 10px; }
 }
 
-/* V0.0.22 — contraste entre a madeira dourada e o cenário verde-escuro. */
+/* V0.0.25 — contraste entre a madeira monobloco e o cenário verde-escuro. */
 .board-wrap::before {
   content: "";
   position: absolute;
@@ -1136,7 +1136,7 @@ body.game-active .island-background::after {
 .board-wrap > * { position: relative; z-index: 1; }
 
 
-/* V0.0.22 — visual final aprovado: madeira clara e sementes limpas. */
+/* V0.0.25 — banco monobloco quase realista, com cavidades integradas. */
 .board-wrap::before {
   inset: 12% 4% 7%;
   background: radial-gradient(ellipse at center, rgba(0,0,0,.52), rgba(0,0,0,0) 72%);
@@ -1157,7 +1157,7 @@ body.game-active .island-background::after {
   inset: 0;
   opacity: 1;
   pointer-events: none;
-  background: url('assets/approved-v22/board-warm-polished.png') center / 100% 100% no-repeat;
+  background: url('assets/approved-v25/board-monoblock-realistic.png') center / 100% 100% no-repeat;
   filter:
     drop-shadow(0 28px 30px rgba(0,0,0,.58))
     drop-shadow(0 0 19px rgba(239,173,79,.22));
@@ -1175,8 +1175,8 @@ body.game-active .island-background::after {
 
 .board .pit.classic-pit {
   position: absolute;
-  width: 12%;
-  height: 22.58%;
+  width: 14%;
+  height: 28%;
   padding: 0;
   overflow: visible;
   border: 0;
@@ -1188,18 +1188,18 @@ body.game-active .island-background::after {
   transition: transform .14s ease, filter .14s ease;
 }
 
-.north-row .pit:nth-child(1) { left: 79.17%; top: 21.29%; }
-.north-row .pit:nth-child(2) { left: 65.17%; top: 21.29%; }
-.north-row .pit:nth-child(3) { left: 51.17%; top: 21.29%; }
-.north-row .pit:nth-child(4) { left: 37.17%; top: 21.29%; }
-.north-row .pit:nth-child(5) { left: 23.17%; top: 21.29%; }
-.north-row .pit:nth-child(6) { left: 9.17%; top: 21.29%; }
-.south-row .pit:nth-child(1) { left: 79.17%; top: 55.81%; }
-.south-row .pit:nth-child(2) { left: 65.17%; top: 55.81%; }
-.south-row .pit:nth-child(3) { left: 51.17%; top: 55.81%; }
-.south-row .pit:nth-child(4) { left: 37.17%; top: 55.81%; }
-.south-row .pit:nth-child(5) { left: 23.17%; top: 55.81%; }
-.south-row .pit:nth-child(6) { left: 9.17%; top: 55.81%; }
+.north-row .pit:nth-child(1) { left: 75.58%; top: 10.03%; }
+.north-row .pit:nth-child(2) { left: 61.83%; top: 10.03%; }
+.north-row .pit:nth-child(3) { left: 45.92%; top: 10.03%; }
+.north-row .pit:nth-child(4) { left: 33.58%; top: 10.03%; }
+.north-row .pit:nth-child(5) { left: 19.00%; top: 10.03%; }
+.north-row .pit:nth-child(6) { left: 5.67%; top: 10.03%; }
+.south-row .pit:nth-child(1) { left: 75.58%; top: 56.65%; }
+.south-row .pit:nth-child(2) { left: 61.83%; top: 56.65%; }
+.south-row .pit:nth-child(3) { left: 45.92%; top: 56.65%; }
+.south-row .pit:nth-child(4) { left: 33.58%; top: 56.65%; }
+.south-row .pit:nth-child(5) { left: 19.00%; top: 56.65%; }
+.south-row .pit:nth-child(6) { left: 5.67%; top: 56.65%; }
 
 .pit.classic-pit::before,
 .pit.classic-pit::after {
@@ -1210,7 +1210,7 @@ body.game-active .island-background::after {
 .seed-pile {
   position: absolute;
   z-index: 2;
-  inset: 8%;
+  inset: 16%;
   pointer-events: none;
 }
 

@@ -156,8 +156,15 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Mantido apenas o novo acabamento de madeira do tabuleiro.
 
 
-## Alterações v0.0.22
+## Alterações v0.0.24
 
 - Tabuleiro final em madeira clara e polida.
 - Cavidades integradas na madeira.
 - Sementes em elementos DOM, sem tigelas nem halos negros.
+
+
+## Alterações v0.0.25
+
+- Novo banco monobloco em madeira quase realista.
+- 12 cavidades integradas na mesma peça, sem dobradiças nem corte central.
+- Geometria dos botões ajustada às novas cavidades.
