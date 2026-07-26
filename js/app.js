@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.29';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.29';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.29';
-import { MultiplayerService } from './multiplayer.js?v=0.0.29';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.29';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.29';
+} from './engine.js?v=0.0.30';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.30';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.30';
+import { MultiplayerService } from './multiplayer.js?v=0.0.30';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.30';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.30';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -210,7 +210,8 @@ function translatedPitLabel(index) {
 function translatedGameReason(reason, game = app.session.game) {
   const keys = {
     'A mesma posição repetiu-se três vezes. Cada jogador fica com as sementes do seu campo.': 'reasonTriple',
-    'Colheita das seis casas; o adversário ficou sem jogada.': 'reasonSix',
+    'Colheita das seis casas; o jogador que deu fogo não consegue alimentar o adversário na jogada seguinte.': 'reasonSix',
+    'Frouxo: deu fogo podendo alimentar o adversário na jogada seguinte.': 'reasonFrouxo',
     'O adversário ficou sem sementes para jogar.': 'reasonEmpty',
     'Não existe jogada que consiga alimentar o adversário.': 'reasonNoFeed',
     'Desistência.': 'reasonResignation',
@@ -1612,7 +1613,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.29', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.30', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

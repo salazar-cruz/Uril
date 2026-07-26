@@ -230,6 +230,24 @@ function finishGame(game, reason) {
   }
 }
 
+function finishForcedWinner(game, winner, reason) {
+  game.status = 'finished';
+  game.reason = reason;
+  game.winner = winner;
+  game.capote = null;
+  game.resultValue = 1;
+}
+
+function canFeedOpponentOnNextTurn(game, player) {
+  const probe = {
+    board: [...game.board],
+    scores: { ...game.scores },
+    currentPlayer: player,
+    status: 'playing',
+  };
+  return legalMoves(probe).length > 0;
+}
+
 export function gameResultValue(game) {
   return Number(game?.resultValue) === 2 ? 2 : 1;
 }
@@ -309,10 +327,23 @@ export function applyMove(game, pitIndex) {
 
   const opponentMoves = legalMoves(next);
 
+  if (grandSlam) {
+    const frouxo = canFeedOpponentOnNextTurn(next, player);
+    next.lastMove.frouxo = frouxo;
+    if (frouxo) {
+      finishForcedWinner(
+        next,
+        opponent,
+        'Frouxo: deu fogo podendo alimentar o adversário na jogada seguinte.',
+      );
+      return next;
+    }
+  }
+
   if (opponentMoves.length === 0) {
     const opponentRowEmpty = rowSeedCount(next, opponent) === 0;
     const reason = grandSlam
-      ? 'Colheita das seis casas; o adversário ficou sem jogada.'
+      ? 'Colheita das seis casas; o jogador que deu fogo não consegue alimentar o adversário na jogada seguinte.'
       : opponentRowEmpty
         ? 'O adversário ficou sem sementes para jogar.'
         : 'Não existe jogada que consiga alimentar o adversário.';

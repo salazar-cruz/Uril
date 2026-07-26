@@ -15,7 +15,7 @@ import {
   resignationValue,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=0.0.29';
+} from '../js/engine.js?v=0.0.30';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();
@@ -46,7 +46,7 @@ test('a colheita múltipla recolhe casas adversárias consecutivas com 2 ou 3', 
   assert.equal(next.board[6] + next.board[7] + next.board[8], 0);
 });
 
-test('a colheita das seis casas termina se o adversário ficar sem jogada', () => {
+test('dar fogo é Frouxo quando o jogador ainda consegue alimentar o adversário na jogada seguinte', () => {
   const game = createGame();
   game.board = Array(12).fill(0);
   game.board[0] = 6;
@@ -54,9 +54,24 @@ test('a colheita das seis casas termina se o adversário ficar sem jogada', () =
   for (let i = 6; i < 12; i += 1) game.board[i] = 1;
   const next = applyMove(game, 5);
   assert.equal(next.lastMove.grandSlam, true);
+  assert.equal(next.lastMove.frouxo, true);
+  assert.equal(next.status, 'finished');
+  assert.equal(next.winner, NORTH);
+  assert.match(next.reason, /Frouxo/);
+  assert.equal(next.currentPlayer, NORTH);
+});
+
+test('dar fogo é válido quando o jogador já não consegue alimentar o adversário na jogada seguinte', () => {
+  const game = createGame();
+  game.board = Array(12).fill(0);
+  game.board[5] = 6;
+  for (let i = 6; i < 12; i += 1) game.board[i] = 1;
+  const next = applyMove(game, 5);
+  assert.equal(next.lastMove.grandSlam, true);
+  assert.equal(next.lastMove.frouxo, false);
   assert.equal(next.status, 'finished');
   assert.equal(next.winner, SOUTH);
-  assert.equal(next.currentPlayer, NORTH);
+  assert.match(next.reason, /não consegue alimentar/);
 });
 
 test('uma casa própria com uma semente é jogável normalmente', () => {
@@ -114,7 +129,8 @@ test('o motor assinala Capote quando o derrotado fica abaixo de 12', () => {
   const game = createGame();
   game.scores = { [SOUTH]: 20, [NORTH]: 10 };
   game.board = Array(12).fill(0);
-  game.board[0] = 6;
+  game.board[0] = 5;
+  game.board[1] = 1;
   game.board[5] = 6;
   for (let i = 6; i < 12; i += 1) game.board[i] = 1;
 

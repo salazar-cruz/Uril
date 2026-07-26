@@ -52,14 +52,14 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.29/);
+  assert.match(html, /Versão 0\.0\.30/);
 });
 
 test('o visual final usa um tabuleiro monobloco construído em CSS', () => {
   assert.doesNotMatch(css, /approved-v25\/board-monoblock-realistic\.png/);
-  assert.match(css, /V0\.0\.29 — tabuleiro monobloco construído integralmente em CSS/);
-  assert.match(css, /aspect-ratio:\s*1200 \/ 540/);
-  assert.match(css, /inset 16px 17px 23px/);
+  assert.match(css, /V0\.0\.30 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos/);
+  assert.match(css, /aspect-ratio:\s*1200 \/ 500/);
+  assert.match(css, /inset 16px 16px 22px/);
 });
 
 test('a página inclui um mural público de sugestões e respostas', () => {
@@ -109,11 +109,19 @@ test('as cavidades pertencem ao tabuleiro e os botões não desenham discos escu
 
 
 test('o tabuleiro fica mais estreito no ecrã', () => {
-  assert.match(css, /V0\.0\.29 — tabuleiro mais baixo, filas mais próximas e madeira mais polida/);
+  assert.match(css, /V0\.0\.30 — regra do Frouxo reflectida no visual final; tabuleiro menos alto e números discretos/);
   assert.match(css, /width:\s*min\(92%,\s*980px\)/);
 });
 
 test('buracos com mais de 9 sementes mostram o número no centro', () => {
   assert.match(app, /overflow-count', seedTotal > 9/);
   assert.match(css, /overflow-count \.seed-count[\s\S]*top:\s*50%[\s\S]*left:\s*50%[\s\S]*translate\(-50%, -50%\)/);
+});
+
+
+test('a ajuda menciona a regra do Frouxo nos três idiomas', () => {
+  assert.match(i18n, /Frouxo/);
+  assert.match(i18n, /quem deu fogo/);
+  assert.match(i18n, /a donné le feu/);
+  assert.match(i18n, /cleared all six pits/);
 });

@@ -174,3 +174,11 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 
 - Tabuleiro monobloco criado apenas com CSS; sem imagem de tabuleiro.
 - Doze cavidades integradas visualmente na mesma prancha de madeira.
+
+
+## Alterações v0.0.30
+
+- Corrigida a regra do fogo: só vale quando, na jogada seguinte, quem deu fogo já não consegue alimentar o adversário. Se ainda conseguir, é Frouxo e perde.
+- Reduzida a altura visual do tabuleiro e a quantidade de madeira em cima e em baixo.
+- As duas filas ficaram visualmente mais compactas.
+- Os números nas casas com mais de 9 sementes passaram para um estilo semi-transparente e discreto.
