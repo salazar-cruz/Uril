@@ -1,4 +1,4 @@
-# Uril Cabo Verde v0.0.27
+# Uril Cabo Verde v0.0.28
 
 - O banco de Uril passa a ser construído integralmente em CSS.
 - Uma única prancha de madeira contínua, sem imagem montada aos pedaços.

@@ -52,12 +52,12 @@ test('a interface inclui desistência, alerta da IA e rodapé do autor', () => {
   assert.match(html, /id="resignDialog"/);
   assert.match(html, /id="aiResignDialog"/);
   assert.match(html, /© 2026 Salazar da Cruz/);
-  assert.match(html, /Versão 0\.0\.27/);
+  assert.match(html, /Versão 0\.0\.28/);
 });
 
 test('o visual final usa um tabuleiro monobloco construído em CSS', () => {
   assert.doesNotMatch(css, /approved-v25\/board-monoblock-realistic\.png/);
-  assert.match(css, /V0\.0\.27 — tabuleiro monobloco construído integralmente em CSS/);
+  assert.match(css, /V0\.0\.28 — tabuleiro monobloco construído integralmente em CSS/);
   assert.match(css, /aspect-ratio:\s*1200 \/ 620/);
   assert.match(css, /inset 16px 17px 23px/);
 });
@@ -105,4 +105,15 @@ test('as cavidades pertencem ao tabuleiro e os botões não desenham discos escu
   assert.match(css, /pit\.classic-pit::before,[\s\S]*content:\s*none\s*!important/);
   assert.match(css, /north-row \.pit:nth-child\(1\)/);
   assert.match(css, /south-row \.pit:nth-child\(6\)/);
+});
+
+
+test('o tabuleiro fica mais estreito no ecrã', () => {
+  assert.match(css, /V0\.0\.28 — tabuleiro mais estreito/);
+  assert.match(css, /width:\s*min\(92%,\s*980px\)/);
+});
+
+test('buracos com mais de 9 sementes mostram o número no centro', () => {
+  assert.match(app, /overflow-count', seedTotal > 9/);
+  assert.match(css, /overflow-count \.seed-count[\s\S]*top:\s*50%[\s\S]*left:\s*50%[\s\S]*translate\(-50%, -50%\)/);
 });

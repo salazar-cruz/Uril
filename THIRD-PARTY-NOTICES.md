@@ -15,11 +15,3 @@ Licença: [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 Internation
 Atribuição: **Oliver Merkel**.
 
 A reutilização mantém o carácter não comercial e a obrigação de partilha pela mesma licença aplicável aos elementos derivados. O código específico do jogo não foi copiado do projecto original.
-
-
-## Sprites v0.0.21
-
-Os ficheiros `assets/integrated-v21/seeds-01.png` a `seeds-15.png`
-foram compostos a partir das sementes do visual clássico de Oliver Merkel,
-sem reutilizar as tigelas escuras do original. Mantêm-se sujeitos à licença
-CC BY-NC-SA 4.0 aplicável aos elementos gráficos derivados.

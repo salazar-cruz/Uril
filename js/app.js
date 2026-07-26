@@ -13,12 +13,12 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.27';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.27';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.27';
-import { MultiplayerService } from './multiplayer.js?v=0.0.27';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.27';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.27';
+} from './engine.js?v=0.0.28';
+import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.28';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.28';
+import { MultiplayerService } from './multiplayer.js?v=0.0.28';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.28';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.28';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1261,7 +1261,7 @@ function updatePitElement(index, game, moves, lastPit) {
   button.disabled = !moves.includes(index);
   button.classList.toggle('legal', moves.includes(index));
   button.classList.toggle('last', lastPit === index);
-  button.classList.toggle('overflow-count', seedTotal > 15);
+  button.classList.toggle('overflow-count', seedTotal > 9);
 
   const count = button.querySelector('.seed-count');
   if (count) count.textContent = String(seedTotal);
@@ -1612,7 +1612,7 @@ function chooseMoveAsync(game, level) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.27', import.meta.url),
+      new URL('./ai-worker.js?v=0.0.28', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

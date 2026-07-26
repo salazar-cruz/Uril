@@ -6,7 +6,7 @@ import {
   otherPlayer,
   playerPits,
   rowSeedCount,
-} from './engine.js?v=0.0.27';
+} from './engine.js?v=0.0.28';
 
 const LEVELS = {
   apprentice: {
