@@ -1,17 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 
 const css = await readFile(new URL('../styles.css', import.meta.url), 'utf8');
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.3', () => {
-  assert.match(html, /Versão 1\.0\.3/);
-  assert.match(html, /AJUDA V1\.0\.3/);
-  assert.match(html, /styles\.css\?v=1\.0\.3/);
-  assert.match(html, /app\.js\?v=1\.0\.3/);
+test('a interface está identificada como versão 1.0.4', () => {
+  assert.match(html, /Versão 1\.0\.4/);
+  assert.match(html, /AJUDA V1\.0\.4/);
+  assert.match(html, /styles\.css\?v=1\.0\.4/);
+  assert.match(html, /app\.js\?v=1\.0\.4/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -115,12 +115,20 @@ test('a interface oferece Português, Francês e Inglês', () => {
   assert.match(i18n, /How I built/);
 });
 
-test('as cavidades mantêm a madeira integrada e as sementes continuam elementos DOM', () => {
-  assert.match(app, /className = 'uril-seed'/);
+test('as cavidades mantêm a madeira integrada e recebem apenas os grãos fotográficos transparentes', () => {
+  assert.match(app, /assets\/realistic-seeds\/sementes-\$\{spriteName\}\.png/);
+  assert.match(app, /classList\.add\('realistic-seed-photo'\)/);
   assert.doesNotMatch(app, /--classic-seed-image/);
   assert.doesNotMatch(css, /background-image:\s*var\(--classic-seed-image\)/);
   assert.match(css, /\.board \.pit\.classic-pit[\s\S]*radial-gradient/);
-  assert.match(css, /\.seed-pile[\s\S]*position:\s*absolute/);
+  assert.match(css, /\.seed-pile\.realistic-seed-photo[\s\S]*var\(--real-seed-image\)/);
+});
+
+test('o pacote inclui as 16 imagens transparentes de sementes, de zero a quinze', async () => {
+  for (let count = 0; count <= 15; count += 1) {
+    const file = `../assets/realistic-seeds/sementes-${String(count).padStart(2, '0')}.png`;
+    await access(new URL(file, import.meta.url));
+  }
 });
 
 test('o número reaparece quando a casa tem mais de 9 sementes', () => {

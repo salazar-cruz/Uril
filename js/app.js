@@ -13,14 +13,14 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.3';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.3';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.3';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.3';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.3';
-import { MultiplayerService } from './multiplayer.js?v=1.0.3';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.3';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.3';
+} from './engine.js?v=1.0.4';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.4';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.4';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.4';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.4';
+import { MultiplayerService } from './multiplayer.js?v=1.0.4';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.4';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.4';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1528,7 +1528,13 @@ function seedLayout(seedTotal) {
 }
 
 async function preloadClassicSprites() {
-  // A versão aprovada desenha sementes limpas no DOM; não há sprites de tigelas.
+  const loads = Array.from({ length: 16 }, (_, count) => new Promise((resolve) => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = resolve;
+    image.src = `assets/realistic-seeds/sementes-${String(count).padStart(2, '0')}.png`;
+  }));
+  await Promise.all(loads);
 }
 
 function createPitElement(index) {
@@ -1571,18 +1577,13 @@ function updateSeedPile(button, seedTotal) {
   const pile = button.querySelector('.seed-pile');
   if (!pile) return;
 
-  const seeds = seedLayout(visibleTotal).map(([x, y, rotation, scale], index) => {
-    const seed = document.createElement('i');
-    seed.className = 'uril-seed';
-    seed.style.setProperty('--seed-x', `${x}%`);
-    seed.style.setProperty('--seed-y', `${y}%`);
-    seed.style.setProperty('--seed-r', `${rotation}deg`);
-    seed.style.setProperty('--seed-s', String(scale));
-    seed.dataset.variant = String((index % 3) + 1);
-    return seed;
-  });
-
-  pile.replaceChildren(...seeds);
+  const spriteName = String(visibleTotal).padStart(2, '0');
+  pile.classList.add('realistic-seed-photo');
+  pile.style.setProperty(
+    '--real-seed-image',
+    `url("assets/realistic-seeds/sementes-${spriteName}.png")`,
+  );
+  pile.replaceChildren();
   button.dataset.seedLayout = String(visibleTotal);
 }
 
@@ -2259,7 +2260,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.3', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.4', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

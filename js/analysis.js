@@ -1,5 +1,5 @@
-import { analysePosition, evaluatePosition } from './ai.js?v=1.0.3';
-import { applyMove, legalMoves } from './engine.js?v=1.0.3';
+import { analysePosition, evaluatePosition } from './ai.js?v=1.0.4';
+import { applyMove, legalMoves } from './engine.js?v=1.0.4';
 
 export function classifyLoss(loss) {
   const value = Math.abs(Number(loss) || 0);

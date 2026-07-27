@@ -2000,3 +2000,81 @@ body.game-active .island-background::after {
 }
 
 /* URIL 1.0.3 — restaura cavidades de madeira integradas, sementes DOM e contagem acima de 9. */
+
+/* URIL 1.0.4 — grãos fotográficos recortados sobre as cavidades originais. */
+.board .pit.classic-pit {
+  background:
+    radial-gradient(circle at 60% 62%, rgba(160,88,39,.84) 0 14%, rgba(118,55,20,.92) 43%, rgba(69,24,6,.98) 75%, rgba(34,10,1,1) 100%) !important;
+  background-image: radial-gradient(circle at 60% 62%, rgba(160,88,39,.84) 0 14%, rgba(118,55,20,.92) 43%, rgba(69,24,6,.98) 75%, rgba(34,10,1,1) 100%) !important;
+}
+
+.pit.classic-pit .seed-pile.realistic-seed-photo {
+  inset: -2% !important;
+  display: block !important;
+  background-image: var(--real-seed-image) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 103% 103% !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.score-pit .seed-pile.realistic-seed-photo {
+  inset: 12% 4% !important;
+  display: block !important;
+  background-image: var(--real-seed-image) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  opacity: .95 !important;
+  filter: none !important;
+}
+
+.pit.classic-pit .seed-pile.realistic-seed-photo .uril-seed,
+.score-pit .seed-pile.realistic-seed-photo .uril-seed {
+  display: none !important;
+}
+
+.pit.classic-pit .seed-count {
+  display: none !important;
+}
+
+.pit.classic-pit.overflow-count .seed-count {
+  display: grid !important;
+  position: absolute !important;
+  inset: auto !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: clamp(30px, 4vw, 44px) !important;
+  min-width: clamp(30px, 4vw, 44px) !important;
+  height: clamp(30px, 4vw, 44px) !important;
+  padding: 0 4px !important;
+  place-items: center !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 20 !important;
+  border-radius: 50% !important;
+  background: rgba(19,24,21,.46) !important;
+  border: 1px solid rgba(255,239,204,.38) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.09) !important;
+  color: rgba(255,244,219,.94) !important;
+  font-size: clamp(18px,2.3vw,28px) !important;
+  line-height: 1 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35) !important;
+  backdrop-filter: blur(1px) !important;
+  pointer-events: none !important;
+}
+
+.pit.classic-pit.overflow-count .seed-pile.realistic-seed-photo {
+  opacity: .78 !important;
+  filter: brightness(.86) !important;
+}
+
+@media (max-width: 560px) {
+  .pit.classic-pit.overflow-count .seed-count {
+    width: 25px !important;
+    min-width: 25px !important;
+    height: 25px !important;
+    padding: 0 3px !important;
+    font-size: 13px !important;
+  }
+}
