@@ -1,0 +1,11 @@
+URIL DE CABO VERDE — ACTUALIZAÇÃO v1.0.11
+
+1. Faça uma cópia de segurança do repositório actual.
+2. Copie o conteúdo desta pasta para a raiz do repositório.
+3. Confirme a substituição dos ficheiros existentes.
+4. Publique normalmente no GitHub.
+
+Alterações principais:
+- jogos contra o computador observáveis em directo pela lista online;
+- Drills recolhidos por nível, com abertura e fecho para baixo;
+- versão actualizada para 1.0.11.

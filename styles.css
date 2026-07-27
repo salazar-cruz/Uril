@@ -2023,13 +2023,29 @@ body.game-active .island-background::after {
   font-size: 10px;
   line-height: 1.45;
 }
-.drill-list { display: grid; gap: 15px; }
-.drill-level-group { display: grid; gap: 7px; }
+.drill-list { display: grid; gap: 8px; }
+.drill-level-group {
+  overflow: hidden;
+  border: 1px solid rgba(245, 204, 117, .16);
+  border-radius: 12px;
+  background: rgba(1, 12, 9, .22);
+}
 .drill-level-heading {
   display: grid;
-  gap: 2px;
-  padding: 0 2px 3px;
-  border-bottom: 1px solid rgba(245, 204, 117, .14);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 44px;
+  padding: 9px 11px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.drill-level-heading::-webkit-details-marker { display: none; }
+.drill-level-heading:hover,
+.drill-level-heading:focus-visible {
+  background: rgba(245, 204, 117, .08);
+  outline: none;
 }
 .drill-level-heading > strong {
   color: var(--gold-strong);
@@ -2039,9 +2055,35 @@ body.game-active .island-background::after {
   text-transform: uppercase;
 }
 .drill-level-heading > small {
+  display: grid;
+  place-items: center;
+  min-width: 23px;
+  height: 23px;
+  border-radius: 999px;
   color: var(--muted);
-  font-size: 8px;
-  line-height: 1.4;
+  background: rgba(255,255,255,.06);
+  font-size: 9px;
+  font-weight: 900;
+}
+.drill-level-arrow {
+  color: var(--gold-strong);
+  font-size: 18px;
+  line-height: 1;
+  transform: rotate(-90deg);
+  transition: transform .18s ease;
+}
+.drill-level-group[open] .drill-level-arrow { transform: rotate(0deg); }
+.drill-level-content {
+  display: grid;
+  gap: 8px;
+  padding: 0 9px 9px;
+  border-top: 1px solid rgba(245, 204, 117, .12);
+}
+.drill-level-intro {
+  margin: 8px 2px 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
 }
 .drill-level-items { display: grid; gap: 7px; }
 .drill-menu-item {
@@ -2156,7 +2198,7 @@ body.game-active .island-background::after {
   .drill-solution-button { grid-column: auto; }
 }
 
-/* v1.0.10 — explicação e controlos dos Drills imediatamente sob o tabuleiro. */
+/* v1.0.11 — explicação e controlos dos Drills imediatamente sob o tabuleiro. */
 .drill-board-panel {
   margin-top: 16px;
   padding: 18px 20px;
@@ -2251,3 +2293,6 @@ body.game-active .island-background::after {
     grid-column: auto;
   }
 }
+
+/* v1.0.11 — observação pública dos treinos contra o PC e níveis de Drills recolhíveis. */
+.online-player.status-pc .roster-action:not(:disabled) { border-color: rgba(245, 204, 117, .42); color: var(--gold-strong); }

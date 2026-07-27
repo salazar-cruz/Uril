@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { MultiplayerService } from '../js/multiplayer.js?v=1.0.10';
+import { MultiplayerService } from '../js/multiplayer.js?v=1.0.11';
 
 function service() {
   const instance = new MultiplayerService({ url: 'x', anonKey: 'y' });
@@ -47,4 +47,30 @@ test('o treino não publica identificador de banco', async () => {
   const source = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
   assert.match(source, /if \(app\.mode === 'pc' \|\| app\.mode === 'calibration'\) \{\s*status = 'pc';/s);
   assert.doesNotMatch(source, /status = 'pc';\s*bankId =/s);
+});
+
+
+test('a presença conserva o estado compacto de um jogo contra o computador', () => {
+  const multiplayer = service();
+  const pcState = {
+    id: 'pc-1',
+    version: 3,
+    session: { game: { board: Array(12).fill(4), scores: { south: 0, north: 0 }, currentPlayer: 'south', status: 'playing' } },
+  };
+  const presence = multiplayer.normalisePresence({
+    status: 'pc',
+    pc_game_id: 'pc-1',
+    pc_level: 'master',
+    pc_state_version: 3,
+    pc_state: pcState,
+  });
+  assert.equal(presence.pc_game_id, 'pc-1');
+  assert.equal(presence.pc_level, 'master');
+  assert.equal(presence.pc_state_version, 3);
+  assert.deepEqual(presence.pc_state, pcState);
+});
+
+test('o estado Drill é publicado como Drill e não como livre', () => {
+  const multiplayer = service();
+  assert.equal(multiplayer.normalisePresence({ status: 'drill' }).status, 'drill');
 });

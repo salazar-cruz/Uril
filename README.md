@@ -1,4 +1,4 @@
-# Uril de Cabo Verde — 1.0.10
+# Uril de Cabo Verde — 1.0.11
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
@@ -113,6 +113,6 @@ Os Drills Corri Oro incluem agora uma explicação acessível do desafio de cada
 
 O painel explicativo e todos os controlos dos Drills Corri Oro passam a surgir imediatamente abaixo do tabuleiro, em vez de ocuparem a coluna lateral direita. A alteração é exclusivamente de disposição visual.
 
-## Versão 1.0.10
+## Versão 1.0.11
 
 Os Drills passam a estar divididos em Iniciante, Médio e Avançado. Foram acrescentados os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4, todos com explicação própria, pista e solução automática dos dois lados até 25–23.

@@ -13,15 +13,15 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.10';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.10';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.10';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.10';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.10';
-import { MultiplayerService } from './multiplayer.js?v=1.0.10';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.10';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.10';
-import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.10';
+} from './engine.js?v=1.0.11';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.11';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.11';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.11';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.11';
+import { MultiplayerService } from './multiplayer.js?v=1.0.11';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.11';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.11';
+import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.11';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -165,6 +165,12 @@ const app = {
   drillSolutionPlaying: false,
   drillSolutionStep: 0,
   drillSolutionToken: 0,
+  openDrillLevels: new Set(),
+  pcGameId: null,
+  pcStateVersion: 0,
+  observedPcConnectionId: null,
+  pcWatchVersion: 0,
+  pcWatchEnding: false,
 };
 
 const ROUND_TRANSITION_TIMING = {
@@ -202,6 +208,7 @@ const multiplayer = new MultiplayerService({
       count === 1 ? t('playersConnectedOne') : t('playersConnectedMany', { count }),
     );
     renderOnlinePlayers();
+    syncObservedPcGame(players);
   },
   onInvitation: (invitation) => receiveInvitation(invitation),
   onSuggestionsChange: () => scheduleSuggestionRefresh(),
@@ -255,16 +262,27 @@ function renderDrillMenu() {
     const drills = ENDGAME_DRILLS.filter((drill) => drill.level === level.id);
     if (!drills.length) return;
 
-    const group = document.createElement('section');
+    const group = document.createElement('details');
     group.className = `drill-level-group drill-level-${level.id}`;
+    group.open = app.openDrillLevels.has(level.id);
 
-    const heading = document.createElement('div');
+    const heading = document.createElement('summary');
     heading.className = 'drill-level-heading';
     const label = document.createElement('strong');
     label.textContent = t(level.labelKey);
-    const intro = document.createElement('small');
+    const count = document.createElement('small');
+    count.textContent = String(drills.length);
+    const arrow = document.createElement('span');
+    arrow.className = 'drill-level-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.textContent = '⌄';
+    heading.append(label, count, arrow);
+
+    const content = document.createElement('div');
+    content.className = 'drill-level-content';
+    const intro = document.createElement('p');
+    intro.className = 'drill-level-intro';
     intro.textContent = t(level.introKey);
-    heading.append(label, intro);
 
     const items = document.createElement('div');
     items.className = 'drill-level-items';
@@ -290,7 +308,12 @@ function renderDrillMenu() {
       items.append(button);
     });
 
-    group.append(heading, items);
+    content.append(intro, items);
+    group.append(heading, content);
+    group.addEventListener('toggle', () => {
+      if (group.open) app.openDrillLevels.add(level.id);
+      else app.openDrillLevels.delete(level.id);
+    });
     elements.drillList.append(group);
   });
 }
@@ -340,6 +363,7 @@ async function startEndgameDrill(id) {
   if (app.mode) await leaveGame();
   app.mode = 'drill';
   app.drillId = drill.id;
+  app.openDrillLevels.add(drill.level);
   app.drillLineIndex = 0;
   app.drillOnSolution = true;
   app.drillHintShown = false;
@@ -691,6 +715,136 @@ function playerLocation(player = {}) {
   return [player.country, islandName(player.island)].filter(Boolean).join(' · ') || '—';
 }
 
+function makePcGameId() {
+  return globalThis.crypto?.randomUUID?.() || `pc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function compactPcSession(session = app.session) {
+  return {
+    game: cloneValue(session.game),
+    match: cloneValue(session.match),
+    firstPlayer: session.firstPlayer || SOUTH,
+    previousWinner: session.previousWinner ?? null,
+    roundRegistered: Boolean(session.roundRegistered),
+    aiResignationDeclined: Boolean(session.aiResignationDeclined),
+    createdAt: session.createdAt || new Date().toISOString(),
+    lastMoveAt: session.lastMoveAt || null,
+    mode: 'pc',
+    aiLevel: app.aiLevel,
+  };
+}
+
+function pcPresenceSnapshot() {
+  if (!['pc', 'calibration'].includes(app.mode) || !app.pcGameId) return null;
+  return {
+    id: app.pcGameId,
+    version: app.pcStateVersion,
+    mode: app.mode,
+    aiLevel: app.aiLevel,
+    session: compactPcSession(),
+    players: cloneValue(app.players),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function validPcPresenceSnapshot(player) {
+  const snapshot = player?.pc_state;
+  const game = snapshot?.session?.game;
+  if (!snapshot || snapshot.id !== player.pc_game_id) return null;
+  if (!Array.isArray(game?.board) || game.board.length !== 12) return null;
+  if (!game.scores || !game.currentPlayer || !game.status) return null;
+  return snapshot;
+}
+
+function publishPcGameState() {
+  if (!['pc', 'calibration'].includes(app.mode) || !app.pcGameId) return;
+  app.pcStateVersion += 1;
+  syncPresence();
+}
+
+async function watchPlayerPcGame(player) {
+  const snapshot = validPcPresenceSnapshot(player);
+  if (!snapshot) {
+    toast(t('pcWatchUnavailable'));
+    return;
+  }
+
+  if (app.mode) await leaveGame();
+  app.remoteUpdateQueue = Promise.resolve();
+  app.mode = 'pc-watch';
+  app.reviewMode = false;
+  app.reviewIndex = 0;
+  app.reviewMoves = [];
+  app.reviewAnalysis = null;
+  app.roomViewers = [];
+  app.lastAiStats = null;
+  app.calibrationMode = false;
+  app.room = null;
+  app.side = null;
+  app.spectator = true;
+  app.observedPcConnectionId = player.connection_id;
+  app.pcWatchVersion = Number(snapshot.version || 0);
+  app.pcWatchEnding = false;
+  app.aiLevel = snapshot.aiLevel || player.pc_level || 'amateur';
+  app.players = snapshot.players || {
+    [SOUTH]: { nick: player.nick || t('anonymousVisitor'), island: player.island, country: player.country },
+    [NORTH]: { nick: `PC · ${translatedLevelLabel(app.aiLevel)}`, island: 'santa-luzia', country: 'Cabo Verde' },
+  };
+  app.session = normaliseSession(snapshot.session);
+  invalidateBoardView();
+  showScreen('game');
+  renderGame();
+  syncPresence();
+  toast(t('pcWatchStarted', { nick: player.nick || t('anonymousVisitor') }));
+}
+
+function syncObservedPcGame(players = []) {
+  if (app.mode !== 'pc-watch' || !app.observedPcConnectionId) return;
+  const source = players.find((player) => player.connection_id === app.observedPcConnectionId);
+  const snapshot = source?.status === 'pc' ? validPcPresenceSnapshot(source) : null;
+
+  if (!snapshot) {
+    if (app.pcWatchEnding) return;
+    app.pcWatchEnding = true;
+    queueMicrotask(async () => {
+      if (app.mode !== 'pc-watch') return;
+      await leaveGame();
+      toast(t('pcWatchEnded'));
+    });
+    return;
+  }
+
+  const version = Number(snapshot.version || 0);
+  if (version <= app.pcWatchVersion) return;
+  app.remoteUpdateQueue = app.remoteUpdateQueue
+    .then(() => applyObservedPcSnapshot(source, snapshot))
+    .catch((error) => toast(t('pcWatchSyncError', { error: error.message })));
+}
+
+async function applyObservedPcSnapshot(source, snapshot) {
+  if (app.mode !== 'pc-watch' || source.connection_id !== app.observedPcConnectionId) return;
+  const version = Number(snapshot.version || 0);
+  if (version <= app.pcWatchVersion) return;
+
+  const previous = normaliseSession(app.session);
+  const incoming = normaliseSession(snapshot.session);
+  app.pcWatchVersion = version;
+  app.aiLevel = snapshot.aiLevel || source.pc_level || app.aiLevel;
+  app.players = snapshot.players || app.players;
+
+  if (!app.busy && canAnimateTransition(previous.game, incoming.game)) {
+    app.busy = true;
+    try {
+      await animateMove(previous.game, incoming.game);
+    } finally {
+      app.busy = false;
+    }
+  }
+
+  app.session = incoming;
+  renderGame();
+}
+
 function presencePayload() {
   let status = 'free';
   let bankId = null;
@@ -700,6 +854,9 @@ function presencePayload() {
     status = 'drill';
   } else if (app.mode === 'pc' || app.mode === 'calibration') {
     status = 'pc';
+  } else if (app.mode === 'pc-watch') {
+    status = 'watching';
+    bankName = t('pcWatchPresence', { nick: app.players[SOUTH]?.nick || t('anonymousVisitor') });
   } else if (app.mode === 'local') {
     status = 'local';
   } else if (app.mode === 'review' && app.room) {
@@ -724,6 +881,12 @@ function presencePayload() {
     registered: app.registered,
     elo: app.profile.elo || null,
     country: app.profile.country || null,
+    pc_game_id: ['pc', 'calibration'].includes(app.mode) ? app.pcGameId : null,
+    pc_level: ['pc', 'calibration'].includes(app.mode) ? app.aiLevel : null,
+    pc_state_version: ['pc', 'calibration'].includes(app.mode) ? app.pcStateVersion : 0,
+    pc_state: pcPresenceSnapshot(),
+    pc_watch_id: app.mode === 'pc-watch' ? app.observedPcConnectionId : null,
+    pc_watch_name: app.mode === 'pc-watch' ? app.players[SOUTH]?.nick || null : null,
   };
 }
 
@@ -735,11 +898,15 @@ function onlineStatus(player) {
   const bank = player.bank_name ? ` · ${player.bank_name}` : '';
   switch (player.status) {
     case 'drill': return t('statusDrill');
-    case 'pc': return t('statusPc', { bank });
+    case 'pc': return player.pc_level
+      ? t('statusPcLevel', { level: translatedLevelLabel(player.pc_level) })
+      : t('statusPc', { bank });
     case 'local': return t('statusLocal');
     case 'waiting': return t('statusWaiting', { bank });
     case 'playing': return t('statusPlaying', { bank });
-    case 'watching': return t('statusWatching', { bank });
+    case 'watching': return player.pc_watch_name
+      ? t('statusWatchingPc', { nick: player.pc_watch_name })
+      : t('statusWatching', { bank });
     default: return t('statusFree');
   }
 }
@@ -788,6 +955,12 @@ function renderOnlinePlayers() {
     if (isSelf) {
       action.textContent = t('you');
       action.disabled = true;
+    } else if (player.status === 'pc' && player.pc_game_id && validPcPresenceSnapshot(player)) {
+      action.textContent = t('watchPlay');
+      action.addEventListener('click', () => watchPlayerPcGame(player));
+    } else if (player.status === 'playing' && player.bank_id) {
+      action.textContent = t('watchPlay');
+      action.addEventListener('click', () => watchPlayerBank(player));
     } else if ((player.status || 'free') === 'free' && player.registered && app.registered) {
       const lockedInMatch = app.mode === 'online' && !app.spectator && app.room?.status === 'playing';
       action.textContent = lockedInMatch ? t('inGame') : t('invite');
@@ -1328,6 +1501,11 @@ async function startPcGame(options = {}) {
   const calibration = Boolean(options.calibration);
   if (calibration && !requireRegistered()) return;
   app.mode = calibration ? 'calibration' : 'pc';
+  app.pcGameId = makePcGameId();
+  app.pcStateVersion = 1;
+  app.observedPcConnectionId = null;
+  app.pcWatchVersion = 0;
+  app.pcWatchEnding = false;
   app.calibrationMode = calibration;
   app.calibrationLevel = calibration ? options.level : null;
   app.calibrationRecordedRound = null;
@@ -1975,6 +2153,7 @@ async function performResignation(player) {
       appendSessionHistory(next, 'resignation');
     }
     app.session = next;
+    publishPcGameState();
     await maybeRecordCalibration();
     clearRoundTransition();
     renderGame();
@@ -2043,14 +2222,18 @@ function renderGame() {
 
   elements.roomTitle.textContent = app.mode === 'drill' && drill
     ? t(drill.titleKey)
-    : app.room?.name || (app.mode === 'online' ? t('bankOnline') : t('bankOfUril'));
+    : app.mode === 'pc-watch'
+      ? t('pcWatchTitle', { nick: playerName(SOUTH) })
+      : app.room?.name || (app.mode === 'online' ? t('bankOnline') : t('bankOfUril'));
   elements.gameModeLabel.textContent = app.reviewMode
     ? t('reviewMode')
     : app.mode === 'drill'
       ? t('drillMode')
-      : ['pc', 'calibration'].includes(app.mode)
-        ? `${app.mode === 'calibration' ? t('initialEloTest') : t('trainingOnly')} · ${translatedLevelLabel(app.aiLevel).toUpperCase()}`
-        : app.mode === 'online'
+      : app.mode === 'pc-watch'
+        ? t('versusPcLiveMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() })
+        : ['pc', 'calibration'].includes(app.mode)
+          ? `${app.mode === 'calibration' ? t('initialEloTest') : t('trainingOnly')} · ${translatedLevelLabel(app.aiLevel).toUpperCase()}`
+          : app.mode === 'online'
           ? (app.spectator ? t('watchingMode') : t('onlineBankMode'))
           : t('twoPlayersMode');
 
@@ -2082,6 +2265,8 @@ function renderGame() {
       : app.spectator
         ? t('watchingBank')
         : t('yourSideBelow', { player: playerName(app.side) });
+  } else if (app.mode === 'pc-watch') {
+    elements.roomStatus.textContent = t('watchingPcGame', { nick: playerName(SOUTH) });
   } else if (['pc', 'calibration'].includes(app.mode)) {
     elements.roomStatus.textContent = app.mode === 'calibration'
       ? t('initialEloTest')
@@ -2560,6 +2745,7 @@ async function playMove(index) {
 
     await animateMove(previous.game, next.game);
     app.session = next;
+    publishPcGameState();
     if (drill) {
       app.drillAttemptMoves += 1;
       if (app.drillOnSolution && index === expectedDrillMove) app.drillLineIndex += 1;
@@ -2589,7 +2775,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.10', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.11', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -2677,6 +2863,7 @@ function maybeRunAI() {
       toast(t('computerError', { error: error.message }));
     } finally {
       app.busy = false;
+      publishPcGameState();
       renderGame();
     }
   }, app.mode === 'drill' ? 360 : 520);
@@ -2714,6 +2901,7 @@ async function newRound(options = {}) {
     } else {
       app.session = next;
     }
+    publishPcGameState();
     clearRoundTransition();
   } catch (error) {
     if (hasSyncedBank()) {
@@ -2764,6 +2952,11 @@ async function leaveGame() {
   app.drillSolutionStep = 0;
   document.body.dataset.onlinePlayer = 'false';
   app.room = null;
+  app.pcGameId = null;
+  app.pcStateVersion = 0;
+  app.observedPcConnectionId = null;
+  app.pcWatchVersion = 0;
+  app.pcWatchEnding = false;
   resetChat();
   app.spectator = false;
   app.lastRoomFingerprint = null;

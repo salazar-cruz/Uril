@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.10', () => {
-  assert.match(html, /Versão 1\.0\.10/);
-  assert.match(html, /AJUDA V1\.0\.10/);
-  assert.match(html, /styles\.css\?v=1\.0\.10/);
-  assert.match(html, /app\.js\?v=1\.0\.10/);
+test('a interface está identificada como versão 1.0.11', () => {
+  assert.match(html, /Versão 1\.0\.11/);
+  assert.match(html, /AJUDA V1\.0\.11/);
+  assert.match(html, /styles\.css\?v=1\.0\.11/);
+  assert.match(html, /app\.js\?v=1\.0\.11/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -190,4 +190,21 @@ test('as explicações e os controlos dos Drills ficam imediatamente abaixo do t
   assert.match(html, /class="glass drill-card drill-board-panel"/);
   assert.doesNotMatch(html, /class="glass sidebar-card drill-card"/);
   assert.match(css, /\.drill-board-panel[\s\S]*grid-template-columns/);
+});
+
+
+test('os níveis dos Drills ficam recolhidos e abrem para baixo', () => {
+  assert.match(app, /document\.createElement\('details'\)/);
+  assert.match(app, /document\.createElement\('summary'\)/);
+  assert.match(app, /openDrillLevels\.has\(level\.id\)/);
+  assert.match(app, /openDrillLevels\.add\(drill\.level\)/);
+  assert.match(css, /\.drill-level-group\[open\] \.drill-level-arrow/);
+});
+
+test('um treino contra o computador pode ser observado pela lista online', () => {
+  assert.match(app, /player\.status === 'pc' && player\.pc_game_id/);
+  assert.match(app, /watchPlayerPcGame\(player\)/);
+  assert.match(app, /app\.mode = 'pc-watch'/);
+  assert.match(app, /pc_state: pcPresenceSnapshot\(\)/);
+  assert.match(i18n, /Estás a assistir ao treino de \{nick\}/);
 });

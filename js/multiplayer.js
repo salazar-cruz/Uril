@@ -1,6 +1,7 @@
 const PRESENCE_STATUSES = new Set([
   'free',
   'pc',
+  'drill',
   'local',
   'waiting',
   'playing',
@@ -263,6 +264,12 @@ export class MultiplayerService {
       status,
       bank_id: profile.bank_id || null,
       bank_name: profile.bank_name || null,
+      pc_game_id: profile.pc_game_id || null,
+      pc_level: profile.pc_level || null,
+      pc_state_version: Number(profile.pc_state_version || 0) || 0,
+      pc_state: profile.pc_state && typeof profile.pc_state === 'object' ? profile.pc_state : null,
+      pc_watch_id: profile.pc_watch_id || null,
+      pc_watch_name: profile.pc_watch_name || null,
       seen_at: new Date().toISOString(),
     };
   }
