@@ -1,8 +1,8 @@
-# Uril de Cabo Verde — 1.0.0
+# Uril de Cabo Verde — 1.0.6
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
-**Conceito, desenvolvimento e direcção:** Salazar da Cruz  
+**Conceito, desenvolvimento e direcção:** DevNexus Digital  
 Desenvolvimento assistido por ferramentas de inteligência artificial.
 
 ## O que inclui
@@ -26,6 +26,7 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Português, Francês e Inglês;
 - design adaptado a computador e telemóvel;
 - 12 casas jogáveis e dois depósitos laterais para as sementes ganhas.
+- oito Drills públicos de fim de jogo para treinar Corri Oro, sem exigência de conta;
 
 ## Segurança e classificação
 
@@ -90,3 +91,7 @@ Restaura o desenho consistente das cavidades em madeira e das sementes DOM. O in
 ## Versão 1.0.5
 
 Repõe integralmente o tabuleiro e os grãos da versão inicial, mantendo as correcções funcionais posteriores, incluindo a contagem dos Quatros.
+
+## Versão 1.0.6
+
+Acrescenta oito Drills públicos de fim de jogo «Corri Oro», com posições finais, linhas de referência 25–23, pista, reposição e continuação contra a IA após um desvio. Em Francês e Inglês, a designação visível dos bancos passa a `Table`.

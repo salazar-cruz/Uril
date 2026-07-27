@@ -1998,3 +1998,116 @@ body.game-active .island-background::after {
   .archive-toolbar { grid-template-columns:1fr; }
   .archive-toolbar > input:first-child { grid-column:auto; }
 }
+
+/* v1.0.6 — Drills públicos de fim de jogo / Corri Oro. */
+.online-roster {
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.online-roster-list { max-height: min(38vh, 360px); }
+.online-player.status-drill::before { background: var(--gold-strong); }
+.drill-menu {
+  margin-top: 16px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+.drill-menu-head h2 {
+  margin: 2px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19px;
+  font-weight: 600;
+}
+.drill-menu > p {
+  margin: 8px 0 11px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.drill-list { display: grid; gap: 7px; }
+.drill-menu-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(1, 12, 9, .34);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.drill-menu-item:hover,
+.drill-menu-item:focus-visible,
+.drill-menu-item.active {
+  border-color: rgba(245, 204, 117, .68);
+  background: rgba(245, 204, 117, .10);
+  outline: none;
+}
+.drill-menu-item > b {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(245, 204, 117, .14);
+  color: var(--gold-strong);
+  font-size: 11px;
+}
+.drill-menu-item strong,
+.drill-menu-item small { display: block; }
+.drill-menu-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.drill-menu-item small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: .03em;
+}
+.drill-card[hidden] { display: none !important; }
+.drill-card > strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--gold-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+}
+.drill-card > p {
+  margin: 9px 0 7px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.drill-card > small {
+  display: block;
+  min-height: 34px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.drill-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.drill-actions .text-button { grid-column: 1 / -1; }
+
+@media (max-width: 980px) {
+  .online-roster { overflow: visible; }
+  .drill-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .drill-menu-item { grid-template-columns: 24px minmax(0, 1fr); padding: 8px; }
+  .drill-menu-item > b { width: 24px; height: 24px; }
+}
+@media (max-width: 700px) {
+  .drill-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .drill-list { grid-template-columns: 1fr; }
+  .drill-actions { grid-template-columns: 1fr; }
+  .drill-actions .text-button { grid-column: auto; }
+}

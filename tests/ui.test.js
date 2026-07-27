@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.5', () => {
-  assert.match(html, /Versão 1\.0\.5/);
-  assert.match(html, /AJUDA V1\.0\.5/);
-  assert.match(html, /styles\.css\?v=1\.0\.5/);
-  assert.match(html, /app\.js\?v=1\.0\.5/);
+test('a interface está identificada como versão 1.0.6', () => {
+  assert.match(html, /Versão 1\.0\.6/);
+  assert.match(html, /AJUDA V1\.0\.6/);
+  assert.match(html, /styles\.css\?v=1\.0\.6/);
+  assert.match(html, /app\.js\?v=1\.0\.6/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -127,4 +127,24 @@ test('o tabuleiro e os grãos regressam exactamente ao desenho inicial', () => {
 test('o número continua visível quando a casa tem mais de 9 sementes', () => {
   assert.match(app, /overflow-count', seedTotal > 9/);
   assert.match(css, /\.pit\.classic-pit\.overflow-count \.seed-count[\s\S]*display:\s*grid/);
+});
+
+
+test('os Drills Corri Oro são públicos e surgem na coluna esquerda', () => {
+  for (const id of ['drillMenu','drillList','drillCard','restartDrillButton','showDrillHintButton','nextDrillButton']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /async function startEndgameDrill/);
+  assert.match(app, /app\.mode = 'drill'/);
+  assert.match(i18n, /Finais públicos para treinar a corrida ao ouro\. Não exigem conta\./);
+  assert.match(i18n, /Objectivo: correr o ouro e fechar a posição em 25–23/);
+});
+
+test('Banco é traduzido como Table em Francês e Inglês', () => {
+  assert.match(i18n, /banksOnline: 'Tables d’Uril en ligne'/);
+  assert.match(i18n, /bankStatus: 'ÉTAT DE LA TABLE'/);
+  assert.match(i18n, /banksOnline: 'Online Uril tables'/);
+  assert.match(i18n, /bankStatus: 'TABLE STATUS'/);
+  assert.doesNotMatch(i18n, /banksOnline: 'Online Uril banks'/);
+  assert.doesNotMatch(i18n, /bankStatus: 'BANK STATUS'/);
 });

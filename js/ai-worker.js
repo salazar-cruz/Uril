@@ -1,4 +1,4 @@
-import { analysePosition } from './ai.js?v=1.0.5';
+import { analysePosition } from './ai.js?v=1.0.6';
 
 self.addEventListener('message', (event) => {
   const { game, level, options } = event.data || {};
