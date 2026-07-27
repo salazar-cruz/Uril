@@ -1999,36 +1999,4 @@ body.game-active .island-background::after {
   .archive-toolbar > input:first-child { grid-column:auto; }
 }
 
-
-/* URIL 1.0.1 — sementes clássicas restauradas e leitura limpa da contagem. */
-.pit.classic-pit {
-  background-image: var(--classic-seed-image) !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-size: 100% 100% !important;
-  box-shadow: none !important;
-}
-.pit.classic-pit .seed-pile { display: none !important; }
-.pit.classic-pit.overflow-count .seed-count {
-  background: rgba(8, 12, 10, .82);
-  border: 1px solid rgba(255,255,255,.70);
-  color: #fff;
-  text-shadow: 0 2px 3px #000;
-}
-
-
-/* URIL 1.0.2 — correcção da sobreposição que ocultava as sementes clássicas. */
-.board .pit.classic-pit {
-  background-color: transparent !important;
-  background-image: var(--classic-seed-image) !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-size: contain !important;
-  box-shadow: none !important;
-}
-.board .pit.classic-pit::before,
-.board .pit.classic-pit::after {
-  content: none !important;
-  display: none !important;
-}
-.board .pit.classic-pit .seed-pile { display: none !important; }
+/* URIL 1.0.3 — restaura cavidades de madeira integradas, sementes DOM e contagem acima de 9. */

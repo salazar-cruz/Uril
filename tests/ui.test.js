@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.2', () => {
-  assert.match(html, /Versão 1\.0\.2/);
-  assert.match(html, /AJUDA V1\.0\.2/);
-  assert.match(html, /styles\.css\?v=1\.0\.2/);
-  assert.match(html, /app\.js\?v=1\.0\.2/);
+test('a interface está identificada como versão 1.0.3', () => {
+  assert.match(html, /Versão 1\.0\.3/);
+  assert.match(html, /AJUDA V1\.0\.3/);
+  assert.match(html, /styles\.css\?v=1\.0\.3/);
+  assert.match(html, /app\.js\?v=1\.0\.3/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -115,10 +115,15 @@ test('a interface oferece Português, Francês e Inglês', () => {
   assert.match(i18n, /How I built/);
 });
 
-test('as casas de jogo usam novamente as sementes clássicas do código inicial', () => {
-  assert.match(app, /trou-bonduc\$\{spriteName\}\.png/);
-  assert.match(app, /--classic-seed-image/);
-  assert.match(css, /\.board \.pit\.classic-pit[\s\S]*background-image: var\(--classic-seed-image\) !important/);
-  assert.match(css, /background-image: var\(--classic-seed-image\)/);
-  assert.match(app, /overflow-count', seedTotal > 15/);
+test('as cavidades mantêm a madeira integrada e as sementes continuam elementos DOM', () => {
+  assert.match(app, /className = 'uril-seed'/);
+  assert.doesNotMatch(app, /--classic-seed-image/);
+  assert.doesNotMatch(css, /background-image:\s*var\(--classic-seed-image\)/);
+  assert.match(css, /\.board \.pit\.classic-pit[\s\S]*radial-gradient/);
+  assert.match(css, /\.seed-pile[\s\S]*position:\s*absolute/);
+});
+
+test('o número reaparece quando a casa tem mais de 9 sementes', () => {
+  assert.match(app, /overflow-count', seedTotal > 9/);
+  assert.match(css, /\.pit\.classic-pit\.overflow-count \.seed-count[\s\S]*display:\s*grid/);
 });
