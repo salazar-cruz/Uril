@@ -76,3 +76,8 @@ Consulta `THIRD-PARTY-NOTICES.md`. O código específico e o conceito desta apli
 
 ## Versão 1.0.1
 Corrige a contagem dos Quatros e restaura as sementes clássicas do código inicial.
+
+
+## Versão 1.0.2
+
+Correcção visual das sementes clássicas, que estavam ocultas por uma regra CSS anterior com maior especificidade.

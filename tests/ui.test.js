@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.1', () => {
-  assert.match(html, /Versão 1\.0\.1/);
-  assert.match(html, /AJUDA V1\.0\.1/);
-  assert.match(html, /styles\.css\?v=1\.0\.1/);
-  assert.match(html, /app\.js\?v=1\.0\.1/);
+test('a interface está identificada como versão 1.0.2', () => {
+  assert.match(html, /Versão 1\.0\.2/);
+  assert.match(html, /AJUDA V1\.0\.2/);
+  assert.match(html, /styles\.css\?v=1\.0\.2/);
+  assert.match(html, /app\.js\?v=1\.0\.2/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -118,6 +118,7 @@ test('a interface oferece Português, Francês e Inglês', () => {
 test('as casas de jogo usam novamente as sementes clássicas do código inicial', () => {
   assert.match(app, /trou-bonduc\$\{spriteName\}\.png/);
   assert.match(app, /--classic-seed-image/);
+  assert.match(css, /\.board \.pit\.classic-pit[\s\S]*background-image: var\(--classic-seed-image\) !important/);
   assert.match(css, /background-image: var\(--classic-seed-image\)/);
   assert.match(app, /overflow-count', seedTotal > 15/);
 });

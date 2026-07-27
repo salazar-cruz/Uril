@@ -2015,3 +2015,20 @@ body.game-active .island-background::after {
   color: #fff;
   text-shadow: 0 2px 3px #000;
 }
+
+
+/* URIL 1.0.2 — correcção da sobreposição que ocultava as sementes clássicas. */
+.board .pit.classic-pit {
+  background-color: transparent !important;
+  background-image: var(--classic-seed-image) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: contain !important;
+  box-shadow: none !important;
+}
+.board .pit.classic-pit::before,
+.board .pit.classic-pit::after {
+  content: none !important;
+  display: none !important;
+}
+.board .pit.classic-pit .seed-pile { display: none !important; }

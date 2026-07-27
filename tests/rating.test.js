@@ -6,7 +6,7 @@ import {
   kFactor,
   initialEloFromCalibration,
   calibrationPerformance,
-} from '../js/rating.js?v=1.0.1';
+} from '../js/rating.js?v=1.0.2';
 
 test('dois jogadores com o mesmo Elo têm expectativa de 50%', () => {
   assert.equal(expectedScore(1200, 1200), 0.5);

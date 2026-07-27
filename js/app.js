@@ -13,14 +13,14 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.1';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.1';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.1';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.1';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.1';
-import { MultiplayerService } from './multiplayer.js?v=1.0.1';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.1';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.1';
+} from './engine.js?v=1.0.2';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.2';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.2';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.2';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.2';
+import { MultiplayerService } from './multiplayer.js?v=1.0.2';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.2';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.2';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -2267,7 +2267,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.1', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.2', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
