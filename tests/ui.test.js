@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.4', () => {
-  assert.match(html, /Versão 1\.0\.4/);
-  assert.match(html, /AJUDA V1\.0\.4/);
-  assert.match(html, /styles\.css\?v=1\.0\.4/);
-  assert.match(html, /app\.js\?v=1\.0\.4/);
+test('a interface está identificada como versão 1.0.5', () => {
+  assert.match(html, /Versão 1\.0\.5/);
+  assert.match(html, /AJUDA V1\.0\.5/);
+  assert.match(html, /styles\.css\?v=1\.0\.5/);
+  assert.match(html, /app\.js\?v=1\.0\.5/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -115,23 +115,16 @@ test('a interface oferece Português, Francês e Inglês', () => {
   assert.match(i18n, /How I built/);
 });
 
-test('as cavidades mantêm a madeira integrada e recebem apenas os grãos fotográficos transparentes', () => {
-  assert.match(app, /assets\/realistic-seeds\/sementes-\$\{spriteName\}\.png/);
-  assert.match(app, /classList\.add\('realistic-seed-photo'\)/);
-  assert.doesNotMatch(app, /--classic-seed-image/);
-  assert.doesNotMatch(css, /background-image:\s*var\(--classic-seed-image\)/);
+test('o tabuleiro e os grãos regressam exactamente ao desenho inicial', () => {
+  assert.match(app, /className = 'uril-seed'/);
+  assert.match(app, /seedLayout\(visibleTotal\)/);
+  assert.doesNotMatch(app, /realistic-seeds/);
+  assert.doesNotMatch(css, /realistic-seed-photo/);
   assert.match(css, /\.board \.pit\.classic-pit[\s\S]*radial-gradient/);
-  assert.match(css, /\.seed-pile\.realistic-seed-photo[\s\S]*var\(--real-seed-image\)/);
+  assert.match(css, /\.uril-seed[\s\S]*radial-gradient/);
 });
 
-test('o pacote inclui as 16 imagens transparentes de sementes, de zero a quinze', async () => {
-  for (let count = 0; count <= 15; count += 1) {
-    const file = `../assets/realistic-seeds/sementes-${String(count).padStart(2, '0')}.png`;
-    await access(new URL(file, import.meta.url));
-  }
-});
-
-test('o número reaparece quando a casa tem mais de 9 sementes', () => {
+test('o número continua visível quando a casa tem mais de 9 sementes', () => {
   assert.match(app, /overflow-count', seedTotal > 9/);
   assert.match(css, /\.pit\.classic-pit\.overflow-count \.seed-count[\s\S]*display:\s*grid/);
 });

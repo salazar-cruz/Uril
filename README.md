@@ -78,15 +78,15 @@ Consulta `THIRD-PARTY-NOTICES.md`. O código específico e o conceito desta apli
 Corrige a contagem dos Quatros e restaura as sementes clássicas do código inicial.
 
 
-## Versão 1.0.4
+## Versão 1.0.3
 
 Correcção visual das sementes clássicas, que estavam ocultas por uma regra CSS anterior com maior especificidade.
 
 
-## v1.0.4
+## v1.0.3
 
 Restaura o desenho consistente das cavidades em madeira e das sementes DOM. O indicador numérico reaparece nas casas com mais de 9 sementes.
 
-## Versão 1.0.4
+## Versão 1.0.5
 
-As sementes fotográficas originais foram separadas do fundo negro das imagens clássicas e colocadas sobre as cavidades de madeira existentes. A contagem numérica continua visível acima de 9 sementes.
+Repõe integralmente o tabuleiro e os grãos da versão inicial, mantendo as correcções funcionais posteriores, incluindo a contagem dos Quatros.
