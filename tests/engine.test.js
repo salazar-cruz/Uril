@@ -16,7 +16,7 @@ import {
   resignationValue,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=1.0.9';
+} from '../js/engine.js?v=1.0.10';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();

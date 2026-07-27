@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.9', () => {
-  assert.match(html, /Versão 1\.0\.9/);
-  assert.match(html, /AJUDA V1\.0\.9/);
-  assert.match(html, /styles\.css\?v=1\.0\.9/);
-  assert.match(html, /app\.js\?v=1\.0\.9/);
+test('a interface está identificada como versão 1.0.10', () => {
+  assert.match(html, /Versão 1\.0\.10/);
+  assert.match(html, /AJUDA V1\.0\.10/);
+  assert.match(html, /styles\.css\?v=1\.0\.10/);
+  assert.match(html, /app\.js\?v=1\.0\.10/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -130,14 +130,24 @@ test('o número continua visível quando a casa tem mais de 9 sementes', () => {
 });
 
 
-test('os Drills Corri Oro são públicos e surgem na coluna esquerda', () => {
-  for (const id of ['drillMenu','drillList','drillCard','restartDrillButton','showDrillHintButton','nextDrillButton']) {
+test('os Drills Corri Oro são públicos, surgem na coluna esquerda e estão divididos por nível', () => {
+  for (const id of ['drillMenu','drillList','drillCard','drillMeta','restartDrillButton','showDrillHintButton','nextDrillButton']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(app, /async function startEndgameDrill/);
   assert.match(app, /app\.mode = 'drill'/);
+  assert.match(app, /DRILL_LEVELS\.forEach/);
+  assert.match(app, /drill-level-group/);
+  assert.match(css, /\.drill-level-heading/);
+  assert.match(css, /\.drill-level-items/);
   assert.match(i18n, /Finais públicos para treinar a corrida ao ouro\. Não exigem conta\./);
+  assert.match(i18n, /drillLevelBeginner: 'Iniciante'/);
+  assert.match(i18n, /drillLevelMedium: 'Médio'/);
+  assert.match(i18n, /drillLevelAdvanced: 'Avançado'/);
   assert.match(i18n, /Objectivo: correr o ouro e fechar a posição em 25–23/);
+  for (const pattern of ['3–2', '4–3', '5–3', '5–4', '6–3', '6–4']) {
+    assert.match(i18n, new RegExp(`Caso ${pattern}`));
+  }
 });
 
 test('Banco é traduzido como Table em Francês e Inglês', () => {

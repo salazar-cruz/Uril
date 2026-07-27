@@ -1,11 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ENDGAME_DRILLS, createEndgameDrillGame, validateEndgameDrills } from '../js/drills.js';
-import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.9';
+import {
+  DRILL_LEVELS,
+  ENDGAME_DRILLS,
+  createEndgameDrillGame,
+  validateEndgameDrills,
+} from '../js/drills.js';
+import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.10';
 
-test('existem oito Drills públicos de fim de jogo', () => {
-  assert.equal(ENDGAME_DRILLS.length, 8);
+test('existem catorze Drills públicos distribuídos por três níveis', () => {
+  assert.equal(ENDGAME_DRILLS.length, 14);
+  assert.deepEqual(DRILL_LEVELS.map((level) => level.id), ['beginner', 'medium', 'advanced']);
+  assert.deepEqual(
+    DRILL_LEVELS.map((level) => ENDGAME_DRILLS.filter((drill) => drill.level === level.id).length),
+    [5, 5, 4],
+  );
   assert.equal(validateEndgameDrills(), true);
+});
+
+test('os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4 estão incluídos', () => {
+  const expected = new Map([
+    ['3–2', [3, 2, 'beginner']],
+    ['4–3', [4, 3, 'beginner']],
+    ['5–3', [5, 3, 'beginner']],
+    ['5–4', [5, 4, 'medium']],
+    ['6–3', [6, 3, 'medium']],
+    ['6–4', [6, 4, 'medium']],
+  ]);
+
+  for (const [pattern, [southSeeds, northSeeds, level]] of expected) {
+    const drill = ENDGAME_DRILLS.find((item) => item.pattern === pattern);
+    assert.ok(drill, pattern);
+    assert.equal(drill.level, level, pattern);
+    assert.equal(drill.board.slice(0, 6).reduce((sum, seeds) => sum + seeds, 0), southSeeds, pattern);
+    assert.equal(drill.board.slice(6).reduce((sum, seeds) => sum + seeds, 0), northSeeds, pattern);
+  }
 });
 
 test('cada Drill começa com exactamente 48 sementes contabilizadas', () => {
@@ -33,14 +62,22 @@ test('a linha de referência de cada Drill termina exactamente em 25–23', () =
   }
 });
 
-
-test('cada Drill explica o desafio da posição aos jogadores inexperientes', () => {
+test('cada Drill apresenta uma explicação própria para jogadores inexperientes', () => {
   for (const drill of ENDGAME_DRILLS) {
-    assert.match(drill.challengeKey, /^drill0[1-8]Challenge$/);
+    assert.match(drill.challengeKey, /^drill(?:0[1-8]|Case(?:32|43|53|54|63|64))Challenge$/);
   }
 });
 
-
-test('as soluções terminam imediatamente ao chegar ao final 1–1', () => {
-  assert.deepEqual(ENDGAME_DRILLS.map((drill) => drill.solution.length), [29, 27, 25, 21, 17, 13, 7, 1]);
+test('os novos casos canónicos têm linhas automáticas completas', () => {
+  const lengths = Object.fromEntries(
+    ENDGAME_DRILLS.filter((drill) => drill.pattern).map((drill) => [drill.pattern, drill.solution.length]),
+  );
+  assert.deepEqual(lengths, {
+    '3–2': 1,
+    '4–3': 9,
+    '5–3': 7,
+    '5–4': 5,
+    '6–3': 5,
+    '6–4': 14,
+  });
 });

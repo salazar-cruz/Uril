@@ -13,15 +13,15 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.9';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.9';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.9';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.9';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.9';
-import { MultiplayerService } from './multiplayer.js?v=1.0.9';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.9';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.9';
-import { ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.9';
+} from './engine.js?v=1.0.10';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.10';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.10';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.10';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.10';
+import { MultiplayerService } from './multiplayer.js?v=1.0.10';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.10';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.10';
+import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.10';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -96,7 +96,7 @@ const elements = {
   aiStats: $('#aiStats'), roomViewersCard: $('#roomViewersCard'), roomViewersList: $('#roomViewersList'),
   leaderboardList: $('#leaderboardList'), refreshLeaderboard: $('#refreshLeaderboardButton'),
   drillMenu: $('#drillMenu'), drillList: $('#drillList'), drillCard: $('#drillCard'),
-  drillTitle: $('#drillTitle'), drillObjective: $('#drillObjective'), drillChallenge: $('#drillChallenge'), drillProgress: $('#drillProgress'),
+  drillTitle: $('#drillTitle'), drillMeta: $('#drillMeta'), drillObjective: $('#drillObjective'), drillChallenge: $('#drillChallenge'), drillProgress: $('#drillProgress'),
   restartDrill: $('#restartDrillButton'), showDrillHint: $('#showDrillHintButton'), showDrillSolution: $('#showDrillSolutionButton'), nextDrill: $('#nextDrillButton'),
 };
 
@@ -250,23 +250,48 @@ function createDrillSession(drill) {
 function renderDrillMenu() {
   if (!elements.drillList) return;
   elements.drillList.replaceChildren();
-  ENDGAME_DRILLS.forEach((drill) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'drill-menu-item';
-    button.classList.toggle('active', app.mode === 'drill' && app.drillId === drill.id);
-    button.disabled = app.drillSolutionPlaying;
-    const number = document.createElement('b');
-    number.textContent = String(drill.number).padStart(2, '0');
-    const copy = document.createElement('span');
-    const title = document.createElement('strong');
-    title.textContent = t(drill.titleKey);
-    const detail = document.createElement('small');
-    detail.textContent = `${t('drillTargetShort')} · ${'●'.repeat(drill.difficulty)}${'○'.repeat(4 - drill.difficulty)}`;
-    copy.append(title, detail);
-    button.append(number, copy);
-    button.addEventListener('click', () => startEndgameDrill(drill.id));
-    elements.drillList.append(button);
+
+  DRILL_LEVELS.forEach((level) => {
+    const drills = ENDGAME_DRILLS.filter((drill) => drill.level === level.id);
+    if (!drills.length) return;
+
+    const group = document.createElement('section');
+    group.className = `drill-level-group drill-level-${level.id}`;
+
+    const heading = document.createElement('div');
+    heading.className = 'drill-level-heading';
+    const label = document.createElement('strong');
+    label.textContent = t(level.labelKey);
+    const intro = document.createElement('small');
+    intro.textContent = t(level.introKey);
+    heading.append(label, intro);
+
+    const items = document.createElement('div');
+    items.className = 'drill-level-items';
+
+    drills.forEach((drill) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'drill-menu-item';
+      button.classList.toggle('active', app.mode === 'drill' && app.drillId === drill.id);
+      button.disabled = app.drillSolutionPlaying;
+
+      const number = document.createElement('b');
+      number.textContent = String(drill.number).padStart(2, '0');
+      const copy = document.createElement('span');
+      const title = document.createElement('strong');
+      title.textContent = t(drill.titleKey);
+      const detail = document.createElement('small');
+      const pattern = drill.pattern ? `${t('drillCaseLabel')} ${drill.pattern} · ` : '';
+      detail.textContent = `${pattern}${t('drillTargetShort')} · ${'●'.repeat(drill.difficulty)}${'○'.repeat(4 - drill.difficulty)}`;
+      copy.append(title, detail);
+      button.append(number, copy);
+      button.addEventListener('click', () => startEndgameDrill(drill.id));
+      items.append(button);
+    });
+
+    group.append(heading, items);
+    elements.drillList.append(group);
   });
 }
 
@@ -277,6 +302,11 @@ function renderDrillCard() {
   elements.drillCard.hidden = !visible;
   if (!visible) return;
   elements.drillTitle.textContent = t(drill.titleKey);
+  const level = DRILL_LEVELS.find((item) => item.id === drill.level);
+  if (elements.drillMeta) {
+    const pattern = drill.pattern ? `${t('drillCaseLabel')} ${drill.pattern}` : t('drillStrategicPosition');
+    elements.drillMeta.textContent = `${level ? t(level.labelKey) : ''} · ${pattern}`;
+  }
   elements.drillObjective.textContent = t('drillObjective25');
   elements.drillChallenge.textContent = t(drill.challengeKey);
   const expected = drill.solution[app.drillLineIndex];
@@ -2559,7 +2589,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.9', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.10', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

@@ -2023,7 +2023,27 @@ body.game-active .island-background::after {
   font-size: 10px;
   line-height: 1.45;
 }
-.drill-list { display: grid; gap: 7px; }
+.drill-list { display: grid; gap: 15px; }
+.drill-level-group { display: grid; gap: 7px; }
+.drill-level-heading {
+  display: grid;
+  gap: 2px;
+  padding: 0 2px 3px;
+  border-bottom: 1px solid rgba(245, 204, 117, .14);
+}
+.drill-level-heading > strong {
+  color: var(--gold-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.drill-level-heading > small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+.drill-level-items { display: grid; gap: 7px; }
 .drill-menu-item {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
@@ -2122,21 +2142,21 @@ body.game-active .island-background::after {
 
 @media (max-width: 980px) {
   .online-roster { overflow: visible; }
-  .drill-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .drill-level-items { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .drill-menu-item { grid-template-columns: 24px minmax(0, 1fr); padding: 8px; }
   .drill-menu-item > b { width: 24px; height: 24px; }
 }
 @media (max-width: 700px) {
-  .drill-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .drill-level-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 420px) {
-  .drill-list { grid-template-columns: 1fr; }
+  .drill-level-items { grid-template-columns: 1fr; }
   .drill-actions { grid-template-columns: 1fr; }
   .drill-actions .text-button,
   .drill-solution-button { grid-column: auto; }
 }
 
-/* v1.0.9 — explicação e controlos dos Drills imediatamente sob o tabuleiro. */
+/* v1.0.10 — explicação e controlos dos Drills imediatamente sob o tabuleiro. */
 .drill-board-panel {
   margin-top: 16px;
   padding: 18px 20px;
@@ -2154,6 +2174,19 @@ body.game-active .island-background::after {
   color: var(--gold-strong);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(20px, 2.2vw, 27px);
+}
+.drill-board-copy > .drill-meta {
+  display: inline-flex;
+  margin-top: 7px;
+  padding: 4px 8px;
+  border: 1px solid rgba(245, 204, 117, .26);
+  border-radius: 999px;
+  color: var(--gold-strong);
+  background: rgba(245, 204, 117, .07);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 .drill-board-copy > p {
   margin: 8px 0 7px;

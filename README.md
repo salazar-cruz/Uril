@@ -1,4 +1,4 @@
-# Uril de Cabo Verde — 1.0.9
+# Uril de Cabo Verde — 1.0.10
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
@@ -25,8 +25,8 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - chat em tempo real não arquivado;
 - Português, Francês e Inglês;
 - design adaptado a computador e telemóvel;
-- 12 casas jogáveis e dois depósitos laterais para as sementes ganhas.
-- oito Drills públicos de fim de jogo para treinar Corri Oro, sem exigência de conta;
+- 12 casas jogáveis e dois depósitos laterais para as sementes ganhas;
+- catorze Drills públicos de fim de jogo, organizados em Iniciante, Médio e Avançado, incluindo os casos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4;
 
 ## Segurança e classificação
 
@@ -112,3 +112,7 @@ Os Drills Corri Oro incluem agora uma explicação acessível do desafio de cada
 ## Versão 1.0.9
 
 O painel explicativo e todos os controlos dos Drills Corri Oro passam a surgir imediatamente abaixo do tabuleiro, em vez de ocuparem a coluna lateral direita. A alteração é exclusivamente de disposição visual.
+
+## Versão 1.0.10
+
+Os Drills passam a estar divididos em Iniciante, Médio e Avançado. Foram acrescentados os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4, todos com explicação própria, pista e solução automática dos dois lados até 25–23.
