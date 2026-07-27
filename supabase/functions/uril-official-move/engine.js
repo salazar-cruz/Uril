@@ -316,6 +316,15 @@ export function applyMove(game, pitIndex) {
   const repetitionCount = registerPosition(next);
   next.lastMove.repetitionCount = repetitionCount;
 
+  if (rowSeedCount(next, SOUTH) === 1 && rowSeedCount(next, NORTH) === 1) {
+    next.lastMove.oneSeedEach = true;
+    collectRemainingSeeds(
+      next,
+      'Restava uma semente em cada campo. Cada jogador fica com a sua semente.',
+    );
+    return next;
+  }
+
   if (repetitionCount >= REPETITION_LIMIT) {
     next.lastMove.repetitionTriggered = true;
     collectRemainingSeeds(

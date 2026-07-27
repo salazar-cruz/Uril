@@ -13,15 +13,15 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.7';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.7';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.7';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.7';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.7';
-import { MultiplayerService } from './multiplayer.js?v=1.0.7';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.7';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.7';
-import { ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.7';
+} from './engine.js?v=1.0.9';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.9';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.9';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.9';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.9';
+import { MultiplayerService } from './multiplayer.js?v=1.0.9';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.9';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.9';
+import { ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.9';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -181,11 +181,14 @@ const ANIMATION_TIMING = {
 };
 
 const DRILL_SOLUTION_TIMING = {
-  lift: 85,
-  seed: 65,
-  capture: 105,
-  settle: 70,
+  lift: 170,
+  seed: 130,
+  capture: 210,
+  settle: 140,
 };
+
+const DRILL_SOLUTION_START_DELAY = 520;
+const DRILL_SOLUTION_MOVE_PAUSE = 180;
 
 const multiplayer = new MultiplayerService({
   url: SUPABASE_URL,
@@ -389,7 +392,7 @@ async function showPerfectDrillSolution() {
   invalidateBoardView();
   renderGame();
   toast(t('drillSolutionStarted'));
-  await sleep(260);
+  await sleep(DRILL_SOLUTION_START_DELAY);
 
   try {
     for (let step = 0; step < drill.solution.length; step += 1) {
@@ -415,7 +418,7 @@ async function showPerfectDrillSolution() {
       if (!animated) return;
       app.session = next;
       renderGame();
-      await sleep(90);
+      await sleep(DRILL_SOLUTION_MOVE_PAUSE);
     }
   } catch (error) {
     toast(t('drillSolutionError', { error: error.message }));
@@ -481,6 +484,7 @@ function translatedPitLabel(index) {
 function translatedGameReason(reason, game = app.session.game) {
   const keys = {
     'A mesma posição repetiu-se três vezes. Cada jogador fica com as sementes do seu campo.': 'reasonTriple',
+    'Restava uma semente em cada campo. Cada jogador fica com a sua semente.': 'reasonOneEach',
     'Colheita das seis casas; o jogador que deu fogo não consegue alimentar o adversário na jogada seguinte.': 'reasonSix',
     'Frouxo: deu fogo podendo alimentar o adversário na jogada seguinte.': 'reasonFrouxo',
     'O adversário ficou sem sementes para jogar.': 'reasonEmpty',
@@ -2555,7 +2559,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.7', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.9', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

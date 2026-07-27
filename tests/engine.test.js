@@ -16,7 +16,7 @@ import {
   resignationValue,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=1.0.7';
+} from '../js/engine.js?v=1.0.9';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();
@@ -95,7 +95,7 @@ test('com o adversário vazio só ficam válidas as casas que o alimentam', () =
 test('uma casa com uma semente alimenta o adversário e a partida continua', () => {
   const game = createGame({ firstPlayer: NORTH });
   game.board = Array(12).fill(0);
-  game.board[6] = 1;
+  game.board[6] = 2;
   game.board[11] = 1;
   assert.deepEqual(legalMoves(game), [11]);
 
@@ -242,6 +242,22 @@ test('num empate volta a começar quem abriu a partida empatada', () => {
   assert.equal(nextRoundStarter(game, NORTH), NORTH);
 });
 
+
+test('com uma semente em cada campo a partida termina e cada jogador recebe a sua', () => {
+  const game = createGame();
+  game.board = [0,1,0,0,0,2,0,1,0,0,0,0];
+  game.scores = { [SOUTH]: 22, [NORTH]: 22 };
+
+  const next = applyMove(game, 5);
+
+  assert.equal(next.status, 'finished');
+  assert.equal(next.lastMove.oneSeedEach, true);
+  assert.match(next.reason, /uma semente em cada campo/);
+  assert.equal(next.scores[SOUTH], 25);
+  assert.equal(next.scores[NORTH], 23);
+  assert.deepEqual(next.board, Array(12).fill(0));
+  assert.equal(validateGame(next).valid, true);
+});
 
 test('a terceira repetição da mesma posição termina a partida e cada jogador conserva o seu campo', () => {
   const probe = createGame();

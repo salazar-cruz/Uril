@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.7', () => {
-  assert.match(html, /Versão 1\.0\.7/);
-  assert.match(html, /AJUDA V1\.0\.7/);
-  assert.match(html, /styles\.css\?v=1\.0\.7/);
-  assert.match(html, /app\.js\?v=1\.0\.7/);
+test('a interface está identificada como versão 1.0.9', () => {
+  assert.match(html, /Versão 1\.0\.9/);
+  assert.match(html, /AJUDA V1\.0\.9/);
+  assert.match(html, /styles\.css\?v=1\.0\.9/);
+  assert.match(html, /app\.js\?v=1\.0\.9/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -156,4 +156,28 @@ test('os Drills incluem explicação e reprodução da solução perfeita dos do
   assert.match(app, /async function showPerfectDrillSolution\(\)/);
   assert.match(app, /drillSolutionPlaying/);
   assert.match(i18n, /showDrillSolution: 'Ver solução perfeita'/);
+});
+
+
+test('a solução automática dos Drills usa movimento duas vezes mais lento', () => {
+  assert.match(app, /const DRILL_SOLUTION_TIMING = \{[\s\S]*lift: 170,[\s\S]*seed: 130,[\s\S]*capture: 210,[\s\S]*settle: 140/);
+  assert.match(app, /DRILL_SOLUTION_START_DELAY = 520/);
+  assert.match(app, /DRILL_SOLUTION_MOVE_PAUSE = 180/);
+});
+
+test('a interface explica o encerramento do final 1–1', () => {
+  assert.match(i18n, /Restava uma semente em cada campo/);
+  assert.match(i18n, /final 1–1/);
+});
+
+test('as explicações e os controlos dos Drills ficam imediatamente abaixo do tabuleiro', () => {
+  const boardPosition = html.indexOf('class="board-wrap"');
+  const drillPosition = html.indexOf('id="drillCard"');
+  const sidebarPosition = html.indexOf('class="game-sidebar"');
+  assert.ok(boardPosition >= 0);
+  assert.ok(drillPosition > boardPosition);
+  assert.ok(sidebarPosition > drillPosition);
+  assert.match(html, /class="glass drill-card drill-board-panel"/);
+  assert.doesNotMatch(html, /class="glass sidebar-card drill-card"/);
+  assert.match(css, /\.drill-board-panel[\s\S]*grid-template-columns/);
 });

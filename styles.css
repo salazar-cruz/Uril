@@ -1999,7 +1999,7 @@ body.game-active .island-background::after {
   .archive-toolbar > input:first-child { grid-column:auto; }
 }
 
-/* v1.0.7 — Drills públicos de fim de jogo / Corri Oro. */
+/* v1.0.8 — Drills públicos de fim de jogo / Corri Oro. */
 .online-roster {
   overflow: auto;
   scrollbar-width: thin;
@@ -2134,4 +2134,87 @@ body.game-active .island-background::after {
   .drill-actions { grid-template-columns: 1fr; }
   .drill-actions .text-button,
   .drill-solution-button { grid-column: auto; }
+}
+
+/* v1.0.9 — explicação e controlos dos Drills imediatamente sob o tabuleiro. */
+.drill-board-panel {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 310px);
+  gap: 18px;
+  align-items: start;
+  background: rgba(7, 25, 19, .74);
+}
+.drill-board-panel[hidden] { display: none !important; }
+.drill-board-copy > strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--gold-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(20px, 2.2vw, 27px);
+}
+.drill-board-copy > p {
+  margin: 8px 0 7px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.drill-board-copy > small {
+  display: block;
+  min-height: 22px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.drill-board-panel .drill-challenge {
+  margin: 11px 0 9px;
+  padding: 12px 14px;
+}
+.drill-board-panel .drill-challenge > p {
+  font-size: 12px;
+  line-height: 1.58;
+}
+.drill-board-panel .drill-actions {
+  margin-top: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+.drill-board-panel .drill-actions button {
+  min-height: 42px;
+}
+.drill-board-panel .drill-solution-button {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  font-weight: 900;
+}
+.drill-board-panel .drill-actions .text-button {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 860px) {
+  .drill-board-panel {
+    grid-template-columns: 1fr;
+  }
+  .drill-board-panel .drill-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .drill-board-panel .drill-solution-button,
+  .drill-board-panel .drill-actions .text-button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .drill-board-panel {
+    margin-top: 12px;
+    padding: 15px;
+  }
+  .drill-board-panel .drill-actions {
+    grid-template-columns: 1fr;
+  }
+  .drill-board-panel .drill-solution-button,
+  .drill-board-panel .drill-actions .text-button {
+    grid-column: auto;
+  }
 }

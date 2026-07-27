@@ -9,7 +9,7 @@
 <title>Uril de Cabo Verde</title>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="assets/icons/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="styles.css?v=1.0.7" rel="stylesheet"/>
+<link href="styles.css?v=1.0.9" rel="stylesheet"/>
 </head>
 <body data-island="santiago">
 <div aria-hidden="true" class="island-background"></div>
@@ -197,6 +197,24 @@
 <small data-i18n="boardWillReset" id="roundResultNext">O tabuleiro será arrumado.</small>
 </div>
 </div>
+<section class="glass drill-card drill-board-panel" hidden id="drillCard">
+  <div class="drill-board-copy">
+    <span class="eyebrow" data-i18n="endgameTraining">FIM DE JOGO</span>
+    <strong id="drillTitle">Drill · Corri Oro</strong>
+    <p id="drillObjective"></p>
+    <div class="drill-challenge">
+      <strong data-i18n="drillChallengeLabel">O desafio desta posição</strong>
+      <p id="drillChallenge"></p>
+    </div>
+    <small id="drillProgress"></small>
+  </div>
+  <div class="drill-actions">
+    <button class="secondary-button compact drill-solution-button" data-i18n="showDrillSolution" id="showDrillSolutionButton" type="button">Ver solução perfeita</button>
+    <button class="secondary-button compact" data-i18n="restartDrill" id="restartDrillButton" type="button">Recomeçar</button>
+    <button class="text-button" data-i18n="showDrillHint" id="showDrillHintButton" type="button">Mostrar pista</button>
+    <button class="primary-button compact" data-i18n="nextDrill" id="nextDrillButton" type="button">Drill seguinte</button>
+  </div>
+</section>
 <div class="review-controller glass" hidden id="reviewController">
 <div class="review-controller-head">
 <div><span class="eyebrow" data-i18n="gameReview">CONSULTA DA PARTIDA</span><strong id="reviewPosition">Jogada 0 de 0</strong></div>
@@ -226,22 +244,6 @@
 <span class="eyebrow" data-i18n="bankStatus">ESTADO DO BANCO</span>
 <div class="room-status" data-i18n="localMatch" id="roomStatus">Partida local</div>
 <p data-i18n="countStarts" id="matchMessage">A contagem começa em 0–0.</p>
-</section>
-<section class="glass sidebar-card drill-card" hidden id="drillCard">
-  <span class="eyebrow" data-i18n="endgameTraining">FIM DE JOGO</span>
-  <strong id="drillTitle">Drill · Corri Oro</strong>
-  <p id="drillObjective"></p>
-  <div class="drill-challenge">
-    <strong data-i18n="drillChallengeLabel">O desafio desta posição</strong>
-    <p id="drillChallenge"></p>
-  </div>
-  <small id="drillProgress"></small>
-  <div class="drill-actions">
-    <button class="secondary-button compact" data-i18n="restartDrill" id="restartDrillButton" type="button">Recomeçar</button>
-    <button class="text-button" data-i18n="showDrillHint" id="showDrillHintButton" type="button">Mostrar pista</button>
-    <button class="secondary-button compact drill-solution-button" data-i18n="showDrillSolution" id="showDrillSolutionButton" type="button">Ver solução perfeita</button>
-    <button class="primary-button compact" data-i18n="nextDrill" id="nextDrillButton" type="button">Drill seguinte</button>
-  </div>
 </section>
 <section class="glass sidebar-card">
 <span class="eyebrow" data-i18n="lastMove">ÚLTIMA JOGADA</span>
@@ -320,7 +322,7 @@
 </section>
 <footer class="site-footer glass">
   <div><strong data-i18n="footerCopyright">© 2026 DevNexus Digital</strong><span data-i18n="footerConcept">Conceito, desenvolvimento e direcção</span></div>
-  <div class="footer-actions"><span data-i18n="versionLabel">Versão 1.0.7</span><button class="text-button" data-i18n="suggestions" id="suggestionsButton" type="button">Sugestões</button></div>
+  <div class="footer-actions"><span data-i18n="versionLabel">Versão 1.0.9</span><button class="text-button" data-i18n="suggestions" id="suggestionsButton" type="button">Sugestões</button></div>
 </footer>
 </div>
 <section aria-live="assertive" class="invite-popup glass" hidden="" id="invitePopup" role="alertdialog">
@@ -353,7 +355,7 @@
 </dialog>
 <dialog id="rulesDialog">
 <div class="dialog-head">
-<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V1.0.7</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
+<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V1.0.9</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
 <button class="icon-button" data-i18n-aria="close" id="closeRulesButton" type="button">×</button>
 </div>
 <div class="rules-content help-content" data-i18n-html="helpContent"><section><h3>O que é o Uril</h3><p>O Uril é a variante cabo-verdiana da família Ayo/Awalé/Oware.</p></section></div>
@@ -368,6 +370,6 @@
   <div class="action-dialog-body"><p id="aiResignWarning"></p><div class="dialog-actions"><button class="secondary-button" data-i18n="rejectAIResign" id="aiResignRejectButton" type="button">Não aceitar</button><button class="primary-button" data-i18n="acceptAIResign" id="aiResignAcceptButton" type="button">Aceitar desistência</button></div></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
-<script src="js/app.js?v=1.0.7" type="module"></script>
+<script src="js/app.js?v=1.0.9" type="module"></script>
 </body>
 </html>
