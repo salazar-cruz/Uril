@@ -1,4 +1,4 @@
-# Uril de Cabo Verde — 1.0.6
+# Uril de Cabo Verde — 1.0.7
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
@@ -95,3 +95,8 @@ Repõe integralmente o tabuleiro e os grãos da versão inicial, mantendo as cor
 ## Versão 1.0.6
 
 Acrescenta oito Drills públicos de fim de jogo «Corri Oro», com posições finais, linhas de referência 25–23, pista, reposição e continuação contra a IA após um desvio. Em Francês e Inglês, a designação visível dos bancos passa a `Table`.
+
+
+## Versão 1.0.7
+
+Os Drills Corri Oro incluem agora uma explicação acessível do desafio de cada posição e o botão «Ver solução perfeita». A demonstração repõe o exercício e anima as jogadas dos dois lados até ao resultado 25–23.

@@ -13,15 +13,15 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.6';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.6';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.6';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.6';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.6';
-import { MultiplayerService } from './multiplayer.js?v=1.0.6';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.6';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.6';
-import { ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.6';
+} from './engine.js?v=1.0.7';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.7';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.7';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.7';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.7';
+import { MultiplayerService } from './multiplayer.js?v=1.0.7';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.7';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.7';
+import { ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.7';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -96,8 +96,8 @@ const elements = {
   aiStats: $('#aiStats'), roomViewersCard: $('#roomViewersCard'), roomViewersList: $('#roomViewersList'),
   leaderboardList: $('#leaderboardList'), refreshLeaderboard: $('#refreshLeaderboardButton'),
   drillMenu: $('#drillMenu'), drillList: $('#drillList'), drillCard: $('#drillCard'),
-  drillTitle: $('#drillTitle'), drillObjective: $('#drillObjective'), drillProgress: $('#drillProgress'),
-  restartDrill: $('#restartDrillButton'), showDrillHint: $('#showDrillHintButton'), nextDrill: $('#nextDrillButton'),
+  drillTitle: $('#drillTitle'), drillObjective: $('#drillObjective'), drillChallenge: $('#drillChallenge'), drillProgress: $('#drillProgress'),
+  restartDrill: $('#restartDrillButton'), showDrillHint: $('#showDrillHintButton'), showDrillSolution: $('#showDrillSolutionButton'), nextDrill: $('#nextDrillButton'),
 };
 
 const app = {
@@ -162,6 +162,9 @@ const app = {
   drillOnSolution: true,
   drillHintShown: false,
   drillAttemptMoves: 0,
+  drillSolutionPlaying: false,
+  drillSolutionStep: 0,
+  drillSolutionToken: 0,
 };
 
 const ROUND_TRANSITION_TIMING = {
@@ -175,6 +178,13 @@ const ANIMATION_TIMING = {
   seed: 150,
   capture: 220,
   settle: 120,
+};
+
+const DRILL_SOLUTION_TIMING = {
+  lift: 85,
+  seed: 65,
+  capture: 105,
+  settle: 70,
 };
 
 const multiplayer = new MultiplayerService({
@@ -242,6 +252,7 @@ function renderDrillMenu() {
     button.type = 'button';
     button.className = 'drill-menu-item';
     button.classList.toggle('active', app.mode === 'drill' && app.drillId === drill.id);
+    button.disabled = app.drillSolutionPlaying;
     const number = document.createElement('b');
     number.textContent = String(drill.number).padStart(2, '0');
     const copy = document.createElement('span');
@@ -264,19 +275,34 @@ function renderDrillCard() {
   if (!visible) return;
   elements.drillTitle.textContent = t(drill.titleKey);
   elements.drillObjective.textContent = t('drillObjective25');
+  elements.drillChallenge.textContent = t(drill.challengeKey);
   const expected = drill.solution[app.drillLineIndex];
-  if (app.drillHintShown && app.drillOnSolution && Number.isInteger(expected)) {
+  if (app.drillSolutionPlaying) {
+    elements.drillProgress.textContent = t('drillSolutionProgress', {
+      current: app.drillSolutionStep,
+      total: drill.solution.length,
+    });
+  } else if (app.drillSolutionStep === drill.solution.length && app.session.game.status === 'finished') {
+    elements.drillProgress.textContent = t('drillSolutionComplete');
+  } else if (app.drillHintShown && app.drillOnSolution && Number.isInteger(expected)) {
     elements.drillProgress.textContent = t('drillHintPit', { pit: translatedPitLabel(expected) });
   } else if (app.drillOnSolution) {
     elements.drillProgress.textContent = t('drillPerfectLine', { moves: app.drillAttemptMoves });
   } else {
     elements.drillProgress.textContent = t('drillLineBroken', { moves: app.drillAttemptMoves });
   }
-  elements.nextDrill.disabled = false;
-  elements.showDrillHint.disabled = app.session.game.status === 'finished';
+  elements.restartDrill.disabled = app.drillSolutionPlaying;
+  elements.nextDrill.disabled = app.drillSolutionPlaying;
+  elements.showDrillHint.disabled = app.drillSolutionPlaying || app.session.game.status === 'finished';
+  elements.showDrillSolution.textContent = t(app.drillSolutionPlaying ? 'stopDrillSolution' : 'showDrillSolution');
+  elements.showDrillSolution.setAttribute('aria-pressed', String(app.drillSolutionPlaying));
 }
 
 async function startEndgameDrill(id) {
+  app.drillSolutionToken += 1;
+  app.drillSolutionPlaying = false;
+  app.drillSolutionStep = 0;
+  app.busy = false;
   const drill = getEndgameDrill(id);
   if (app.mode) await leaveGame();
   app.mode = 'drill';
@@ -326,6 +352,82 @@ function startNextDrill() {
 function showCurrentDrillHint() {
   app.drillHintShown = true;
   renderDrillCard();
+}
+
+async function stopDrillSolutionPlayback({ notify = true } = {}) {
+  if (!app.drillSolutionPlaying) return;
+  app.drillSolutionToken += 1;
+  app.drillSolutionPlaying = false;
+  app.busy = true;
+  app.animationGame = null;
+  app.animation = null;
+  renderGame();
+  await sleep(180);
+  app.busy = false;
+  renderGame();
+  if (notify) toast(t('drillSolutionStopped'));
+}
+
+async function showPerfectDrillSolution() {
+  const drill = activeDrill();
+  if (!drill || app.mode !== 'drill') return;
+  if (app.drillSolutionPlaying) {
+    await stopDrillSolutionPlayback();
+    return;
+  }
+
+  const token = app.drillSolutionToken + 1;
+  app.drillSolutionToken = token;
+  app.drillSolutionPlaying = true;
+  app.drillSolutionStep = 0;
+  app.drillLineIndex = 0;
+  app.drillOnSolution = true;
+  app.drillHintShown = false;
+  app.drillAttemptMoves = 0;
+  app.busy = true;
+  app.session = createDrillSession(drill);
+  invalidateBoardView();
+  renderGame();
+  toast(t('drillSolutionStarted'));
+  await sleep(260);
+
+  try {
+    for (let step = 0; step < drill.solution.length; step += 1) {
+      if (token !== app.drillSolutionToken || !app.drillSolutionPlaying || app.drillId !== drill.id) return;
+      const pit = drill.solution[step];
+      if (!legalMoves(app.session.game).includes(pit)) {
+        throw new Error(t('drillSolutionIllegal', { move: step + 1 }));
+      }
+
+      const previous = cloneValue(app.session);
+      let next = cloneValue(app.session);
+      next.game = applyMove(next.game, pit);
+      next = settleRound(next);
+      appendSessionHistory(next, 'move');
+      app.drillSolutionStep = step + 1;
+      app.drillLineIndex = step + 1;
+      const animated = await animateMove(
+        previous.game,
+        next.game,
+        DRILL_SOLUTION_TIMING,
+        () => token === app.drillSolutionToken && app.drillSolutionPlaying,
+      );
+      if (!animated) return;
+      app.session = next;
+      renderGame();
+      await sleep(90);
+    }
+  } catch (error) {
+    toast(t('drillSolutionError', { error: error.message }));
+  } finally {
+    if (token === app.drillSolutionToken) {
+      app.drillSolutionPlaying = false;
+      app.busy = false;
+      app.animationGame = null;
+      app.animation = null;
+      renderGame();
+    }
+  }
 }
 
 function isComputerRoom(room) {
@@ -1104,8 +1206,15 @@ function canAnimateTransition(fromGame, toGame) {
   );
 }
 
-async function animateMove(fromGame, toGame) {
-  if (!canAnimateTransition(fromGame, toGame)) return;
+async function animateMove(fromGame, toGame, timing = ANIMATION_TIMING, shouldContinue = null) {
+  const active = () => typeof shouldContinue !== 'function' || shouldContinue();
+  const abort = () => {
+    app.animationGame = null;
+    app.animation = null;
+    return false;
+  };
+  if (!canAnimateTransition(fromGame, toGame)) return false;
+  if (!active()) return abort();
 
   const move = toGame.lastMove;
   app.animationGame = cloneValue(fromGame);
@@ -1119,10 +1228,12 @@ async function animateMove(fromGame, toGame) {
     player: move.player,
   };
   renderGame();
-  await sleep(ANIMATION_TIMING.lift);
+  await sleep(timing.lift);
+  if (!active()) return abort();
 
   const path = movePath(move.before, move.pitIndex);
   for (let step = 0; step < path.length; step += 1) {
+    if (!active()) return abort();
     const pitIndex = path[step];
     app.animationGame.board[pitIndex] += 1;
     app.animation = {
@@ -1133,10 +1244,12 @@ async function animateMove(fromGame, toGame) {
       player: move.player,
     };
     renderGame();
-    await sleep(ANIMATION_TIMING.seed);
+    await sleep(timing.seed);
+    if (!active()) return abort();
   }
 
   for (const pitIndex of move.capturedPits || []) {
+    if (!active()) return abort();
     const captured = app.animationGame.board[pitIndex];
     app.animationGame.board[pitIndex] = 0;
     app.animationGame.scores[move.player] += captured;
@@ -1149,7 +1262,8 @@ async function animateMove(fromGame, toGame) {
       captured,
     };
     renderGame();
-    await sleep(ANIMATION_TIMING.capture);
+    await sleep(timing.capture);
+    if (!active()) return abort();
   }
 
   app.animationGame = cloneValue(toGame);
@@ -1161,9 +1275,11 @@ async function animateMove(fromGame, toGame) {
     player: move.player,
   };
   renderGame();
-  await sleep(ANIMATION_TIMING.settle);
+  await sleep(timing.settle);
+  if (!active()) return abort();
   app.animationGame = null;
   app.animation = null;
+  return true;
 }
 
 function settleRound(session) {
@@ -2293,7 +2409,13 @@ function renderStatus() {
   }
   if (app.mode === 'drill') {
     const drill = activeDrill();
-    if (game.status === 'finished') {
+    if (app.drillSolutionPlaying) {
+      elements.statusTitle.textContent = t('drillSolutionPlayingTitle');
+      elements.statusMessage.textContent = t('drillSolutionPlayingText', {
+        current: app.drillSolutionStep,
+        total: drill?.solution?.length || 0,
+      });
+    } else if (game.status === 'finished') {
       const success = Boolean(drill)
         && game.scores[drill.humanSide] === drill.target[drill.humanSide]
         && game.scores[otherPlayer(drill.humanSide)] === drill.target[otherPlayer(drill.humanSide)];
@@ -2433,7 +2555,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.6', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.7', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -2467,7 +2589,7 @@ function maybeRunAI() {
   const computerMode = ['pc', 'calibration', 'drill'].includes(app.mode);
   const aiPlayer = app.mode === 'drill' && drill ? otherPlayer(drill.humanSide) : NORTH;
   if (
-    !computerMode || app.busy || app.session.game.status !== 'playing' ||
+    app.drillSolutionPlaying || !computerMode || app.busy || app.session.game.status !== 'playing' ||
     app.session.game.currentPlayer !== aiPlayer
   ) return;
 
@@ -2576,6 +2698,9 @@ async function newRound(options = {}) {
 }
 
 async function leaveGame() {
+  app.drillSolutionToken += 1;
+  app.drillSolutionPlaying = false;
+  app.drillSolutionStep = 0;
   clearTimeout(app.aiTimer);
   clearRoundTransition();
   app.remoteUpdateQueue = Promise.resolve();
@@ -2601,6 +2726,8 @@ async function leaveGame() {
   app.drillOnSolution = true;
   app.drillHintShown = false;
   app.drillAttemptMoves = 0;
+  app.drillSolutionPlaying = false;
+  app.drillSolutionStep = 0;
   document.body.dataset.onlinePlayer = 'false';
   app.room = null;
   resetChat();
@@ -2851,6 +2978,7 @@ function bindEvents() {
   $('#openRoomsButton').addEventListener('click', openRooms);
   elements.restartDrill?.addEventListener('click', restartCurrentDrill);
   elements.showDrillHint?.addEventListener('click', showCurrentDrillHint);
+  elements.showDrillSolution?.addEventListener('click', showPerfectDrillSolution);
   elements.nextDrill?.addEventListener('click', startNextDrill);
   $('#refreshRoomsButton').addEventListener('click', refreshRooms);
   elements.searchRooms.addEventListener('click', () => {

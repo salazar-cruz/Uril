@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.6', () => {
-  assert.match(html, /Versão 1\.0\.6/);
-  assert.match(html, /AJUDA V1\.0\.6/);
-  assert.match(html, /styles\.css\?v=1\.0\.6/);
-  assert.match(html, /app\.js\?v=1\.0\.6/);
+test('a interface está identificada como versão 1.0.7', () => {
+  assert.match(html, /Versão 1\.0\.7/);
+  assert.match(html, /AJUDA V1\.0\.7/);
+  assert.match(html, /styles\.css\?v=1\.0\.7/);
+  assert.match(html, /app\.js\?v=1\.0\.7/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -147,4 +147,13 @@ test('Banco é traduzido como Table em Francês e Inglês', () => {
   assert.match(i18n, /bankStatus: 'TABLE STATUS'/);
   assert.doesNotMatch(i18n, /banksOnline: 'Online Uril banks'/);
   assert.doesNotMatch(i18n, /bankStatus: 'BANK STATUS'/);
+});
+
+
+test('os Drills incluem explicação e reprodução da solução perfeita dos dois lados', () => {
+  assert.match(html, /id="drillChallenge"/);
+  assert.match(html, /id="showDrillSolutionButton"/);
+  assert.match(app, /async function showPerfectDrillSolution\(\)/);
+  assert.match(app, /drillSolutionPlaying/);
+  assert.match(i18n, /showDrillSolution: 'Ver solução perfeita'/);
 });

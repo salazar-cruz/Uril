@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ENDGAME_DRILLS, createEndgameDrillGame, validateEndgameDrills } from '../js/drills.js';
-import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.6';
+import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.7';
 
 test('existem oito Drills públicos de fim de jogo', () => {
   assert.equal(ENDGAME_DRILLS.length, 8);
@@ -28,5 +28,12 @@ test('a linha de referência de cada Drill termina exactamente em 25–23', () =
     assert.equal(game.status, 'finished', `${drill.id}: linha não terminou`);
     assert.equal(game.scores[SOUTH], 25, `${drill.id}: Sul não terminou com 25`);
     assert.equal(game.scores[NORTH], 23, `${drill.id}: Norte não terminou com 23`);
+  }
+});
+
+
+test('cada Drill explica o desafio da posição aos jogadores inexperientes', () => {
+  for (const drill of ENDGAME_DRILLS) {
+    assert.match(drill.challengeKey, /^drill0[1-8]Challenge$/);
   }
 });

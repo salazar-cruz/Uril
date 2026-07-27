@@ -1999,7 +1999,7 @@ body.game-active .island-background::after {
   .archive-toolbar > input:first-child { grid-column:auto; }
 }
 
-/* v1.0.6 — Drills públicos de fim de jogo / Corri Oro. */
+/* v1.0.7 — Drills públicos de fim de jogo / Corri Oro. */
 .online-roster {
   overflow: auto;
   scrollbar-width: thin;
@@ -2083,6 +2083,27 @@ body.game-active .island-background::after {
   font-size: 12px;
   line-height: 1.5;
 }
+.drill-challenge {
+  margin: 10px 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(245, 204, 117, .26);
+  border-radius: 12px;
+  background: rgba(245, 204, 117, .065);
+}
+.drill-challenge > strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--gold-strong);
+  font-size: 10px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.drill-challenge > p {
+  margin: 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.52;
+}
 .drill-card > small {
   display: block;
   min-height: 34px;
@@ -2096,6 +2117,8 @@ body.game-active .island-background::after {
   margin-top: 12px;
 }
 .drill-actions .text-button { grid-column: 1 / -1; }
+.drill-solution-button { grid-column: 1 / -1; }
+.drill-solution-button[aria-pressed="true"] { border-color: rgba(245, 204, 117, .72); color: var(--gold-strong); }
 
 @media (max-width: 980px) {
   .online-roster { overflow: visible; }
@@ -2109,5 +2132,6 @@ body.game-active .island-background::after {
 @media (max-width: 420px) {
   .drill-list { grid-template-columns: 1fr; }
   .drill-actions { grid-template-columns: 1fr; }
-  .drill-actions .text-button { grid-column: auto; }
+  .drill-actions .text-button,
+  .drill-solution-button { grid-column: auto; }
 }
