@@ -425,7 +425,13 @@ function registerWinUnit(next, winner) {
     next.cutCandidate = null;
     next.cutWins = 0;
     next.runWins += 1;
-    return `${labelPlayer(winner)} prolongou a contagem para ${next.runWins}–0.`;
+
+    if (next.runWins % 4 === 0) {
+      next.quatros[winner] += 1;
+      return `${labelPlayer(winner)} marcou mais um Quatro. Total: ${next.quatros[winner]}. A nova contagem começa em 0–0.`;
+    }
+
+    return `${labelPlayer(winner)} prolongou a sequência. Tem ${next.quatros[winner]} Quatro(s) e a contagem actual está em ${next.runWins % 4}–0.`;
   }
 
   // Antes de 4–0, uma vitória do adversário corta de imediato a sequência
@@ -453,7 +459,11 @@ function labelPlayer(player) {
 
 export function matchDisplay(match) {
   const score = { [SOUTH]: 0, [NORTH]: 0 };
-  if (match.runOwner) score[match.runOwner] = match.runWins;
+  if (match.runOwner) {
+    score[match.runOwner] = match.protectedBy === match.runOwner
+      ? match.runWins % 4
+      : match.runWins;
+  }
   return {
     score,
     quatros: { ...match.quatros },

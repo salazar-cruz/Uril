@@ -13,14 +13,14 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.0';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.0';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.0';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.0';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.0';
-import { MultiplayerService } from './multiplayer.js?v=1.0.0';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.0';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.0';
+} from './engine.js?v=1.0.1';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.1';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.1';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.1';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.1';
+import { MultiplayerService } from './multiplayer.js?v=1.0.1';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.1';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.1';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -1571,6 +1571,14 @@ function updateSeedPile(button, seedTotal) {
   const pile = button.querySelector('.seed-pile');
   if (!pile) return;
 
+  if (button.classList.contains('classic-pit')) {
+    const spriteName = String(visibleTotal).padStart(2, '0');
+    button.style.setProperty('--classic-seed-image', `url("assets/classic/trou-bonduc${spriteName}.png")`);
+    pile.replaceChildren();
+    button.dataset.seedLayout = String(visibleTotal);
+    return;
+  }
+
   const seeds = seedLayout(visibleTotal).map(([x, y, rotation, scale], index) => {
     const seed = document.createElement('i');
     seed.className = 'uril-seed';
@@ -1613,7 +1621,7 @@ function updatePitElement(index, game, moves, lastPit) {
   button.disabled = !moves.includes(index);
   button.classList.toggle('legal', moves.includes(index));
   button.classList.toggle('last', lastPit === index);
-  button.classList.toggle('overflow-count', seedTotal > 9);
+  button.classList.toggle('overflow-count', seedTotal > 15);
 
   const count = button.querySelector('.seed-count');
   if (count) count.textContent = String(seedTotal);
@@ -2259,7 +2267,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.0', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.1', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

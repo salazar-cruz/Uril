@@ -1998,3 +1998,20 @@ body.game-active .island-background::after {
   .archive-toolbar { grid-template-columns:1fr; }
   .archive-toolbar > input:first-child { grid-column:auto; }
 }
+
+
+/* URIL 1.0.1 — sementes clássicas restauradas e leitura limpa da contagem. */
+.pit.classic-pit {
+  background-image: var(--classic-seed-image) !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  box-shadow: none !important;
+}
+.pit.classic-pit .seed-pile { display: none !important; }
+.pit.classic-pit.overflow-count .seed-count {
+  background: rgba(8, 12, 10, .82);
+  border: 1px solid rgba(255,255,255,.70);
+  color: #fff;
+  text-shadow: 0 2px 3px #000;
+}

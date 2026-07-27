@@ -11,11 +11,12 @@ import {
   nextRoundStarter,
   positionKey,
   registerGameResult,
+  matchDisplay,
   resignGame,
   resignationValue,
   sowOnly,
   validateGame,
-} from '../js/engine.js?v=1.0.0';
+} from '../js/engine.js?v=1.0.1';
 
 test('a posição inicial oferece as seis casas de Sul', () => {
   const game = createGame();
@@ -302,4 +303,23 @@ test('desistir com 12 ou mais sementes vale uma partida', () => {
   assert.equal(next.resultValue, 1);
   assert.equal(next.capote, null);
   assert.equal(validateGame(next).valid, true);
+});
+
+
+test('13 vitórias consecutivas correspondem a 3 Quatros e contagem 1–0', () => {
+  let match = createMatch();
+  for (let i = 0; i < 13; i += 1) match = registerGameResult(match, SOUTH);
+  const display = matchDisplay(match);
+  assert.equal(match.quatros[SOUTH], 3);
+  assert.equal(match.runWins, 13);
+  assert.equal(display.quatros[SOUTH], 3);
+  assert.equal(display.score[SOUTH], 1);
+});
+
+test('cada novo bloco de quatro vitórias acrescenta um Quatro', () => {
+  let match = createMatch();
+  for (let i = 0; i < 12; i += 1) match = registerGameResult(match, NORTH);
+  const display = matchDisplay(match);
+  assert.equal(match.quatros[NORTH], 3);
+  assert.equal(display.score[NORTH], 0);
 });

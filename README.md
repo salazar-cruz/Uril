@@ -72,3 +72,7 @@ Os testes cobrem o motor, Fogo/Frouxo, alimentação, Capote, Quatro, perspectiv
 ## Licenças
 
 Consulta `THIRD-PARTY-NOTICES.md`. O código específico e o conceito desta aplicação seguem a indicação de autoria existente no rodapé e em `COPYRIGHT.txt`.
+
+
+## Versão 1.0.1
+Corrige a contagem dos Quatros e restaura as sementes clássicas do código inicial.
