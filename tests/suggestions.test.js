@@ -5,44 +5,30 @@ import { readFile } from 'node:fs/promises';
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const multiplayer = await readFile(new URL('../js/multiplayer.js', import.meta.url), 'utf8');
-const sql = await readFile(new URL('../supabase.sql', import.meta.url), 'utf8');
-const migration = await readFile(new URL('../supabase-sugestoes-v0.0.15.sql', import.meta.url), 'utf8');
+const sql = await readFile(new URL('../supabase-v1.0.0.sql', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 
- test('as sugestões aparecem na página e não num diálogo de email', () => {
+test('as sugestões permanecem na página', () => {
   assert.match(html, /id="suggestionsSection"/);
   assert.match(html, /id="suggestionsList"/);
-  assert.doesNotMatch(html, /id="suggestionsDialog"/);
   assert.doesNotMatch(app, /mailto:/);
 });
 
-test('cada sugestão e resposta mostra nick, ilha e data', () => {
-  assert.match(app, /function createSuggestionMeta\(item\)/);
-  assert.match(app, /item\.nick/);
-  assert.match(app, /islandName\(item\.island\)/);
-  assert.match(app, /suggestionDate\(item\.created_at\)/);
+test('só jogadores inscritos publicam sugestões e respostas', () => {
+  assert.match(multiplayer, /!this\.registered\) throw new Error\('Só jogadores inscritos publicam sugestões/);
+  assert.match(multiplayer, /!this\.registered\) throw new Error\('Só jogadores inscritos publicam respostas/);
+  assert.match(sql, /not coalesce\(\(auth\.jwt\(\) ->> 'is_anonymous'\)::boolean, false\)/);
 });
 
-test('o serviço grava sugestões, respostas e actualiza em tempo real', () => {
-  assert.match(multiplayer, /async listSuggestions/);
-  assert.match(multiplayer, /async createSuggestion\(/);
-  assert.match(multiplayer, /async createSuggestionReply\(/);
-  assert.match(multiplayer, /table: 'uril_suggestions'/);
-  assert.match(multiplayer, /table: 'uril_suggestion_replies'/);
+test('o SQL mantém RLS e actualização em tempo real', () => {
+  assert.match(sql, /create table if not exists public\.uril_suggestions/);
+  assert.match(sql, /create table if not exists public\.uril_suggestion_replies/);
+  assert.match(sql, /enable row level security/);
+  assert.match(sql, /supabase_realtime add table public\.uril_suggestions/);
 });
 
-test('o SQL cria tabelas e políticas RLS para sugestões e respostas', () => {
-  for (const source of [sql, migration]) {
-    assert.match(source, /create table if not exists public\.uril_suggestions/);
-    assert.match(source, /create table if not exists public\.uril_suggestion_replies/);
-    assert.match(source, /alter table public\.uril_suggestions enable row level security/);
-    assert.match(source, /alter table public\.uril_suggestion_replies enable row level security/);
-    assert.match(source, /supabase_realtime add table public\.uril_suggestions/);
-  }
-});
-
-test('a ajuda explica o mural público nos três idiomas', () => {
-  assert.match(i18n, /Sugestões públicas/);
-  assert.match(i18n, /Suggestions publiques/);
-  assert.match(i18n, /Public suggestions/);
+test('a ajuda esclarece leitura pública e publicação registada', () => {
+  assert.match(i18n, /Todos conseguem ler; (?:só|apenas) jogadores inscritos publicam e respondem/);
+  assert.match(i18n, /seuls les joueurs inscrits/);
+  assert.match(i18n, /only registered players/);
 });

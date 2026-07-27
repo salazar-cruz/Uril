@@ -1,49 +1,50 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { MultiplayerService } from '../js/multiplayer.js?v=0.0.35';
+import { MultiplayerService } from '../js/multiplayer.js?v=1.0.0';
 
 function service() {
   const instance = new MultiplayerService({ url: 'x', anonKey: 'y' });
-  instance.user = { id: 'user-1' };
+  instance.user = { id: 'user-1', is_anonymous: true };
   return instance;
 }
 
-test('a presença distingue jogo contra o computador e jogo local', () => {
+test('a presença distingue treino, jogo local, banco e consulta', () => {
   const multiplayer = service();
-  assert.equal(multiplayer.normalisePresence({ nick: 'Lena', status: 'pc' }).status, 'pc');
-  assert.equal(multiplayer.normalisePresence({ nick: 'Lena', status: 'local' }).status, 'local');
-  assert.equal(multiplayer.normalisePresence({ nick: 'Lena', status: 'desconhecido' }).status, 'free');
+  assert.equal(multiplayer.normalisePresence({ status: 'pc' }).status, 'pc');
+  assert.equal(multiplayer.normalisePresence({ status: 'local' }).status, 'local');
+  assert.equal(multiplayer.normalisePresence({ status: 'watching' }).status, 'watching');
+  assert.equal(multiplayer.normalisePresence({ status: 'desconhecido' }).status, 'free');
 });
 
-test('a lista de presença inclui todas as ligações activas e conserva o identificador real', () => {
+test('a lista global conserva uma entrada por ligação activa', () => {
   const multiplayer = service();
   multiplayer.lobbyChannel = {
     presenceState: () => ({
-      'connection-a': [{
-        connection_id: 'connection-a', user_id: 'user-a', nick: 'A', status: 'free', seen_at: new Date().toISOString(),
-      }],
-      'connection-b': [{
-        connection_id: 'connection-b', user_id: 'user-b', nick: 'B', status: 'pc', seen_at: new Date().toISOString(),
-      }],
+      a: [{ connection_id: 'a', user_id: 'u1', nick: 'A', status: 'free', seen_at: new Date().toISOString() }],
+      b: [{ connection_id: 'b', user_id: 'u2', nick: 'B', status: 'pc', seen_at: new Date().toISOString() }],
     }),
   };
-  const players = multiplayer.presencePlayers();
-  assert.equal(players.length, 2);
-  assert.deepEqual(new Set(players.map((player) => player.connection_id)), new Set(['connection-a', 'connection-b']));
+  assert.deepEqual(new Set(multiplayer.presencePlayers().map((p) => p.connection_id)), new Set(['a', 'b']));
 });
 
-test('a aplicação anuncia imediatamente os modos PC e local', async () => {
-  const source = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
-  assert.match(source, /if \(app\.mode === 'pc'\) \{\s*status = 'pc';/s);
-  assert.match(source, /else if \(app\.mode === 'local'\) \{\s*status = 'local';/s);
-  assert.match(source, /async function startPcGame\(\)[\s\S]*?renderGame\(\);\s*syncPresence\(\);/);
-  assert.match(source, /function startLocalGame\(\)[\s\S]*?renderGame\(\);\s*syncPresence\(\);/);
+test('espectadores anónimos são numerados por ligação', () => {
+  const multiplayer = service();
+  multiplayer.roomChannel = {
+    presenceState: () => ({
+      z: [{ connection_id: 'z', nick: 'Anónimo', registered: false, role: 'spectator' }],
+      a: [{ connection_id: 'a', nick: 'Anónimo', registered: false, role: 'spectator' }],
+      p: [{ connection_id: 'p', nick: 'Lena', registered: true, role: 'spectator' }],
+    }),
+  };
+  const viewers = multiplayer.roomPresenceViewers();
+  assert.equal(viewers.find((v) => v.connection_id === 'a').display_nick, 'Anónimo 01');
+  assert.equal(viewers.find((v) => v.connection_id === 'z').display_nick, 'Anónimo 02');
+  assert.equal(viewers.find((v) => v.connection_id === 'p').display_nick, 'Lena');
 });
 
-
-test('a presença do jogador contra o computador inclui o banco observável', async () => {
+test('o treino não publica identificador de banco', async () => {
   const source = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
-  assert.match(source, /if \(app\.mode === 'pc'\) \{\s*status = 'pc';\s*bankId = app\.room\?\.id/s);
-  assert.match(source, /case 'pc': return t\('statusPc', \{ bank \}\)/);
+  assert.match(source, /if \(app\.mode === 'pc' \|\| app\.mode === 'calibration'\) \{\s*status = 'pc';/s);
+  assert.doesNotMatch(source, /status = 'pc';\s*bankId =/s);
 });

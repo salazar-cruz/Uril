@@ -22,15 +22,20 @@ function seenTime(value) {
 }
 
 export class MultiplayerService {
-  constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation, onSuggestionsChange }) {
+  constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation, onSuggestionsChange, onAuthChange, onRoomPresenceChange }) {
     this.url = url;
     this.anonKey = anonKey;
     this.onLobbyChange = onLobbyChange;
     this.onPresenceChange = onPresenceChange;
     this.onInvitation = onInvitation;
     this.onSuggestionsChange = onSuggestionsChange;
+    this.onAuthChange = onAuthChange;
+    this.onRoomPresenceChange = onRoomPresenceChange;
     this.client = null;
     this.user = null;
+    this.profile = null;
+    this.account = null;
+    this.authSubscription = null;
     this.lobbyChannel = null;
     this.roomChannel = null;
     this.roomChannelReady = false;
@@ -41,13 +46,15 @@ export class MultiplayerService {
     this.announcedPresence = new Map();
     this.heartbeatTimer = null;
     this.lifecycleBound = false;
+    this.roomHeartbeatTimer = null;
+    this.roomPresenceProfile = null;
   }
 
   get configured() {
     return Boolean(this.url && this.anonKey);
   }
 
-  async init(profile) {
+  async init(profile = {}) {
     if (!this.configured) return { configured: false };
 
     let createClient = window.supabase?.createClient;
@@ -57,28 +64,202 @@ export class MultiplayerService {
     }
 
     this.client = createClient(this.url, this.anonKey, {
-      auth: { persistSession: true, autoRefreshToken: true },
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     });
 
-    let { data } = await this.client.auth.getSession();
-    if (!data.session) {
+    const { data: sessionData } = await this.client.auth.getSession();
+    let session = sessionData.session;
+    if (!session) {
       const response = await this.client.auth.signInAnonymously();
       if (response.error) throw response.error;
-      data = { session: response.data.session };
+      session = response.data.session;
     }
-    this.user = data.session.user;
-    await this.connectLobby(profile);
-    return { configured: true, user: this.user };
+
+    this.user = session?.user || null;
+    await this.loadIdentity();
+    this.bindAuthChanges(profile);
+    await this.connectLobby(this.identityPresence(profile));
+    this.emitAuthChange();
+    return {
+      configured: true,
+      user: this.user,
+      profile: this.profile,
+      account: this.account,
+      registered: this.registered,
+    };
+  }
+
+  get registered() {
+    return Boolean(this.user && !this.user.is_anonymous && this.profile?.id === this.user.id);
+  }
+
+  identityPresence(fallback = {}) {
+    if (this.registered) {
+      return {
+        ...fallback,
+        nick: this.profile.nick,
+        island: this.profile.island || null,
+        country: this.profile.country,
+        elo: this.profile.elo,
+        registered: true,
+      };
+    }
+    return {
+      ...fallback,
+      nick: 'Anónimo',
+      island: null,
+      country: null,
+      elo: null,
+      registered: false,
+    };
+  }
+
+  async loadIdentity() {
+    this.profile = null;
+    this.account = null;
+    if (!this.client || !this.user || this.user.is_anonymous) return;
+
+    let [{ data: profile }, { data: account }] = await Promise.all([
+      this.client.from('uril_profiles').select('*').eq('id', this.user.id).maybeSingle(),
+      this.client.from('uril_accounts').select('id,full_name,email,created_at,updated_at').eq('id', this.user.id).maybeSingle(),
+    ]);
+
+    if (!profile) {
+      const metadata = this.user.user_metadata || {};
+      if (metadata.full_name && metadata.nick && metadata.country) {
+        const completed = await this.client.rpc('uril_complete_registration', {
+          p_full_name: metadata.full_name,
+          p_nick: metadata.nick,
+          p_country: metadata.country,
+          p_island: metadata.island || null,
+        });
+        if (!completed.error) {
+          profile = completed.data;
+          const accountQuery = await this.client
+            .from('uril_accounts')
+            .select('id,full_name,email,created_at,updated_at')
+            .eq('id', this.user.id)
+            .maybeSingle();
+          account = accountQuery.data || null;
+        }
+      }
+    }
+
+    this.profile = profile || null;
+    this.account = account || null;
+  }
+
+  emitAuthChange() {
+    this.onAuthChange?.({
+      user: this.user,
+      profile: this.profile,
+      account: this.account,
+      registered: this.registered,
+    });
+  }
+
+  bindAuthChanges(fallbackProfile = {}) {
+    if (this.authSubscription) return;
+    const { data } = this.client.auth.onAuthStateChange(async (_event, session) => {
+      this.user = session?.user || null;
+      if (!this.user) {
+        const anonymous = await this.client.auth.signInAnonymously();
+        this.user = anonymous.data.session?.user || null;
+      }
+      await this.loadIdentity();
+      await this.connectLobby(this.identityPresence(fallbackProfile));
+      this.emitAuthChange();
+    });
+    this.authSubscription = data.subscription;
+  }
+
+  async checkNickAvailable(nick) {
+    if (!this.client) return false;
+    const value = String(nick || '').trim();
+    if (value.length < 2) return false;
+    const { count, error } = await this.client
+      .from('uril_profiles')
+      .select('id', { count: 'exact', head: true })
+      .ilike('nick', value);
+    if (error) throw error;
+    return Number(count || 0) === 0;
+  }
+
+  async signUp({ fullName, nick, country, island, email, password }) {
+    if (!this.client) throw new Error('O serviço de registo não está ligado.');
+    const available = await this.checkNickAvailable(nick);
+    if (!available) throw new Error('Este nick já está registado.');
+    const metadata = {
+      full_name: String(fullName || '').trim(),
+      nick: String(nick || '').trim(),
+      country: String(country || '').trim(),
+      island: island || null,
+    };
+    const response = this.user?.is_anonymous
+      ? await this.client.auth.updateUser({
+          email: String(email || '').trim(),
+          password: String(password || ''),
+          data: metadata,
+        })
+      : await this.client.auth.signUp({
+          email: String(email || '').trim(),
+          password: String(password || ''),
+          options: { data: metadata },
+        });
+    const { data, error } = response;
+    if (error) throw error;
+    if (data.session || data.user) {
+      this.user = data.session?.user || data.user;
+      await this.loadIdentity();
+      this.emitAuthChange();
+    }
+    return data;
+  }
+
+  async signIn(email, password) {
+    const { data, error } = await this.client.auth.signInWithPassword({
+      email: String(email || '').trim(),
+      password: String(password || ''),
+    });
+    if (error) throw error;
+    this.user = data.user;
+    await this.loadIdentity();
+    this.emitAuthChange();
+    return data;
+  }
+
+  async signOut() {
+    if (!this.client) return;
+    const { error } = await this.client.auth.signOut();
+    if (error) throw error;
+    this.profile = null;
+    this.account = null;
+  }
+
+  async updateIdentity({ fullName, nick, country, island }) {
+    const { data, error } = await this.client.rpc('uril_update_identity', {
+      p_full_name: fullName,
+      p_nick: nick,
+      p_country: country,
+      p_island: island || null,
+    });
+    if (error) throw error;
+    await this.loadIdentity();
+    this.emitAuthChange();
+    return data;
   }
 
   normalisePresence(profile = {}) {
-    const fallback = this.user?.id ? `Convidado-${this.user.id.slice(0, 4)}` : 'Convidado';
+    const fallback = this.registered ? this.profile.nick : 'Anónimo';
     const status = PRESENCE_STATUSES.has(profile.status) ? profile.status : 'free';
     return {
       connection_id: this.connectionId,
       user_id: this.user?.id || null,
       nick: String(profile.nick || '').trim() || fallback,
-      island: String(profile.island || 'santiago'),
+      island: profile.island || null,
+      country: profile.country || null,
+      elo: Number(profile.elo || 0) || null,
+      registered: Boolean(profile.registered ?? this.registered),
       status,
       bank_id: profile.bank_id || null,
       bank_name: profile.bank_name || null,
@@ -351,14 +532,14 @@ export class MultiplayerService {
   }
 
   async createSuggestion(profile, text) {
-    if (!this.client || !this.user) throw new Error('O serviço de sugestões ainda não está ligado.');
+    if (!this.client || !this.user || !this.registered) throw new Error('Só jogadores inscritos publicam sugestões.');
     const body = String(text || '').trim().slice(0, 1200);
     if (body.length < 4) throw new Error('Escreve uma sugestão com pelo menos quatro caracteres.');
 
     const payload = {
       author_id: this.user.id,
       nick: String(profile?.nick || '').trim().slice(0, 18),
-      island: String(profile?.island || 'santiago'),
+      island: profile?.island || null,
       body,
     };
 
@@ -372,7 +553,7 @@ export class MultiplayerService {
   }
 
   async createSuggestionReply(suggestionId, profile, text) {
-    if (!this.client || !this.user) throw new Error('O serviço de sugestões ainda não está ligado.');
+    if (!this.client || !this.user || !this.registered) throw new Error('Só jogadores inscritos publicam respostas.');
     const body = String(text || '').trim().slice(0, 800);
     if (!body) throw new Error('Escreve uma resposta antes de enviar.');
 
@@ -380,7 +561,7 @@ export class MultiplayerService {
       suggestion_id: suggestionId,
       author_id: this.user.id,
       nick: String(profile?.nick || '').trim().slice(0, 18),
-      island: String(profile?.island || 'santiago'),
+      island: profile?.island || null,
       body,
     };
 
@@ -393,86 +574,65 @@ export class MultiplayerService {
     return data;
   }
 
-  async listRooms() {
-    if (!this.client) return [];
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await this.client
-      .from('uril_rooms')
-      .select('*')
-      .in('status', ['waiting', 'playing', 'finished'])
-      .gte('created_at', since)
-      .order('updated_at', { ascending: false })
-      .limit(100);
-    if (error) throw error;
-    return data || [];
+  async refreshRoomStatuses() {
+    if (!this.client) return 0;
+    const { data, error } = await this.client.rpc('uril_refresh_room_statuses');
+    if (error) return 0;
+    return Number(data || 0);
   }
 
-  async createRoom({ name, profile, session }) {
-    const payload = {
-      name: name || `Banco de ${profile.nick}`,
-      host_id: this.user.id,
-      host_nick: profile.nick,
-      host_island: profile.island,
-      status: 'waiting',
-      allow_spectators: true,
-      game_state: session,
-      version: 1,
-    };
-    const { data, error } = await this.client
+  async listRooms({ status = 'playing', search = '', page = 0, pageSize = 20, dateFrom = null, dateTo = null, result = 'all', event = 'all' } = {}) {
+    if (!this.client) return { rooms: [], count: 0, page: 0, pageSize };
+    await this.refreshRoomStatuses();
+    const statuses = status === 'all'
+      ? ['waiting', 'playing', 'interrupted', 'finished', 'abandoned']
+      : ['live', 'playing'].includes(status)
+        ? ['playing']
+        : ['open', 'waiting'].includes(status)
+          ? ['waiting', 'interrupted']
+          : status === 'finished'
+            ? ['finished', 'abandoned']
+            : [status];
+
+    let query = this.client
       .from('uril_rooms')
-      .insert(payload)
-      .select('*')
-      .single();
+      .select('*', { count: 'exact' })
+      .in('status', statuses)
+      .order('updated_at', { ascending: false });
+
+    const term = String(search || '').trim().replace(/[,%()]/g, '');
+    if (term) query = query.or(`name.ilike.%${term}%,host_nick.ilike.%${term}%,guest_nick.ilike.%${term}%,host_country.ilike.%${term}%,guest_country.ilike.%${term}%,host_island.ilike.%${term}%,guest_island.ilike.%${term}%`);
+    if (dateFrom) query = query.gte('created_at', `${dateFrom}T00:00:00.000Z`);
+    if (dateTo) {
+      const exclusiveEnd = new Date(`${dateTo}T00:00:00.000Z`);
+      exclusiveEnd.setUTCDate(exclusiveEnd.getUTCDate() + 1);
+      query = query.lt('created_at', exclusiveEnd.toISOString());
+    }
+    if (['south', 'north', 'draw'].includes(result)) query = query.eq('result', result);
+    if (event === 'capote') query = query.eq('has_capote', true);
+    if (event === 'frouxo') query = query.eq('has_frouxo', true);
+    if (event === 'quatro') query = query.eq('has_quatro', true);
+
+    const from = Math.max(0, Number(page) || 0) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, count, error } = await query.range(from, to);
     if (error) throw error;
-    return data;
+    return { rooms: data || [], count: Number(count || 0), page: Number(page) || 0, pageSize };
   }
 
-  async createComputerRoom({
-    name,
-    profile,
-    session,
-    computerNick,
-    computerIsland = 'santa-luzia',
-  }) {
-    const payload = {
-      name: name || `Banco de ${profile.nick} contra o PC`,
-      host_id: this.user.id,
-      host_nick: profile.nick,
-      host_island: profile.island,
-      guest_id: null,
-      guest_nick: computerNick || 'PC',
-      guest_island: computerIsland,
-      status: 'playing',
-      allow_spectators: true,
-      game_state: session,
-      version: 1,
-    };
-    const { data, error } = await this.client
-      .from('uril_rooms')
-      .insert(payload)
-      .select('*')
-      .single();
+  async createRoom({ name, session }) {
+    if (!this.registered) throw new Error('Só jogadores inscritos criam bancos oficiais.');
+    const { data, error } = await this.client.rpc('uril_create_room', {
+      p_name: name || `Banco de ${this.profile.nick}`,
+      p_game_state: session,
+    });
     if (error) throw error;
     return data;
   }
 
-  async joinRoom(roomId, profile) {
-    const current = await this.getRoom(roomId);
-    const { data, error } = await this.client
-      .from('uril_rooms')
-      .update({
-        guest_id: this.user.id,
-        guest_nick: profile.nick,
-        guest_island: profile.island,
-        status: 'playing',
-        version: Number(current.version || 0) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', roomId)
-      .eq('version', current.version)
-      .is('guest_id', null)
-      .select('*')
-      .single();
+  async joinRoom(roomId) {
+    if (!this.registered) throw new Error('Só jogadores inscritos entram em partidas oficiais.');
+    const { data, error } = await this.client.rpc('uril_join_room', { p_room_id: roomId });
     if (error) throw error;
     return data;
   }
@@ -487,14 +647,68 @@ export class MultiplayerService {
     return data;
   }
 
-  async subscribeRoom(roomId, onChange, onChatMessage) {
+  roomPresenceViewers() {
+    const state = this.roomChannel?.presenceState?.() || {};
+    const viewers = [];
+    for (const [key, metas] of Object.entries(state)) {
+      for (const meta of metas || []) viewers.push({ connection_id: meta.connection_id || key, ...meta });
+    }
+    const anonymous = viewers
+      .filter((viewer) => !viewer.registered)
+      .sort((a, b) => String(a.connection_id).localeCompare(String(b.connection_id)));
+    const anonymousNumbers = new Map(anonymous.map((viewer, index) => [viewer.connection_id, index + 1]));
+    return viewers.map((viewer) => ({
+      ...viewer,
+      display_nick: viewer.registered
+        ? viewer.nick
+        : `Anónimo ${String(anonymousNumbers.get(viewer.connection_id) || 1).padStart(2, '0')}`,
+    }));
+  }
+
+  emitRoomPresence() {
+    this.onRoomPresenceChange?.({ viewers: this.roomPresenceViewers() });
+  }
+
+  startRoomHeartbeat(roomId) {
+    window.clearInterval(this.roomHeartbeatTimer);
+    if (!this.registered) return;
+    const beat = () => this.heartbeatRoom(roomId).catch(() => {});
+    beat();
+    this.roomHeartbeatTimer = window.setInterval(beat, 15000);
+  }
+
+  async heartbeatRoom(roomId) {
+    if (!this.registered || !roomId) return null;
+    const { data, error } = await this.client.rpc('uril_room_heartbeat', { p_room_id: roomId });
+    if (error) throw error;
+    return data;
+  }
+
+  async subscribeRoom(roomId, onChange, onChatMessage, viewerProfile = {}) {
     if (this.roomChannel) await this.client.removeChannel(this.roomChannel);
+    window.clearInterval(this.roomHeartbeatTimer);
     this.roomChannelReady = false;
+    this.roomPresenceProfile = {
+      connection_id: this.connectionId,
+      user_id: this.user?.id || null,
+      nick: this.registered ? this.profile.nick : 'Anónimo',
+      registered: this.registered,
+      island: this.registered ? this.profile.island : null,
+      country: this.registered ? this.profile.country : null,
+      role: viewerProfile.role || 'spectator',
+      seen_at: new Date().toISOString(),
+    };
 
     this.roomChannel = this.client
       .channel(`uril-room-${roomId}`, {
-        config: { broadcast: { self: false, ack: false } },
+        config: {
+          broadcast: { self: false, ack: false },
+          presence: { key: this.connectionId },
+        },
       })
+      .on('presence', { event: 'sync' }, () => this.emitRoomPresence())
+      .on('presence', { event: 'join' }, () => this.emitRoomPresence())
+      .on('presence', { event: 'leave' }, () => this.emitRoomPresence())
       .on(
         'broadcast',
         { event: 'room_state' },
@@ -518,6 +732,16 @@ export class MultiplayerService {
           filter: `id=eq.${roomId}`,
         },
         (payload) => onChange(payload.new),
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'uril_moves',
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => this.onLobbyChange?.(),
       );
 
     await new Promise((resolve, reject) => {
@@ -526,10 +750,13 @@ export class MultiplayerService {
         8000,
       );
 
-      this.roomChannel.subscribe((status) => {
+      this.roomChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           window.clearTimeout(timer);
           this.roomChannelReady = true;
+          await this.roomChannel.track(this.roomPresenceProfile);
+          this.emitRoomPresence();
+          if (viewerProfile.role === 'player') this.startRoomHeartbeat(roomId);
           resolve();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           window.clearTimeout(timer);
@@ -565,7 +792,7 @@ export class MultiplayerService {
       room_id: room.id,
       user_id: this.user?.id || null,
       nick: String(profile?.nick || 'Convidado').trim().slice(0, 18) || 'Convidado',
-      island: String(profile?.island || 'santiago'),
+      island: profile?.island || null,
       text: content,
       sent_at: new Date().toISOString(),
     };
@@ -599,15 +826,100 @@ export class MultiplayerService {
   }
 
   async closeRoom(room) {
-    if (!room || room.host_id !== this.user?.id) return;
-    await this.client
-      .from('uril_rooms')
-      .update({ status: 'finished', updated_at: new Date().toISOString() })
-      .eq('id', room.id);
+    if (!room || room.host_id !== this.user?.id || !this.registered) return null;
+    const { data, error } = await this.client.rpc('uril_close_room', { p_room_id: room.id });
+    if (error) throw error;
+    return data;
+  }
+
+  async submitOfficialAction(roomId, action, pitIndex = null) {
+    if (!this.registered) throw new Error('Só jogadores inscritos participam em partidas oficiais.');
+    const { data, error } = await this.client.functions.invoke('uril-official-move', {
+      body: { roomId, action, pitIndex },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }
+
+  async listMoves(roomId) {
+    if (!this.client || !roomId) return [];
+    const { data, error } = await this.client
+      .from('uril_moves')
+      .select('*')
+      .eq('room_id', roomId)
+      .order('game_no', { ascending: true })
+      .order('ply', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async saveMoveAnalysis(moveId, analysis) {
+    if (!this.registered || !moveId || !analysis) return null;
+    const { data, error } = await this.client.rpc('uril_save_move_analysis', {
+      p_move_id: moveId,
+      p_best_move: analysis.bestMove,
+      p_value: analysis.bestValue,
+      p_depth: analysis.completedDepth,
+      p_nodes: analysis.nodes,
+      p_time_ms: analysis.timeMs,
+      p_classification: analysis.classification,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async leaderboard(limit = 100) {
+    const { data, error } = await this.client
+      .from('uril_profiles')
+      .select('id,nick,country,island,elo,elo_provisional,rated_games,wins,draws,losses')
+      .order('elo', { ascending: false })
+      .order('rated_games', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  }
+
+  async ratingHistory(playerId = this.user?.id, limit = 50) {
+    if (!playerId) return [];
+    const { data, error } = await this.client
+      .from('uril_rating_history')
+      .select('*')
+      .eq('player_id', playerId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return data || [];
+  }
+
+  async calibrationProgress() {
+    if (!this.registered) return [];
+    const { data, error } = await this.client
+      .from('uril_calibrations')
+      .select('level,result,performance_elo,created_at')
+      .eq('player_id', this.user.id)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async recordCalibration(level, result) {
+    if (!this.registered) throw new Error('É necessário entrar numa conta de jogador.');
+    const { data, error } = await this.client.rpc('uril_record_calibration', {
+      p_level: level,
+      p_result: result,
+    });
+    if (error) throw error;
+    await this.loadIdentity();
+    this.emitAuthChange();
+    return data;
   }
 
   async leaveRoomChannel() {
+    window.clearInterval(this.roomHeartbeatTimer);
+    this.roomHeartbeatTimer = null;
     if (this.roomChannel && this.client) {
+      await this.roomChannel.untrack?.().catch?.(() => {});
       await this.client.removeChannel(this.roomChannel);
       this.roomChannel = null;
       this.roomChannelReady = false;

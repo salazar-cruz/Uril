@@ -6,7 +6,7 @@ import {
   otherPlayer,
   playerPits,
   rowSeedCount,
-} from './engine.js?v=0.0.35';
+} from './engine.js?v=1.0.0';
 
 const LEVELS = {
   apprentice: {
@@ -66,23 +66,72 @@ export function shouldOfferResignation(game, player = NORTH) {
 }
 
 export function chooseMove(game, requestedLevel = 'amateur') {
+  return analysePosition(game, requestedLevel).move;
+}
+
+export function analysePosition(game, requestedLevel = 'amateur', options = {}) {
+  const startedAt = now();
   const moves = legalMoves(game);
-  if (!moves.length) return null;
-  if (moves.length === 1) return moves[0];
-
   const level = normaliseLevel(requestedLevel);
-  const config = LEVELS[level];
+  const baseConfig = LEVELS[level];
+  const config = {
+    ...baseConfig,
+    maxDepth: Number(options.maxDepth) || baseConfig.maxDepth,
+    timeMs: Number(options.timeMs) || baseConfig.timeMs,
+    randomness: options.allowRandom === false ? 0 : baseConfig.randomness,
+  };
 
-  if (config.randomness >= 1 || Math.random() < config.randomness) {
-    return moves[Math.floor(Math.random() * moves.length)];
+  if (!moves.length) {
+    return {
+      move: null,
+      value: evaluate(game, game.currentPlayer),
+      completedDepth: 0,
+      nodes: 0,
+      timeMs: Math.round(now() - startedAt),
+      principalVariation: [],
+      level,
+      maxDepth: config.maxDepth,
+    };
+  }
+
+  if (moves.length === 1) {
+    return {
+      move: moves[0],
+      value: movePriority(game, applyMove(game, moves[0]), game.currentPlayer),
+      completedDepth: 1,
+      nodes: 1,
+      timeMs: Math.round(now() - startedAt),
+      principalVariation: [moves[0]],
+      level,
+      maxDepth: config.maxDepth,
+    };
+  }
+
+  if (config.randomness >= 1 || (config.randomness > 0 && Math.random() < config.randomness)) {
+    const move = moves[Math.floor(Math.random() * moves.length)];
+    return {
+      move,
+      value: movePriority(game, applyMove(game, move), game.currentPlayer),
+      completedDepth: 1,
+      nodes: moves.length,
+      timeMs: Math.round(now() - startedAt),
+      principalVariation: [move],
+      level,
+      maxDepth: config.maxDepth,
+      random: true,
+    };
   }
 
   const perspective = game.currentPlayer;
-  const deadline = now() + config.timeMs;
+  const deadline = startedAt + config.timeMs;
   const table = new Map();
+  const stats = { nodes: 0 };
 
   let bestMove = tacticalFallback(game, moves, perspective);
+  let bestValue = movePriority(game, applyMove(game, bestMove), perspective);
   let preferredMove = bestMove;
+  let completedDepth = 0;
+  let principalVariation = [bestMove];
 
   for (let depth = 1; depth <= config.maxDepth; depth += 1) {
     try {
@@ -93,9 +142,13 @@ export function chooseMove(game, requestedLevel = 'amateur') {
         deadline,
         table,
         preferredMove,
+        stats,
       );
       bestMove = result.move;
+      bestValue = result.value;
       preferredMove = result.move;
+      completedDepth = depth;
+      principalVariation = buildPrincipalVariation(game, bestMove, table, depth);
 
       if (Math.abs(result.value) >= 900000) break;
     } catch (error) {
@@ -104,10 +157,23 @@ export function chooseMove(game, requestedLevel = 'amateur') {
     }
   }
 
-  return bestMove;
+  return {
+    move: bestMove,
+    value: bestValue,
+    completedDepth,
+    nodes: stats.nodes,
+    timeMs: Math.round(now() - startedAt),
+    principalVariation,
+    level,
+    maxDepth: config.maxDepth,
+  };
 }
 
-function searchRoot(game, depth, perspective, deadline, table, preferredMove) {
+export function evaluatePosition(game, perspective = game?.currentPlayer || SOUTH) {
+  return evaluate(game, perspective);
+}
+
+function searchRoot(game, depth, perspective, deadline, table, preferredMove, stats) {
   checkDeadline(deadline);
   const moves = orderMoves(
     game,
@@ -124,6 +190,7 @@ function searchRoot(game, depth, perspective, deadline, table, preferredMove) {
 
   for (const move of moves) {
     checkDeadline(deadline);
+    stats.nodes += 1;
     const child = applyMove(game, move);
     const value = minimax(
       child,
@@ -134,6 +201,7 @@ function searchRoot(game, depth, perspective, deadline, table, preferredMove) {
       deadline,
       table,
       1,
+      stats,
     );
 
     if (value > bestValue) {
@@ -146,8 +214,9 @@ function searchRoot(game, depth, perspective, deadline, table, preferredMove) {
   return { move: bestMove, value: bestValue };
 }
 
-function minimax(game, depth, alpha, beta, perspective, deadline, table, ply) {
+function minimax(game, depth, alpha, beta, perspective, deadline, table, ply, stats) {
   checkDeadline(deadline);
+  stats.nodes += 1;
 
   if (game.status === 'finished') return terminalValue(game, perspective, ply);
   if (depth <= 0) return evaluate(game, perspective);
@@ -190,6 +259,7 @@ function minimax(game, depth, alpha, beta, perspective, deadline, table, ply) {
       deadline,
       table,
       ply + 1,
+      stats,
     );
 
     if (maximizing) {
@@ -215,6 +285,23 @@ function minimax(game, depth, alpha, beta, perspective, deadline, table, ply) {
   table.set(key, { depth, value, flag, bestMove });
 
   return value;
+}
+
+function buildPrincipalVariation(game, firstMove, table, depth) {
+  const line = [];
+  let current = game;
+  let move = firstMove;
+
+  for (let ply = 0; ply < depth && move !== null && move !== undefined; ply += 1) {
+    const moves = legalMoves(current);
+    if (!moves.includes(move)) break;
+    line.push(move);
+    current = applyMove(current, move);
+    if (current.status === 'finished') break;
+    move = table.get(stateKey(current))?.bestMove ?? null;
+  }
+
+  return line;
 }
 
 function checkDeadline(deadline) {

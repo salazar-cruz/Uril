@@ -9,7 +9,7 @@
 <title>Uril de Cabo Verde</title>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="assets/icons/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="styles.css?v=0.0.35" rel="stylesheet"/>
+<link href="styles.css?v=1.0.0" rel="stylesheet"/>
 </head>
 <body data-island="santiago">
 <div aria-hidden="true" class="island-background"></div>
@@ -21,6 +21,12 @@
 </button>
 <div class="topbar-actions"><select aria-label="Idioma / Langue / Language" class="language-select" id="languageSelect"><option value="pt">PT</option><option value="fr">FR</option><option value="en">EN</option></select>
 <span class="online-pill" id="onlinePill"><i></i><b id="onlineCount">0</b><span data-i18n="onlinePlayers">jogadores online</span></span>
+<div class="auth-actions" id="authActions">
+  <button class="text-button" data-i18n="signIn" id="signInButton" type="button">Entrar</button>
+  <button class="primary-button compact" data-i18n="registerPlayer" id="registerButton" type="button">Registar jogador</button>
+  <button class="player-chip" hidden id="playerChip" type="button"><span id="playerChipNick">Jogador</span><b id="playerChipElo">1200</b></button>
+  <button class="text-button" data-i18n="signOut" hidden id="signOutButton" type="button">Sair</button>
+</div>
 <button class="icon-button" data-i18n-title="helpAndRules" id="rulesButton" title="Ajuda e regras" type="button">?</button>
 </div>
 </header>
@@ -32,39 +38,28 @@
 </div>
 <p class="online-roster-note" data-i18n="connectingPlayers" id="onlineRosterNote">A ligar ao banco de jogadores…</p>
 <div class="online-roster-list" id="onlineRosterList"></div>
-<p class="online-roster-help" data-i18n="rosterHelp">Os jogadores livres recebem convites directos para um banco de Uril.</p>
+<p class="online-roster-help" data-i18n="rosterHelp">Jogadores inscritos e calibrados recebem convites directos para bancos oficiais.</p>
 </aside>
 <main>
 <section class="screen active" id="homeScreen">
 <div class="hero-panel glass">
 <div class="hero-copy">
-<span class="eyebrow" data-i18n="versionZero">VERSÃO ZERO</span>
+<span class="eyebrow" data-i18n="versionZero">VERSÃO 1.0</span>
 <h1 data-i18n-html="heroTitle">O jogo tradicional,<br/><em>ilha por ilha.</em></h1>
-<p data-i18n="heroIntro">Escolhe o teu nome de jogo, a tua ilha e entra num banco de Uril. Sem conta, sem formulários intermináveis.</p>
+<p data-i18n="heroIntroV1">Joga contra a inteligência artificial sem registo. Para disputar partidas oficiais, criar bancos e entrar no ranking Elo, regista uma conta de jogador.</p>
 <div class="variant-note"><span class="variant-note-label" data-i18n="variantLabel">AYO · AWALÉ · OWARE</span><p data-i18n="variantIntro">O Uril é a variante praticada em Cabo Verde da grande família africana Ayo/Awalé/Oware.</p></div></div>
-<div class="profile-card">
-<label data-i18n="nickLabel" for="nickInput">O teu nick</label>
-<input autocomplete="nickname" data-i18n-placeholder="nickPlaceholder" id="nickInput" maxlength="18" placeholder="Ex.: Mindelense77"/>
-<label data-i18n="islandLabel" for="islandSelect">A tua ilha</label>
-<select id="islandSelect">
-<option value="santiago">Santiago</option>
-<option value="santo-antao">Santo Antão</option>
-<option value="sao-vicente">São Vicente</option>
-<option value="sao-nicolau">São Nicolau</option>
-<option value="sal">Sal</option>
-<option value="boa-vista">Boa Vista</option>
-<option value="maio">Maio</option>
-<option value="fogo">Fogo</option>
-<option value="brava">Brava</option>
-<option value="santa-luzia">Santa Luzia</option>
-</select>
-<p class="field-note" data-i18n="backgroundHint" id="profileHint">O fundo acompanha a ilha escolhida.</p>
+<div class="identity-card" id="identityCard">
+  <span class="eyebrow" data-i18n="playerIdentity">IDENTIDADE DO JOGADOR</span>
+  <strong data-i18n="anonymousVisitor" id="identityName">Visitante anónimo</strong>
+  <p data-i18n="anonymousRights" id="identityDescription">Treino contra a IA e consulta de partidas disponíveis.</p>
+  <div class="identity-rating" hidden id="identityRating"><span data-i18n="eloRating">Elo</span><b id="identityElo">1200</b><small id="identityRecord">0 jogos oficiais</small></div>
+  <button class="primary-button" data-i18n="registerToCompete" id="identityRegisterButton" type="button">Registar para competir</button>
 </div>
 </div><section class="shared-invite-panel glass" hidden="" id="sharedInvitePanel">
 <div>
 <span class="eyebrow" data-i18n="whatsappInviteLabel">CONVITE WHATSAPP</span>
 <strong data-i18n="whatsappInviteDefault" id="sharedInviteText">Recebeste um convite para um banco de Uril.</strong>
-<p data-i18n="sharedInviteHelp">Escolhe o teu nick e a tua ilha; depois abre o convite.</p>
+<p data-i18n="sharedInviteHelp">Entra na tua conta de jogador para aceitar o convite oficial. Visitantes anónimos continuam a conseguir assistir.</p>
 </div>
 <button class="whatsapp-button" data-i18n="openWhatsappBank" id="openSharedInviteButton" type="button">Abrir convite</button>
 </section>
@@ -82,19 +77,24 @@
 <option data-i18n="levelGrandmaster" value="grandmaster">Grande Mestre</option>
 </select>
 <button class="primary-button" data-i18n="startMatch" id="startPcButton" type="button">Começar partida</button>
+<div class="calibration-box" hidden id="calibrationBox">
+  <strong data-i18n="initialEloTest">Avaliação do Elo inicial</strong>
+  <small id="calibrationStatus">0 de 3 testes concluídos</small>
+  <button class="secondary-button compact" data-i18n="startCalibration" id="startCalibrationButton" type="button">Iniciar próximo teste</button>
+</div>
 </article>
 <article class="mode-card glass">
 <div class="mode-icon">◉</div>
 <span class="mode-tag" data-i18n="live">AO VIVO</span>
 <h2 data-i18n="banksOnline">Bancos de Uril online</h2>
-<p data-i18n="banksOnlineDesc">Cria um banco, convida outro jogador ou entra apenas para assistir.</p>
+<p data-i18n="banksOnlineDesc">Consulta jogos Live e partidas concluídas. Só jogadores inscritos criam ou disputam bancos oficiais.</p>
 <button class="secondary-button" data-i18n="viewBanks" id="openRoomsButton" type="button">Ver bancos</button>
 </article>
-<article class="mode-card glass">
+<article class="mode-card glass" id="localModeCard">
 <div class="mode-icon">↔</div>
 <span class="mode-tag" data-i18n="sameScreen">MESMO ECRÃ</span>
 <h2 data-i18n="twoPlayers">Dois jogadores</h2>
-<p data-i18n="twoPlayersDesc">Uma partida local, alternando no mesmo dispositivo.</p>
+<p data-i18n="twoPlayersDesc">Uma partida de treino local no mesmo dispositivo, disponível após entrar numa conta.</p>
 <button class="secondary-button" data-i18n="playLocally" id="startLocalButton" type="button">Jogar localmente</button>
 </article>
 </div>
@@ -111,14 +111,24 @@
 <button class="room-filter" data-room-filter="waiting" data-i18n="filterOpen" type="button">Ainda abertos</button>
 <button class="room-filter" data-room-filter="finished" data-i18n="filterFinished" type="button">Concluídos</button>
 </div>
-<div class="create-room-row">
-<input data-i18n-placeholder="bankNamePlaceholder" id="roomNameInput" maxlength="28" placeholder="Nome do banco"/>
-<button class="primary-button compact" data-i18n="createBank" id="createRoomButton" type="button">Criar banco</button>
+<div class="archive-toolbar">
+  <input data-i18n-placeholder="searchGames" id="roomSearchInput" maxlength="60" placeholder="Pesquisar jogador ou banco"/>
+  <label><span data-i18n="fromDate">Desde</span><input id="roomDateFrom" type="date"/></label>
+  <label><span data-i18n="resultFilter">Resultado</span><select id="roomResultFilter"><option data-i18n="allResults" value="all">Todos</option><option data-i18n="southWonFilter" value="south">Vitória de Sul</option><option data-i18n="northWonFilter" value="north">Vitória de Norte</option><option data-i18n="drawFilter" value="draw">Empate</option></select></label>
+  <label><span data-i18n="eventFilter">Ocorrência</span><select id="roomEventFilter"><option data-i18n="allEvents" value="all">Todas</option><option value="capote">Capote</option><option value="frouxo">Frouxo</option><option value="quatro">Quatro</option></select></label>
+  <label><span data-i18n="toDate">Até</span><input id="roomDateTo" type="date"/></label>
+  <button class="secondary-button compact" data-i18n="search" id="searchRoomsButton" type="button">Pesquisar</button>
 </div>
+<div class="create-room-row" id="createRoomRow">
+<input data-i18n-placeholder="bankNamePlaceholder" id="roomNameInput" maxlength="28" placeholder="Nome do banco"/>
+<button class="primary-button compact" data-i18n="createOfficialBank" id="createRoomButton" type="button">Criar banco oficial</button>
+</div>
+<p class="login-required-note" data-i18n="loginCreateBank" hidden id="loginCreateBank">Entra numa conta de jogador para criar ou disputar bancos oficiais.</p>
 <div class="setup-notice" data-i18n-html="setupNotice" hidden="" id="onlineSetupNotice">
-            Os bancos de Uril online ainda não estão ligados ao Supabase. O jogo contra o computador e o modo local já funcionam. Consulta o ficheiro <strong>GUIA-GITHUB.md</strong> para activar esta área.
+            O arquivo e os bancos oficiais ainda não estão ligados ao Supabase. O treino contra o computador continua disponível. Consulta o ficheiro <strong>GUIA-GITHUB.md</strong> para activar as contas, o Elo e as partidas oficiais.
           </div>
 <div class="room-list" id="roomList"></div>
+<div class="archive-pagination" id="archivePagination"><button class="review-button" id="roomsPreviousPage" type="button">◀</button><span id="roomsPageLabel">Página 1</span><button class="review-button" id="roomsNextPage" type="button">▶</button></div>
 </section>
 </section>
 <section class="screen" id="gameScreen">
@@ -195,6 +205,11 @@
 <button class="review-button" data-i18n-aria="reviewLast" id="reviewLastButton" type="button" aria-label="Última posição">▶|</button>
 </div>
 <p data-i18n="reviewHelp">Move o controlo para reconstruir a partida, jogada a jogada.</p>
+<div class="review-analysis-grid">
+  <section class="review-move-details"><span class="eyebrow" data-i18n="moveDetails">DETALHES DA JOGADA</span><div id="reviewMoveDetails"></div><button class="secondary-button compact" data-i18n="analyseMove" id="analyseMoveButton" type="button">Analisar jogada</button></section>
+  <section class="review-engine-analysis"><span class="eyebrow" data-i18n="engineAnalysis">ANÁLISE DO MOTOR</span><div id="reviewAnalysisResult" data-i18n="analysisNotRun">Análise ainda não executada.</div></section>
+  <section class="review-move-list"><span class="eyebrow" data-i18n="moveList">LISTA DE JOGADAS</span><div id="reviewMoveList"></div></section>
+</div>
 </div>
 <div class="status-panel" id="statusPanel">
 <strong data-i18n="matchStarted" id="statusTitle">A partida começou.</strong>
@@ -231,7 +246,15 @@
 <button class="whatsapp-button compact" data-i18n="inviteToPlayWhatsapp" id="sharePlayButton" type="button">Convidar para jogar</button>
 <button class="secondary-button compact" data-i18n="inviteToWatchWhatsapp" id="shareWatchButton" type="button">Convidar para assistir</button>
 </div>
-</section><section class="glass sidebar-card rules-mini">
+</section><section class="glass sidebar-card" id="aiStatsCard">
+<span class="eyebrow" data-i18n="engineStatistics">ESTATÍSTICAS DA IA</span>
+<div class="ai-stats" id="aiStats"><span data-i18n="noEngineStats">Ainda sem análise.</span></div>
+</section>
+<section class="glass sidebar-card" id="roomViewersCard" hidden>
+<span class="eyebrow" data-i18n="watchingPlayers">A ASSISTIR</span>
+<div class="room-viewers" id="roomViewersList"></div>
+</section>
+<section class="glass sidebar-card rules-mini">
 <span class="eyebrow" data-i18n="reminder">LEMBRETE</span>
 <p data-i18n="reminderText">Distribuição anti-horária, sem deixar semente na casa de origem ao completar a volta. Colheita consecutiva de casas com 2 ou 3 sementes.</p>
 <button class="text-button" data-i18n="fullRules" id="sidebarRulesButton" type="button">Ler regras completas</button>
@@ -243,12 +266,16 @@
 </main>
 </div>
 
+<section class="leaderboard-board glass" id="leaderboardSection">
+  <div class="section-heading"><div><span class="eyebrow" data-i18n="officialRanking">RANKING OFICIAL</span><h2 data-i18n="eloLeaderboard">Classificação Elo</h2><p data-i18n="rankingHelp">Apenas partidas entre jogadores inscritos alteram o Elo.</p></div><button class="text-button" data-i18n="refresh" id="refreshLeaderboardButton" type="button">Actualizar</button></div>
+  <div class="leaderboard-table" id="leaderboardList"></div>
+</section>
 <section class="suggestions-board glass" id="suggestionsSection" aria-labelledby="suggestionsHeading">
   <div class="section-heading suggestions-heading">
     <div>
       <span class="eyebrow" data-i18n="suggestionsCommunity">COMUNIDADE</span>
       <h2 data-i18n="suggestionsTitle" id="suggestionsHeading">Sugestões e respostas</h2>
-      <p data-i18n="suggestionsIntro">As sugestões ficam públicas, identificadas pelo nick e pela data. Todos podem ler e responder.</p>
+      <p data-i18n="suggestionsIntro">As sugestões ficam públicas, identificadas pelo nick e pela data. Todos conseguem ler; só jogadores inscritos publicam e respondem.</p>
     </div>
     <button class="text-button" data-i18n="refresh" id="refreshSuggestionsButton" type="button">Actualizar</button>
   </div>
@@ -272,7 +299,7 @@
 </section>
 <footer class="site-footer glass">
   <div><strong data-i18n="footerCopyright">© 2026 Salazar da Cruz</strong><span data-i18n="footerConcept">Conceito, desenvolvimento e direcção</span></div>
-  <div class="footer-actions"><span data-i18n="versionLabel">Versão 0.0.35</span><button class="text-button" data-i18n="suggestions" id="suggestionsButton" type="button">Sugestões</button></div>
+  <div class="footer-actions"><span data-i18n="versionLabel">Versão 1.0.0</span><button class="text-button" data-i18n="suggestions" id="suggestionsButton" type="button">Sugestões</button></div>
 </footer>
 </div>
 <section aria-live="assertive" class="invite-popup glass" hidden="" id="invitePopup" role="alertdialog">
@@ -283,9 +310,29 @@
 <button class="primary-button compact" data-i18n="enterBank" id="acceptInviteButton" type="button">Entrar no banco</button>
 </div>
 </section>
+<dialog class="auth-dialog" id="authDialog">
+<div class="dialog-head"><div><span class="eyebrow" data-i18n="playerAccount">CONTA DE JOGADOR</span><h2 data-i18n="enterOrRegister">Entrar ou registar</h2></div><button class="icon-button" id="closeAuthButton" type="button">×</button></div>
+<div class="auth-tabs" role="tablist"><button class="auth-tab active" data-auth-tab="login" data-i18n="signIn" type="button">Entrar</button><button class="auth-tab" data-auth-tab="register" data-i18n="registerPlayer" type="button">Registar jogador</button></div>
+<form class="auth-form active" id="loginForm" data-auth-panel="login">
+<label data-i18n="email" for="loginEmail">Email</label><input autocomplete="email" id="loginEmail" required type="email"/>
+<label data-i18n="password" for="loginPassword">Palavra-passe</label><input autocomplete="current-password" id="loginPassword" minlength="8" required type="password"/>
+<button class="primary-button" data-i18n="signIn" type="submit">Entrar</button><p class="form-status" id="loginStatus"></p>
+</form>
+<form class="auth-form" id="registerForm" data-auth-panel="register">
+<label data-i18n="fullName" for="registerFullName">Nome completo</label><input autocomplete="name" id="registerFullName" maxlength="100" required/>
+<label data-i18n="nickLabel" for="registerNick">Nick</label><input autocomplete="nickname" id="registerNick" maxlength="18" required/>
+<label data-i18n="country" for="registerCountry">País</label><input autocomplete="country-name" data-i18n-placeholder="countryPlaceholder" id="registerCountry" list="countryList" maxlength="80" required/>
+<datalist id="countryList"><option value="Cabo Verde"></option><option value="Guiné-Bissau"></option><option value="São Tomé e Príncipe"></option><option value="Portugal"></option><option value="Angola"></option><option value="Moçambique"></option><option value="Brasil"></option><option value="França"></option><option value="Estados Unidos"></option></datalist>
+<div id="registerIslandGroup"><label data-i18n="islandLabel" for="registerIsland">Ilha</label><select id="registerIsland"><option value="santiago">Santiago</option><option value="santo-antao">Santo Antão</option><option value="sao-vicente">São Vicente</option><option value="sao-nicolau">São Nicolau</option><option value="sal">Sal</option><option value="boa-vista">Boa Vista</option><option value="maio">Maio</option><option value="fogo">Fogo</option><option value="brava">Brava</option></select></div>
+<label data-i18n="email" for="registerEmail">Email</label><input autocomplete="email" id="registerEmail" required type="email"/>
+<label data-i18n="password" for="registerPassword">Palavra-passe</label><input autocomplete="new-password" id="registerPassword" minlength="8" required type="password"/>
+<label data-i18n="confirmPassword" for="registerPasswordConfirm">Confirmar palavra-passe</label><input autocomplete="new-password" id="registerPasswordConfirm" minlength="8" required type="password"/>
+<button class="primary-button" data-i18n="createPlayerAccount" type="submit">Criar conta de jogador</button><p class="form-status" id="registerStatus"></p>
+</form>
+</dialog>
 <dialog id="rulesDialog">
 <div class="dialog-head">
-<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V0.0.35</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
+<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V1.0.0</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
 <button class="icon-button" data-i18n-aria="close" id="closeRulesButton" type="button">×</button>
 </div>
 <div class="rules-content help-content" data-i18n-html="helpContent"><section><h3>O que é o Uril</h3><p>O Uril é a variante cabo-verdiana da família Ayo/Awalé/Oware.</p></section></div>
@@ -300,6 +347,6 @@
   <div class="action-dialog-body"><p id="aiResignWarning"></p><div class="dialog-actions"><button class="secondary-button" data-i18n="rejectAIResign" id="aiResignRejectButton" type="button">Não aceitar</button><button class="primary-button" data-i18n="acceptAIResign" id="aiResignAcceptButton" type="button">Aceitar desistência</button></div></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
-<script src="js/app.js?v=0.0.35" type="module"></script>
+<script src="js/app.js?v=1.0.0" type="module"></script>
 </body>
 </html>

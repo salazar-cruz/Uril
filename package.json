@@ -1,6 +1,6 @@
 {
-  "name": "uril-cabo-verde-v0",
-  "version": "0.0.35",
+  "name": "uril-cabo-verde",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {

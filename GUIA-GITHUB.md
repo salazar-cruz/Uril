@@ -1,78 +1,101 @@
-# Publicar no GitHub e GitHub Pages
+# Publicação do Uril 1.0.0
 
-## 1. Criar o repositório
+## 1. GitHub Pages
 
-1. Entra no GitHub.
-2. Selecciona **New repository**.
-3. Nome sugerido: `uril-cabo-verde`.
-4. Selecciona **Public**.
-5. Não acrescentes README, `.gitignore` ou licença, porque já vêm no pacote.
-6. Cria o repositório.
+1. Descompacta o pacote.
+2. Carrega **o conteúdo da pasta** para a raiz do repositório GitHub.
+3. Confirma que `index.html`, `CNAME`, `.nojekyll`, `assets`, `js` e `supabase` ficam directamente na raiz.
+4. Em **Settings → Pages**, selecciona a branch `main` e a pasta `/(root)`.
 
-## 2. Carregar o pacote
+O pacote inclui:
 
-1. Descompacta o ZIP.
-2. No repositório vazio, selecciona **uploading an existing file** ou **Add file → Upload files**.
-3. Arrasta todo o conteúdo da pasta descompactada, incluindo `assets`, `js`, `tests`, `index.html`, `CNAME` e os restantes ficheiros.
-4. Confirma em **Commit changes**.
-
-O `index.html` deve ficar directamente na raiz do repositório, e não dentro de outra pasta.
-
-## 3. Activar o GitHub Pages
-
-1. Abre **Settings → Pages**.
-2. Em **Build and deployment**, escolhe **Deploy from a branch**.
-3. Selecciona a branch `main` e a pasta `/(root)`.
-4. Grava.
-
-A primeira publicação costuma demorar alguns minutos.
-
-## 4. Ligar o subdomínio
-
-Este pacote já inclui o ficheiro `CNAME` com:
-
-`uril.devnexusdigital.com`
-
-No gestor DNS do domínio, cria um registo:
-
-- Tipo: `CNAME`
-- Host: `uril`
-- Destino: `salazar-cruz.github.io`
-
-Depois regressa a **Settings → Pages**, confirma o domínio personalizado e activa **Enforce HTTPS** quando a opção surgir disponível.
-
-## 5. Activar os bancos de Uril online
-
-1. Cria um projecto Supabase.
-2. Abre o **SQL Editor**.
-3. Cola e executa o conteúdo de `supabase.sql`.
-4. Em **Project Settings → API Keys**, copia o URL do projecto e a chave pública `Publishable key` (`sb_publishable_...`).
-5. Abre `js/config.js` no GitHub, selecciona o lápis e preenche:
-
-```js
-export const SUPABASE_URL = 'COLOCAR_AQUI_O_URL';
-export const SUPABASE_ANON_KEY = 'COLOCAR_AQUI_A_CHAVE_PUBLICA';
+```text
+uril.devnexusdigital.com
 ```
 
-6. Grava a alteração.
+no ficheiro `CNAME`. O DNS deve manter:
 
-A chave pública fica no navegador por desenho do Supabase. Nunca coloques a `Secret key` no repositório. A protecção das tabelas assenta nas políticas RLS incluídas em `supabase.sql`.
+- tipo: `CNAME`;
+- host: `uril`;
+- destino: `salazar-cruz.github.io`.
 
-## 6. Chat e repetição tripla
+## 2. Configurar autenticação no Supabase
 
-O chat dos bancos de Uril usa o mesmo Realtime já activado. Não é necessário executar novo SQL. As mensagens não ficam guardadas.
+No projecto Supabase:
 
-A regra de repetição tripla é tratada pelo motor no navegador e sincronizada no estado do banco. Depois de actualizar os ficheiros, usa **Ctrl + F5** nos navegadores dos jogadores.
+1. activa autenticação anónima, usada apenas para visitantes e espectadores;
+2. activa Email/Password para contas permanentes;
+3. decide se o email exige confirmação;
+4. acrescenta o domínio publicado à lista de URLs permitidos na autenticação.
 
-## Activar sugestões públicas — v0.0.15
+## 3. Criar a base de dados 1.0.0
 
-Para um projecto Supabase criado antes da versão 0.0.15:
+1. Abre o **SQL Editor** do Supabase.
+2. Cola integralmente `supabase-v1.0.0.sql`.
+3. Executa a migração uma única vez.
 
-1. Abre o projecto no Supabase.
-2. Entra em **SQL Editor**.
-3. Cria uma nova query.
-4. Cola todo o conteúdo de `supabase-sugestoes-v0.0.15.sql`.
-5. Carrega em **Run**.
-6. Regressa ao jogo e faz `Ctrl + F5`.
+A migração cria ou actualiza:
 
-Esta migração cria as sugestões, as respostas, as políticas RLS e as notificações em tempo real. Não substitui nem apaga os bancos de Uril existentes.
+- contas privadas;
+- perfis públicos;
+- bancos oficiais;
+- batimentos e estados Live;
+- arquivo individual de jogadas;
+- histórico Elo;
+- calibração inicial;
+- sugestões e respostas;
+- políticas RLS e canais Realtime.
+
+Os bancos antigos permanecem consultáveis, mas não entram retroactivamente no Elo.
+
+## 4. Configurar a chave pública
+
+Em `js/config.js`, mantém apenas os dados públicos:
+
+```js
+export const SUPABASE_URL = 'URL_DO_PROJECTO';
+export const SUPABASE_ANON_KEY = 'CHAVE_PUBLICA_PUBLISHABLE';
+```
+
+Nunca coloques a chave secreta ou a service role neste ficheiro.
+
+## 5. Publicar a Edge Function oficial
+
+A pasta da função já está incluída:
+
+```text
+supabase/functions/uril-official-move/
+```
+
+A partir da pasta do projecto, usando a Supabase CLI ligada ao projecto:
+
+```bash
+supabase functions deploy uril-official-move
+```
+
+O ambiente gerido pelo Supabase deve disponibilizar à função:
+
+- `SUPABASE_URL`;
+- `SUPABASE_ANON_KEY`;
+- `SUPABASE_SERVICE_ROLE_KEY`.
+
+A service role fica no ambiente protegido da função. Não é copiada para o GitHub.
+
+Sem esta Edge Function, o treino contra a IA e a consulta continuam disponíveis, mas as jogadas oficiais são recusadas.
+
+## 6. Verificação após a publicação
+
+1. Cria duas contas de teste com emails diferentes.
+2. Conclui os três testes de calibração em cada conta.
+3. Na primeira conta, cria um banco oficial.
+4. Na segunda, entra no banco.
+5. Abre um terceiro navegador sem login e confirma `Anónimo 01` na lista de espectadores.
+6. Faz uma jogada e confirma uma linha em `uril_moves`.
+7. Termina uma partida e confirma duas linhas em `uril_rating_history`.
+8. Fecha um navegador durante mais de 90 segundos e confirma o estado `interrupted`.
+9. Reabre os dois jogadores e confirma a recuperação do estado Live.
+10. Consulta a partida e testa o controlador de jogadas e a análise.
+
+## 7. Actualizações do GitHub
+
+Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.0` nos módulos principais para reduzir problemas de cache.

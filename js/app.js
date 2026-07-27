@@ -13,12 +13,14 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=0.0.35';
-import { chooseMove, shouldOfferResignation } from './ai.js?v=0.0.35';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=0.0.35';
-import { MultiplayerService } from './multiplayer.js?v=0.0.35';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=0.0.35';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=0.0.35';
+} from './engine.js?v=1.0.0';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.0';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.0';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.0';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.0';
+import { MultiplayerService } from './multiplayer.js?v=1.0.0';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.0';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.0';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -36,9 +38,21 @@ const ISLANDS = {
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   home: $('#homeScreen'), game: $('#gameScreen'), language: $('#languageSelect'),
-  nick: $('#nickInput'), island: $('#islandSelect'), level: $('#levelSelect'),
+  level: $('#levelSelect'), signIn: $('#signInButton'), register: $('#registerButton'), signOut: $('#signOutButton'),
+  playerChip: $('#playerChip'), playerChipNick: $('#playerChipNick'), playerChipElo: $('#playerChipElo'),
+  identityName: $('#identityName'), identityDescription: $('#identityDescription'), identityRating: $('#identityRating'),
+  identityElo: $('#identityElo'), identityRecord: $('#identityRecord'), identityRegister: $('#identityRegisterButton'),
+  authDialog: $('#authDialog'), closeAuth: $('#closeAuthButton'), loginForm: $('#loginForm'), registerForm: $('#registerForm'),
+  loginEmail: $('#loginEmail'), loginPassword: $('#loginPassword'), loginStatus: $('#loginStatus'),
+  registerFullName: $('#registerFullName'), registerNick: $('#registerNick'), registerCountry: $('#registerCountry'),
+  registerIslandGroup: $('#registerIslandGroup'), registerIsland: $('#registerIsland'), registerEmail: $('#registerEmail'),
+  registerPassword: $('#registerPassword'), registerPasswordConfirm: $('#registerPasswordConfirm'), registerStatus: $('#registerStatus'),
+  calibrationBox: $('#calibrationBox'), calibrationStatus: $('#calibrationStatus'), startCalibration: $('#startCalibrationButton'),
+  localModeCard: $('#localModeCard'),
   roomsPanel: $('#roomsPanel'), roomList: $('#roomList'), roomName: $('#roomNameInput'),
-  roomFilters: $('#roomFilters'),
+  roomFilters: $('#roomFilters'), roomSearch: $('#roomSearchInput'), roomDateFrom: $('#roomDateFrom'), roomDateTo: $('#roomDateTo'), roomResult: $('#roomResultFilter'), roomEvent: $('#roomEventFilter'),
+  searchRooms: $('#searchRoomsButton'), createRoomRow: $('#createRoomRow'), createRoom: $('#createRoomButton'), loginCreateBank: $('#loginCreateBank'),
+  roomsPreviousPage: $('#roomsPreviousPage'), roomsNextPage: $('#roomsNextPage'), roomsPageLabel: $('#roomsPageLabel'),
   setupNotice: $('#onlineSetupNotice'), onlineCount: $('#onlineCount'),
   onlineRoster: $('#onlineRosterList'), onlineRosterNote: $('#onlineRosterNote'),
   invitePopup: $('#invitePopup'), inviteText: $('#inviteText'),
@@ -76,11 +90,16 @@ const elements = {
   chatForm: $('#chatForm'), chatInput: $('#chatInput'), chatSend: $('#chatSendButton'),
   reviewController: $('#reviewController'), reviewPosition: $('#reviewPosition'), reviewTime: $('#reviewTime'),
   reviewSlider: $('#reviewSlider'), reviewFirst: $('#reviewFirstButton'), reviewPrevious: $('#reviewPreviousButton'),
-  reviewNext: $('#reviewNextButton'), reviewLast: $('#reviewLastButton'),
+  reviewNext: $('#reviewNextButton'), reviewLast: $('#reviewLastButton'), reviewMoveDetails: $('#reviewMoveDetails'),
+  reviewAnalysisResult: $('#reviewAnalysisResult'), reviewMoveList: $('#reviewMoveList'), analyseMove: $('#analyseMoveButton'),
+  aiStats: $('#aiStats'), roomViewersCard: $('#roomViewersCard'), roomViewersList: $('#roomViewersList'),
+  leaderboardList: $('#leaderboardList'), refreshLeaderboard: $('#refreshLeaderboardButton'),
 };
 
 const app = {
-  profile: loadProfile(),
+  profile: anonymousProfile(),
+  account: null,
+  registered: false,
   language: getLanguage(),
   sharedInvite: parseSharedInvite(),
   sharedInviteRoom: null,
@@ -101,8 +120,25 @@ const app = {
   roundTransitionBusy: false,
   rooms: [],
   roomFilter: 'playing',
+  roomPage: 0,
+  roomPageSize: 20,
+  roomTotal: 0,
+  roomSearch: '',
+  roomDateFrom: null,
+  roomDateTo: null,
+  roomResult: 'all',
+  roomEvent: 'all',
   reviewMode: false,
   reviewIndex: 0,
+  reviewMoves: [],
+  reviewAnalysis: null,
+  roomViewers: [],
+  lastAiStats: null,
+  calibrationMode: false,
+  calibrationLevel: null,
+  calibrationProgress: [],
+  calibrationRecordedRound: null,
+  leaderboard: [],
   onlinePlayers: [],
   currentInvitation: null,
   chatMessages: [],
@@ -147,6 +183,8 @@ const multiplayer = new MultiplayerService({
   },
   onInvitation: (invitation) => receiveInvitation(invitation),
   onSuggestionsChange: () => scheduleSuggestionRefresh(),
+  onAuthChange: (identity) => applyAuthenticatedIdentity(identity),
+  onRoomPresenceChange: ({ viewers = [] } = {}) => { app.roomViewers = viewers; renderRoomViewers(); },
 });
 
 function createSession(firstPlayer = SOUTH, match = createMatch(), previousWinner = null) {
@@ -179,11 +217,11 @@ function isComputerRoom(room) {
 }
 
 function hasPublicPcBank() {
-  return app.mode === 'pc' && Boolean(app.room);
+  return false;
 }
 
 function hasSyncedBank() {
-  return app.mode === 'online' || hasPublicPcBank();
+  return app.mode === 'online' && Boolean(app.room);
 }
 
 function defaultPlayers() {
@@ -270,38 +308,110 @@ function applyLanguage(language = app.language) {
   renderGame();
   renderSharedInvitePanel();
   renderSuggestions();
+  renderIdentity();
+  renderLeaderboard();
+  renderReviewAnalysis();
+  renderAiStats();
+  renderRoomViewers();
   updateSuggestionAuthorPreview();
 }
 
-function loadProfile() {
-  try {
-    const stored = JSON.parse(localStorage.getItem('uril-profile-v0') || '{}');
-    return {
-      nick: String(stored.nick || ''),
-      island: ISLANDS[stored.island] ? stored.island : 'santiago',
-    };
-  } catch {
-    return { nick: '', island: 'santiago' };
-  }
+function anonymousProfile() {
+  return { nick: 'Anónimo', island: null, country: null, elo: null, registered: false };
 }
 
-function saveProfile() {
-  app.profile.nick = elements.nick.value.trim();
-  app.profile.island = elements.island.value;
-  localStorage.setItem('uril-profile-v0', JSON.stringify(app.profile));
-  document.body.dataset.island = app.profile.island;
+function applyAuthenticatedIdentity({ profile, account, registered } = {}) {
+  app.registered = Boolean(registered && profile);
+  app.account = account || null;
+  app.profile = app.registered
+    ? { ...profile, registered: true }
+    : anonymousProfile();
+  document.body.dataset.island = app.profile.island || 'santiago';
+  renderIdentity();
   updateSuggestionAuthorPreview();
   syncPresence();
+  refreshLeaderboard().catch(() => {});
+  refreshCalibrationProgress().catch(() => {});
+  if (!elements.roomsPanel.hidden) refreshRooms().catch(() => {});
+}
+
+function requireRegistered(messageKey = 'registrationRequired') {
+  if (app.registered) return true;
+  toast(t(messageKey));
+  openAuthDialog('login');
+  return false;
+}
+
+function calibrationComplete() {
+  return app.registered && Number(app.profile?.calibration_games || 0) >= CALIBRATION_LEVELS.length;
+}
+
+function requireCompetitiveReady() {
+  if (!requireRegistered()) return false;
+  if (calibrationComplete()) return true;
+  toast(t('calibrationRequired'));
+  elements.calibrationBox.hidden = false;
+  elements.calibrationBox.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  return false;
 }
 
 function requireProfile() {
-  saveProfile();
-  if (app.profile.nick.length < 2) {
-    elements.nick.focus();
-    toast(t('profileTooShort'));
-    return false;
-  }
   return true;
+}
+
+function isCapeVerdeCountry(value) {
+  const country = String(value || '').trim().toLocaleLowerCase();
+  return ['cabo verde', 'cape verde', 'cap-vert', 'cv'].includes(country);
+}
+
+function renderIdentity() {
+  const registered = app.registered;
+  elements.signIn.hidden = registered;
+  elements.register.hidden = registered;
+  elements.signOut.hidden = !registered;
+  elements.playerChip.hidden = !registered;
+  elements.identityRegister.hidden = registered;
+  elements.identityRating.hidden = !registered;
+  const competitiveReady = calibrationComplete();
+  elements.localModeCard?.classList.toggle('locked', !registered);
+  elements.createRoomRow.hidden = !competitiveReady;
+  elements.loginCreateBank.hidden = competitiveReady;
+  elements.loginCreateBank.textContent = registered ? t('calibrationRequired') : t('loginCreateBank');
+  elements.createRoom.disabled = !competitiveReady;
+  elements.suggestionSubmit.disabled = !registered || app.suggestionsLoading;
+
+  if (registered) {
+    elements.playerChipNick.textContent = app.profile.nick;
+    elements.playerChipElo.textContent = String(app.profile.elo || 1200);
+    elements.identityName.textContent = app.profile.nick;
+    elements.identityDescription.textContent = [app.profile.country, islandName(app.profile.island)].filter(Boolean).join(' · ');
+    elements.identityElo.textContent = String(app.profile.elo || 1200);
+    const provisional = app.profile.elo_provisional ? ` · ${t('eloProvisional')}` : '';
+    elements.identityRecord.textContent = `${t('officialGamesCount', { count: Number(app.profile.rated_games || 0) })}${provisional}`;
+  } else {
+    elements.identityName.textContent = t('anonymousVisitor');
+    elements.identityDescription.textContent = t('anonymousRights');
+  }
+}
+
+function openAuthDialog(tab = 'login') {
+  setAuthTab(tab);
+  elements.authDialog.showModal();
+}
+
+function setAuthTab(tab) {
+  document.querySelectorAll('[data-auth-tab]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.authTab === tab);
+  });
+  document.querySelectorAll('[data-auth-panel]').forEach((panel) => {
+    panel.classList.toggle('active', panel.dataset.authPanel === tab);
+  });
+}
+
+function updateRegistrationIslandVisibility() {
+  const show = isCapeVerdeCountry(elements.registerCountry.value);
+  elements.registerIslandGroup.hidden = !show;
+  elements.registerIsland.required = show;
 }
 
 function showScreen(name) {
@@ -320,7 +430,11 @@ function playerName(player) {
 }
 
 function islandName(code) {
-  return ISLANDS[code] || t('capeVerde');
+  return code && ISLANDS[code] ? ISLANDS[code] : '';
+}
+
+function playerLocation(player = {}) {
+  return [player.country, islandName(player.island)].filter(Boolean).join(' · ') || '—';
 }
 
 function presencePayload() {
@@ -328,10 +442,8 @@ function presencePayload() {
   let bankId = null;
   let bankName = null;
 
-  if (app.mode === 'pc') {
+  if (app.mode === 'pc' || app.mode === 'calibration') {
     status = 'pc';
-    bankId = app.room?.id || null;
-    bankName = app.room?.name || null;
   } else if (app.mode === 'local') {
     status = 'local';
   } else if (app.mode === 'review' && app.room) {
@@ -353,6 +465,9 @@ function presencePayload() {
     status,
     bank_id: bankId,
     bank_name: bankName,
+    registered: app.registered,
+    elo: app.profile.elo || null,
+    country: app.profile.country || null,
   };
 }
 
@@ -404,9 +519,9 @@ function renderOnlinePlayers() {
 
     const info = document.createElement('div');
     const nick = document.createElement('strong');
-    nick.textContent = player.nick || t('guest');
+    nick.textContent = player.registered ? (player.nick || t('guest')) : t('anonymousVisitor');
     const detail = document.createElement('small');
-    detail.textContent = `${islandName(player.island)} · ${onlineStatus(player)}`;
+    detail.textContent = `${playerLocation(player)} · ${onlineStatus(player)}${player.elo ? ` · Elo ${player.elo}` : ''}`;
     info.append(nick, detail);
 
     const isSelf = player.user_id === currentUserId;
@@ -416,15 +531,11 @@ function renderOnlinePlayers() {
     if (isSelf) {
       action.textContent = t('you');
       action.disabled = true;
-    } else if ((player.status || 'free') === 'free') {
+    } else if ((player.status || 'free') === 'free' && player.registered && app.registered) {
       const lockedInMatch = app.mode === 'online' && !app.spectator && app.room?.status === 'playing';
       action.textContent = lockedInMatch ? t('inGame') : t('invite');
       action.disabled = lockedInMatch;
       if (!lockedInMatch) action.addEventListener('click', () => inviteOnlinePlayer(player));
-    } else if (player.status === 'pc' && player.bank_id) {
-      action.textContent = t('watchPlay');
-      action.disabled = false;
-      action.addEventListener('click', () => watchPlayerBank(player));
     } else {
       action.textContent = t('occupied');
       action.disabled = true;
@@ -436,7 +547,7 @@ function renderOnlinePlayers() {
 }
 
 async function watchPlayerBank(player) {
-  if (!player?.bank_id || !requireProfile()) return;
+  if (!player?.bank_id) return;
   try {
     if (app.mode) await leaveGame();
     const room = await multiplayer.getRoom(player.bank_id);
@@ -470,7 +581,7 @@ function bankInviteUrl(action) {
 }
 
 function shareBankViaWhatsApp(action) {
-  if (!app.room || !['online', 'pc'].includes(app.mode)) {
+  if (!app.room || app.mode !== 'online') {
     toast(t('shareOnlyOnline'));
     return;
   }
@@ -490,7 +601,7 @@ function shareBankViaWhatsApp(action) {
 
 function renderShareCard() {
   if (!elements.shareCard) return;
-  const enabled = !app.reviewMode && ['online', 'pc'].includes(app.mode) && Boolean(app.room);
+  const enabled = !app.reviewMode && app.mode === 'online' && Boolean(app.room);
   elements.shareCard.hidden = !enabled;
   if (!enabled) return;
   const canInvitePlayer = app.mode === 'online' && !app.spectator && app.room.status === 'waiting' && !app.room.guest_id;
@@ -534,7 +645,8 @@ function clearSharedInviteUrl() {
 }
 
 async function openSharedInvite() {
-  if (!app.sharedInvite || !requireProfile()) return;
+  if (!app.sharedInvite) return;
+  if (app.sharedInvite.action === 'play' && !requireCompetitiveReady()) return;
   try {
     const room = await multiplayer.getRoom(app.sharedInvite.bankId);
     if (app.mode) await leaveGame();
@@ -544,7 +656,7 @@ async function openSharedInvite() {
       if (isPlayer) {
         await enterOnlineRoom(room, false);
       } else if (room.status === 'waiting' && !room.guest_id) {
-        await enterOnlineRoom(await multiplayer.joinRoom(room.id, app.profile), false);
+        await enterOnlineRoom(await multiplayer.joinRoom(room.id), false);
       } else if (room.status === 'playing') {
         toast(t('sharedBankStartedWatch'));
         await enterOnlineRoom(room, true);
@@ -573,7 +685,7 @@ function normaliseChatMessage(message = {}) {
     room_id: message.room_id || null,
     user_id: message.user_id || null,
     nick: String(message.nick || t('guest')).trim().slice(0, 18) || t('guest'),
-    island: String(message.island || 'santiago'),
+    island: message.island || null,
     text: String(message.text || '').trim().slice(0, 280),
     sent_at: message.sent_at || new Date().toISOString(),
   };
@@ -594,7 +706,7 @@ function appendChatMessage(rawMessage) {
 
 function renderChat() {
   if (!elements.chatCard) return;
-  const enabled = !app.reviewMode && ['online', 'pc'].includes(app.mode) && Boolean(app.room);
+  const enabled = !app.reviewMode && app.mode === 'online' && Boolean(app.room);
   elements.chatCard.hidden = !enabled;
   if (!enabled) return;
 
@@ -632,7 +744,7 @@ function renderChat() {
 
 async function sendChatMessage(event) {
   event?.preventDefault?.();
-  if (!['online', 'pc'].includes(app.mode) || !app.room) return;
+  if (app.mode !== 'online' || !app.room) return;
   const text = elements.chatInput.value.trim();
   if (!text) return;
 
@@ -652,7 +764,7 @@ async function sendChatMessage(event) {
 
 async function acceptInvitation() {
   const invitation = app.currentInvitation;
-  if (!invitation || !requireProfile()) return;
+  if (!invitation || !requireCompetitiveReady()) return;
   closeInvitation();
 
   try {
@@ -661,7 +773,7 @@ async function acceptInvitation() {
     if (bank.status !== 'waiting' || bank.guest_id) {
       throw new Error(t('bankNotFree'));
     }
-    const joined = await multiplayer.joinRoom(bank.id, app.profile);
+    const joined = await multiplayer.joinRoom(bank.id);
     await enterOnlineRoom(joined, false);
   } catch (error) {
     toast(t('acceptInviteError', { error: error.message }));
@@ -669,7 +781,7 @@ async function acceptInvitation() {
 }
 
 async function inviteOnlinePlayer(player) {
-  if (!requireProfile()) return;
+  if (!requireCompetitiveReady()) return;
   if (!multiplayer.client || !multiplayer.user) {
     toast(t('onlineNotReady'));
     return;
@@ -687,7 +799,6 @@ async function inviteOnlinePlayer(player) {
     if (!bank) {
       bank = await multiplayer.createRoom({
         name: t('defaultBankName', { nick: app.profile.nick }),
-        profile: app.profile,
         session: createSession(SOUTH),
       });
     } else {
@@ -815,7 +926,7 @@ function roundKey(session = app.session) {
 }
 
 function canArrangeNextRound() {
-  if (app.spectator) return false;
+  if (app.spectator || app.mode === 'calibration') return false;
   if (app.mode !== 'online') return true;
   return Boolean(app.side && multiplayer.user);
 }
@@ -829,6 +940,7 @@ function roundTransitionDelay() {
 }
 
 function scheduleRoundTransition() {
+  if (app.mode === 'online' || app.mode === 'calibration') { clearRoundTransition(); return; }
   const key = roundKey();
   if (!key) {
     clearRoundTransition();
@@ -940,70 +1052,69 @@ function settleRound(session) {
   return session;
 }
 
-async function startPcGame() {
-  if (!requireProfile()) return;
-  app.mode = 'pc';
+async function startPcGame(options = {}) {
+  const calibration = Boolean(options.calibration);
+  if (calibration && !requireRegistered()) return;
+  app.mode = calibration ? 'calibration' : 'pc';
+  app.calibrationMode = calibration;
+  app.calibrationLevel = calibration ? options.level : null;
+  app.calibrationRecordedRound = null;
   app.reviewMode = false;
   app.reviewIndex = 0;
-  app.aiLevel = elements.level.value;
+  app.reviewMoves = [];
+  app.reviewAnalysis = null;
+  app.roomViewers = [];
+  app.lastAiStats = null;
+  app.aiLevel = options.level || elements.level.value;
   app.side = SOUTH;
   app.spectator = false;
   app.room = null;
+  app.lastAiStats = null;
   resetChat();
 
   const computerNick = `PC · ${translatedLevelLabel(app.aiLevel)}`;
+  const human = app.registered ? { ...app.profile } : { nick: t('anonymousVisitor'), island: null, country: null };
   app.players = {
-    [SOUTH]: { ...app.profile },
-    [NORTH]: { nick: computerNick, island: 'santa-luzia' },
+    [SOUTH]: human,
+    [NORTH]: { nick: computerNick, island: 'santa-luzia', country: 'Cabo Verde' },
   };
   app.session = createPcSession(SOUTH, createMatch(), null, app.aiLevel);
   showScreen('game');
   renderGame();
   syncPresence();
+  toast(calibration ? t('initialEloTest') : t('trainingOnly'));
+}
 
-  if (!multiplayer.configured || !multiplayer.client || !multiplayer.user) {
-    toast(t('pcBankPrivate'));
+async function startCalibrationGame() {
+  if (!requireRegistered()) return;
+  await refreshCalibrationProgress();
+  const completed = new Set(app.calibrationProgress.map((entry) => entry.level));
+  const level = CALIBRATION_LEVELS.find((candidate) => !completed.has(candidate));
+  if (!level) {
+    toast(t('calibrationComplete', { elo: app.profile.elo || 1200 }));
     return;
   }
+  await startPcGame({ calibration: true, level });
+}
 
-  app.busy = true;
-  renderGame();
+async function maybeRecordCalibration() {
+  if (!app.calibrationMode || !app.registered || app.session.game.status !== 'finished') return;
+  const key = `${app.session.createdAt}:${app.session.game.turn}:${app.session.game.winner}`;
+  if (app.calibrationRecordedRound === key) return;
+  app.calibrationRecordedRound = key;
+  const result = app.session.game.winner === SOUTH ? 'win' : app.session.game.winner === 'draw' ? 'draw' : 'loss';
   try {
-    const room = await multiplayer.createComputerRoom({
-      name: t('pcBankName', { nick: app.profile.nick }),
-      profile: app.profile,
-      session: app.session,
-      computerNick,
-      computerIsland: 'santa-luzia',
-    });
-    app.room = room;
-    app.lastRoomFingerprint = roomFingerprint(room);
-    await multiplayer.subscribeRoom(
-      room.id,
-      (updated) => {
-        if (app.mode !== 'pc' || updated?.id !== app.room?.id) return;
-        if (Number(updated.version || 0) >= Number(app.room?.version || 0)) {
-          app.room = updated;
-          app.lastRoomFingerprint = roomFingerprint(updated);
-        }
-      },
-      (message) => appendChatMessage(message),
-    );
-    toast(t('pcBankPublished'));
-    syncPresence();
-    await refreshRooms();
+    await multiplayer.recordCalibration(app.calibrationLevel, result);
+    await refreshCalibrationProgress();
+    toast(t('calibrationRecorded', { elo: app.profile.elo || 1200 }));
   } catch (error) {
-    app.room = null;
-    await multiplayer.leaveRoomChannel().catch(() => {});
-    toast(t('pcBankPublishError', { error: error.message }));
-  } finally {
-    app.busy = false;
-    renderGame();
+    toast(error.message);
+    app.calibrationRecordedRound = null;
   }
 }
 
 function startLocalGame() {
-  if (!requireProfile()) return;
+  if (!requireRegistered('localLoginRequired')) return;
   const guest = (window.prompt(t('localGuestPrompt'), t('guest')) || t('guest')).trim().slice(0, 18);
   app.mode = 'local';
   app.reviewMode = false;
@@ -1023,7 +1134,6 @@ function startLocalGame() {
 }
 
 async function openRooms() {
-  if (!requireProfile()) return;
   elements.roomsPanel.hidden = false;
   elements.roomsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   elements.setupNotice.hidden = multiplayer.configured;
@@ -1033,16 +1143,35 @@ async function openRooms() {
 async function refreshRooms() {
   if (!multiplayer.configured || !multiplayer.client) {
     app.rooms = [];
+    app.roomTotal = 0;
     if (!elements.roomsPanel.hidden) renderRooms([]);
     return;
   }
   try {
-    app.rooms = await multiplayer.listRooms();
+    const result = await multiplayer.listRooms({
+      status: app.roomFilter,
+      search: app.roomSearch,
+      page: app.roomPage,
+      pageSize: app.roomPageSize,
+      dateFrom: app.roomDateFrom,
+      dateTo: app.roomDateTo,
+      result: app.roomResult,
+      event: app.roomEvent,
+    });
+    app.rooms = result.rooms;
+    app.roomTotal = result.count;
     if (!elements.roomsPanel.hidden) renderRooms(app.rooms);
     renderOnlinePlayers();
   } catch (error) {
     toast(t('refreshBanksError', { error: error.message }));
   }
+}
+
+function roomEventBadge(label) {
+  const badge = document.createElement('span');
+  badge.className = `room-event-badge event-${label.toLowerCase()}`;
+  badge.textContent = label;
+  return badge;
 }
 
 function renderRooms(rooms) {
@@ -1052,14 +1181,18 @@ function renderRooms(rooms) {
     return;
   }
 
-  const filtered = rooms.filter((room) => room.status === app.roomFilter);
   for (const button of elements.roomFilters?.querySelectorAll('[data-room-filter]') || []) {
     const active = button.dataset.roomFilter === app.roomFilter;
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   }
 
-  if (!filtered.length) {
+  const pages = Math.max(1, Math.ceil(app.roomTotal / app.roomPageSize));
+  elements.roomsPageLabel.textContent = t('pageLabel', { page: app.roomPage + 1, pages });
+  elements.roomsPreviousPage.disabled = app.roomPage <= 0;
+  elements.roomsNextPage.disabled = app.roomPage + 1 >= pages;
+
+  if (!rooms.length) {
     const emptyKey = app.roomFilter === 'playing'
       ? 'noLiveBanks'
       : app.roomFilter === 'waiting'
@@ -1069,7 +1202,7 @@ function renderRooms(rooms) {
     return;
   }
 
-  for (const room of filtered) {
+  for (const room of rooms) {
     const item = document.createElement('article');
     item.className = `room-item room-${room.status}`;
 
@@ -1078,21 +1211,28 @@ function renderRooms(rooms) {
     const title = document.createElement('h3');
     title.textContent = room.name;
     const detail = document.createElement('p');
-    const host = `${room.host_nick} · ${islandName(room.host_island)}`;
-    const guest = room.guest_nick ? ` vs ${room.guest_nick} · ${islandName(room.guest_island)}` : '';
+    const hostLocation = [room.host_country, room.host_island ? islandName(room.host_island) : null, room.host_elo_latest ? `Elo ${room.host_elo_latest}` : null].filter(Boolean).join(' · ');
+    const guestLocation = [room.guest_country, room.guest_island ? islandName(room.guest_island) : null, room.guest_elo_latest ? `Elo ${room.guest_elo_latest}` : null].filter(Boolean).join(' · ');
+    const host = `${room.host_nick}${hostLocation ? ` · ${hostLocation}` : ''}`;
+    const guest = room.guest_nick ? ` vs ${room.guest_nick}${guestLocation ? ` · ${guestLocation}` : ''}` : '';
     detail.textContent = host + guest;
 
     const dates = document.createElement('div');
     dates.className = 'room-dates';
     const started = document.createElement('span');
-    started.textContent = t('bankStartedAt', { date: formatDateTime(room.created_at || room.game_state?.createdAt) });
-    const lastMoveAt = roomLastMoveAt(room);
+    started.textContent = t('gameStartedAt', { date: formatDateTime(room.started_at || room.created_at) });
     const lastMove = document.createElement('span');
-    lastMove.textContent = lastMoveAt
-      ? t('bankLastMoveAt', { date: formatDateTime(lastMoveAt) })
-      : t('bankNoMovesYet');
+    lastMove.textContent = room.last_move_at
+      ? t('lastMoveAt', { date: formatDateTime(room.last_move_at) })
+      : t('noLastMove');
     dates.append(started, lastMove);
+    const flags = document.createElement('div');
+    flags.className = 'room-event-flags';
+    if (room.has_capote) flags.append(roomEventBadge('CAPOTE'));
+    if (room.has_frouxo) flags.append(roomEventBadge('FROUXO'));
+    if (room.has_quatro) flags.append(roomEventBadge('QUATRO'));
     info.append(title, detail, dates);
+    if (flags.childElementCount) info.append(flags);
 
     const state = document.createElement('span');
     state.className = `room-state ${room.status === 'playing' ? 'live' : ''}`;
@@ -1100,23 +1240,37 @@ function renderRooms(rooms) {
       const dot = document.createElement('i');
       dot.className = 'live-dot';
       dot.setAttribute('aria-hidden', 'true');
-      state.append(dot, document.createTextNode(isComputerRoom(room) ? t('pcBankUpper') : t('playingUpper')));
-    } else {
-      state.textContent = room.status === 'waiting' ? t('waitingUpper') : t('finishedUpper');
-    }
+      state.append(dot, document.createTextNode(t('playingUpper')));
+    } else if (room.status === 'waiting') state.textContent = t('waitingUpper');
+    else if (room.status === 'interrupted') state.textContent = t('interruptedUpper');
+    else if (room.status === 'abandoned') state.textContent = t('abandonedUpper');
+    else state.textContent = t('finishedUpper');
 
     const button = document.createElement('button');
-    const isPlayer = multiplayer.user && [room.host_id, room.guest_id].includes(multiplayer.user.id);
-    if (room.status === 'finished') {
+    const isPlayer = app.registered && [room.host_id, room.guest_id].includes(multiplayer.user?.id);
+    const isLive = room.status === 'playing';
+    const canJoin = room.status === 'waiting' && !room.guest_id;
+
+    if (isLive) {
+      button.className = 'secondary-button compact';
+      button.textContent = isPlayer ? t('resume') : t('watchPlay');
+      button.addEventListener('click', () => enterRoomFromList(room, isPlayer));
+    } else if (canJoin) {
+      button.className = 'primary-button compact';
+      button.textContent = !app.registered ? t('signIn') : calibrationComplete() ? t('play') : t('completeCalibration');
+      button.addEventListener('click', () => {
+        if (!app.registered) openAuthDialog('login');
+        else if (!calibrationComplete()) requireCompetitiveReady();
+        else enterRoomFromList(room, false);
+      });
+    } else if (room.status === 'interrupted' && isPlayer) {
+      button.className = 'primary-button compact';
+      button.textContent = t('resume');
+      button.addEventListener('click', () => enterRoomFromList(room, true));
+    } else {
       button.className = 'secondary-button compact';
       button.textContent = t('consultMoves');
       button.addEventListener('click', () => consultRoom(room));
-    } else {
-      button.className = room.status === 'waiting' ? 'primary-button compact' : 'secondary-button compact';
-      if (isPlayer) button.textContent = t('resume');
-      else if (room.status === 'waiting') button.textContent = t('play');
-      else button.textContent = t('watchPlay');
-      button.addEventListener('click', () => enterRoomFromList(room, isPlayer));
     }
 
     item.append(info, state, button);
@@ -1127,7 +1281,8 @@ function renderRooms(rooms) {
 function setRoomFilter(filter) {
   if (!['playing', 'waiting', 'finished'].includes(filter)) return;
   app.roomFilter = filter;
-  renderRooms(app.rooms);
+  app.roomPage = 0;
+  refreshRooms();
 }
 
 function emptyState(text) {
@@ -1138,7 +1293,7 @@ function emptyState(text) {
 }
 
 async function createRoom() {
-  if (!requireProfile()) return;
+  if (!requireCompetitiveReady()) return;
   if (!multiplayer.configured || !multiplayer.client) {
     toast(t('supabaseRequired'));
     return;
@@ -1146,7 +1301,6 @@ async function createRoom() {
   try {
     const room = await multiplayer.createRoom({
       name: elements.roomName.value.trim(),
-      profile: app.profile,
       session: createSession(SOUTH),
     });
     await enterOnlineRoom(room, false);
@@ -1155,26 +1309,70 @@ async function createRoom() {
   }
 }
 
+function gameFromMoveSnapshot(move, useAfter = true) {
+  const board = useAfter ? move.board_after : move.board_before;
+  const scores = useAfter ? move.scores_after : move.scores_before;
+  const currentPlayer = useAfter
+    ? (move.game_status === 'finished' ? move.player_side : otherPlayer(move.player_side))
+    : move.player_side;
+  return {
+    board: Array.isArray(board) ? board.map(Number) : Array(12).fill(4),
+    scores: scores || { [SOUTH]: 0, [NORTH]: 0 },
+    currentPlayer,
+    status: useAfter ? (move.game_status || 'playing') : 'playing',
+    winner: useAfter ? move.winner : null,
+    reason: '',
+    turn: Number(move.ply || 0) + (useAfter ? 1 : 0),
+    lastMove: useAfter ? {
+      player: move.player_side,
+      pitIndex: move.pit_index,
+      capturedPits: move.captured_pits || [],
+      capturedSeeds: move.captured_seeds || 0,
+      grandSlam: move.grand_slam,
+      frouxo: move.frouxo,
+      fedOpponent: move.fed_opponent,
+    } : null,
+    repetitionCounts: {},
+  };
+}
+
+function buildReviewSession(room, moves) {
+  if (!moves.length) return normaliseSession(room.game_state);
+  const session = normaliseSession(room.game_state);
+  const first = moves.find((move) => move.move_type === 'move' && move.board_before);
+  const history = [];
+  if (first) history.push({ type: 'start', at: room.started_at || room.created_at, game: gameFromMoveSnapshot(first, false), match: createMatch(), firstPlayer: first.player_side });
+  for (const move of moves) {
+    if (!move.board_after) continue;
+    history.push({ type: move.move_type, at: move.created_at, game: gameFromMoveSnapshot(move, true), match: session.match, firstPlayer: first?.player_side || SOUTH, moveId: move.id });
+  }
+  session.history = history.length ? history : session.history;
+  return session;
+}
+
 async function consultRoom(room) {
-  if (!requireProfile()) return;
   try {
     const current = await multiplayer.getRoom(room.id);
+    const moves = await multiplayer.listMoves(room.id).catch(() => []);
     app.remoteUpdateQueue = Promise.resolve();
     app.mode = 'review';
     app.reviewMode = true;
     app.room = current;
     app.spectator = true;
     app.side = null;
+    app.reviewMoves = moves;
+    app.reviewAnalysis = null;
     resetChat();
-    app.session = normaliseSession(current.game_state);
+    app.session = buildReviewSession(current, moves);
     app.reviewIndex = Math.max(0, app.session.history.length - 1);
     app.players = {
-      [SOUTH]: { nick: current.host_nick, island: current.host_island },
-      [NORTH]: { nick: current.guest_nick || t('awaitingGuest'), island: current.guest_island || 'santa-luzia' },
+      [SOUTH]: { nick: current.host_nick, island: current.host_island, country: current.host_country, elo: current.host_elo_latest },
+      [NORTH]: { nick: current.guest_nick || t('awaitingGuest'), island: current.guest_island, country: current.guest_country, elo: current.guest_elo_latest },
     };
     invalidateBoardView();
     showScreen('game');
     renderGame();
+    renderReviewAnalysis();
     syncPresence();
   } catch (error) {
     toast(t('consultBankError', { error: error.message }));
@@ -1182,16 +1380,17 @@ async function consultRoom(room) {
 }
 
 async function enterRoomFromList(room, isPlayer) {
-  if (!requireProfile()) return;
   try {
-    if (isComputerRoom(room) && isPlayer && room.host_id === multiplayer.user?.id) {
-      await resumeComputerRoom(await multiplayer.getRoom(room.id));
-    } else if (isPlayer) {
+    if (isPlayer) {
+      if (!requireCompetitiveReady()) return;
       await enterOnlineRoom(await multiplayer.getRoom(room.id), false);
     } else if (room.status === 'waiting') {
-      await enterOnlineRoom(await multiplayer.joinRoom(room.id, app.profile), false);
-    } else {
+      if (!requireCompetitiveReady()) return;
+      await enterOnlineRoom(await multiplayer.joinRoom(room.id), false);
+    } else if (room.status === 'playing') {
       await enterOnlineRoom(await multiplayer.getRoom(room.id), true);
+    } else {
+      await consultRoom(room);
     }
   } catch (error) {
     toast(t('enterBankError', { error: error.message }));
@@ -1199,53 +1398,23 @@ async function enterRoomFromList(room, isPlayer) {
   }
 }
 
-async function resumeComputerRoom(room) {
-  app.remoteUpdateQueue = Promise.resolve();
-  app.mode = 'pc';
-  app.reviewMode = false;
-  app.reviewIndex = 0;
-  resetChat();
-  app.room = room;
-  app.spectator = false;
-  app.session = normaliseSession(room.game_state);
-  app.aiLevel = app.session.aiLevel || 'amateur';
-  app.players = {
-    [SOUTH]: { nick: room.host_nick, island: room.host_island },
-    [NORTH]: { nick: room.guest_nick || `PC · ${translatedLevelLabel(app.aiLevel)}`, island: room.guest_island || 'santa-luzia' },
-  };
-  app.side = SOUTH;
-  app.lastRoomFingerprint = roomFingerprint(room);
-  invalidateBoardView();
-  await multiplayer.subscribeRoom(
-    room.id,
-    (updated) => {
-      if (app.mode !== 'pc' || updated?.id !== app.room?.id) return;
-      if (Number(updated.version || 0) >= Number(app.room?.version || 0)) {
-        app.room = updated;
-        app.lastRoomFingerprint = roomFingerprint(updated);
-      }
-    },
-    (message) => appendChatMessage(message),
-  );
-  showScreen('game');
-  renderGame();
-  syncPresence();
-}
-
 async function enterOnlineRoom(room, spectator) {
+  if (!spectator && !requireCompetitiveReady()) return;
   app.remoteUpdateQueue = Promise.resolve();
   app.mode = 'online';
   app.reviewMode = false;
   app.reviewIndex = 0;
+  app.reviewMoves = [];
+  app.reviewAnalysis = null;
   resetChat();
   app.room = room;
   app.spectator = spectator;
   app.session = normaliseSession(room.game_state);
   app.players = {
-    [SOUTH]: { nick: room.host_nick, island: room.host_island },
-    [NORTH]: { nick: room.guest_nick || t('awaitingGuest'), island: room.guest_island || 'santa-luzia' },
+    [SOUTH]: { nick: room.host_nick, island: room.host_island, country: room.host_country, elo: room.host_elo_latest },
+    [NORTH]: { nick: room.guest_nick || t('awaitingGuest'), island: room.guest_island, country: room.guest_country, elo: room.guest_elo_latest },
   };
-  app.side = spectator ? null : room.host_id === multiplayer.user.id ? SOUTH : NORTH;
+  app.side = spectator ? null : room.host_id === multiplayer.user?.id ? SOUTH : NORTH;
   app.lastRoomFingerprint = roomFingerprint(room);
   invalidateBoardView();
   await multiplayer.subscribeRoom(
@@ -1256,6 +1425,7 @@ async function enterOnlineRoom(room, spectator) {
         .catch((error) => toast(t('syncBankError', { error: error.message })));
     },
     (message) => appendChatMessage(message),
+    { role: spectator ? 'spectator' : 'player' },
   );
   showScreen('game');
   renderGame();
@@ -1303,8 +1473,8 @@ async function applyRemoteRoomUpdate(updated) {
   app.lastRoomFingerprint = fingerprint;
   app.room = updated;
   app.players = {
-    [SOUTH]: { nick: updated.host_nick, island: updated.host_island },
-    [NORTH]: { nick: updated.guest_nick || t('awaitingGuest'), island: updated.guest_island || 'santa-luzia' },
+    [SOUTH]: { nick: updated.host_nick, island: updated.host_island, country: updated.host_country, elo: updated.host_elo_latest },
+    [NORTH]: { nick: updated.guest_nick || t('awaitingGuest'), island: updated.guest_island, country: updated.guest_country, elo: updated.guest_elo_latest },
   };
 
   // A actualização chega por Broadcast e também pelo Postgres Realtime. O
@@ -1319,6 +1489,10 @@ async function applyRemoteRoomUpdate(updated) {
   }
 
   app.session = incoming;
+  if (incoming.game.status === 'finished') {
+    multiplayer.loadIdentity().then(() => applyAuthenticatedIdentity({ profile: multiplayer.profile, account: multiplayer.account, registered: multiplayer.registered })).catch(() => {});
+    refreshLeaderboard().catch(() => {});
+  }
   renderGame();
   syncPresence();
 }
@@ -1456,7 +1630,7 @@ function canLocalPlayerAct() {
   const game = app.session.game;
   if (game.status !== 'playing' || app.busy) return false;
   if (app.mode === 'local') return true;
-  if (app.mode === 'pc') return game.currentPlayer === SOUTH;
+  if (['pc', 'calibration'].includes(app.mode)) return game.currentPlayer === SOUTH;
   if (app.mode === 'online') {
     return app.room?.status === 'playing' && !app.spectator && app.side === game.currentPlayer;
   }
@@ -1476,7 +1650,7 @@ function renderBoard() {
 
 function resignationPlayer() {
   if (app.reviewMode || app.spectator || app.session.game.status !== 'playing') return null;
-  if (app.mode === 'pc') return SOUTH;
+  if (['pc', 'calibration'].includes(app.mode)) return SOUTH;
   if (app.mode === 'local') return app.session.game.currentPlayer;
   if (app.mode === 'online' && app.room?.status === 'playing') return app.side;
   return null;
@@ -1512,16 +1686,20 @@ async function performResignation(player) {
   if (!player || app.session.game.status !== 'playing') return;
   app.busy = true;
   try {
-    let next = cloneValue(app.session);
-    next.game = resignGame(next.game, player);
-    next = settleRound(next);
-    appendSessionHistory(next, 'resignation');
+    let next;
     if (hasSyncedBank()) {
-      app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
+      const response = await multiplayer.submitOfficialAction(app.room.id, 'resign');
+      app.room = response.room;
       app.lastRoomFingerprint = roomFingerprint(app.room);
       next = normaliseSession(app.room.game_state);
+    } else {
+      next = cloneValue(app.session);
+      next.game = resignGame(next.game, player);
+      next = settleRound(next);
+      appendSessionHistory(next, 'resignation');
     }
     app.session = next;
+    await maybeRecordCalibration();
     clearRoundTransition();
     renderGame();
   } catch (error) {
@@ -1565,8 +1743,8 @@ function renderGame() {
 
   elements.northNick.textContent = playerName(top);
   elements.southNick.textContent = playerName(bottom);
-  elements.northIsland.textContent = islandName(app.players[top].island);
-  elements.southIsland.textContent = islandName(app.players[bottom].island);
+  elements.northIsland.textContent = [playerLocation(app.players[top]), app.players[top].elo ? `Elo ${app.players[top].elo}` : null].filter(Boolean).join(' · ');
+  elements.southIsland.textContent = [playerLocation(app.players[bottom]), app.players[bottom].elo ? `Elo ${app.players[bottom].elo}` : null].filter(Boolean).join(' · ');
   elements.northAvatar.textContent = initials(playerName(top));
   elements.southAvatar.textContent = initials(playerName(bottom));
   elements.northScore.textContent = String(game.scores[top]);
@@ -1589,10 +1767,8 @@ function renderGame() {
   elements.roomTitle.textContent = app.room?.name || (app.mode === 'online' ? t('bankOnline') : t('bankOfUril'));
   elements.gameModeLabel.textContent = app.reviewMode
     ? t('reviewMode')
-    : app.mode === 'pc'
-      ? (app.room
-          ? t('versusPcLiveMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() })
-          : t('versusPcMode', { level: translatedLevelLabel(app.aiLevel).toUpperCase() }))
+    : ['pc', 'calibration'].includes(app.mode)
+      ? `${app.mode === 'calibration' ? t('initialEloTest') : t('trainingOnly')} · ${translatedLevelLabel(app.aiLevel).toUpperCase()}`
       : app.mode === 'online'
         ? (app.spectator ? t('watchingMode') : t('onlineBankMode'))
         : t('twoPlayersMode');
@@ -1608,8 +1784,10 @@ function renderGame() {
   renderChat();
   renderShareCard();
   renderResignButton();
+  renderAiStats();
+  renderRoomViewers();
 
-  elements.newRound.hidden = app.reviewMode || game.status !== 'finished' || app.spectator;
+  elements.newRound.hidden = app.reviewMode || game.status !== 'finished' || app.spectator || app.mode === 'calibration';
 
   if (app.reviewMode) {
     elements.roomStatus.textContent = t('reviewingBank');
@@ -1619,9 +1797,9 @@ function renderGame() {
       : app.spectator
         ? t('watchingBank')
         : t('yourSideBelow', { player: playerName(app.side) });
-  } else if (app.mode === 'pc') {
-    elements.roomStatus.textContent = app.room
-      ? t('computerPublicBank', { level: translatedLevelLabel(app.aiLevel) })
+  } else if (['pc', 'calibration'].includes(app.mode)) {
+    elements.roomStatus.textContent = app.mode === 'calibration'
+      ? t('initialEloTest')
       : t('computerLevel', { level: translatedLevelLabel(app.aiLevel) });
   } else {
     elements.roomStatus.textContent = t('localBank');
@@ -1631,12 +1809,14 @@ function renderGame() {
   if (!app.reviewMode) {
     scheduleRoundTransition();
     maybeRunAI();
+    maybeRecordCalibration().catch(() => {});
   }
 }
 
 function setReviewIndex(index) {
   if (!app.reviewMode || !Array.isArray(app.session.history) || !app.session.history.length) return;
   app.reviewIndex = Math.min(Math.max(Number(index) || 0, 0), app.session.history.length - 1);
+  app.reviewAnalysis = null;
   app.animation = null;
   app.animationGame = null;
   renderGame();
@@ -1660,6 +1840,240 @@ function renderReviewController() {
   elements.reviewPrevious.disabled = index <= 0;
   elements.reviewNext.disabled = index >= max;
   elements.reviewLast.disabled = index >= max;
+  renderReviewAnalysis();
+}
+
+function classificationLabel(value) {
+  const keys = {
+    best: 'reviewClassificationBest',
+    good: 'reviewClassificationGood',
+    inaccuracy: 'reviewClassificationInaccuracy',
+    mistake: 'reviewClassificationMistake',
+    blunder: 'reviewClassificationBlunder',
+  };
+  return t(keys[value] || 'reviewClassificationGood');
+}
+
+function currentReviewMove() {
+  const moveId = app.session.history?.[app.reviewIndex]?.moveId;
+  return moveId ? app.reviewMoves.find((move) => Number(move.id) === Number(moveId)) : null;
+}
+
+function renderReviewAnalysis() {
+  if (!elements.reviewMoveDetails || !app.reviewMode) return;
+  const move = currentReviewMove();
+  elements.reviewMoveDetails.replaceChildren();
+  elements.reviewMoveList.replaceChildren();
+
+  const history = app.session.history || [];
+  history.forEach((entry, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'review-move-item';
+    button.classList.toggle('active', index === app.reviewIndex);
+    const row = entry.moveId ? app.reviewMoves.find((candidate) => Number(candidate.id) === Number(entry.moveId)) : null;
+    button.textContent = index === 0
+      ? t('reviewStartPosition')
+      : `${index}. ${row?.player_side === SOUTH ? playerName(SOUTH) : playerName(NORTH)}${row?.pit_index !== null && row?.pit_index !== undefined ? ` — ${translatedPitLabel(row.pit_index)}` : ''}`;
+    button.addEventListener('click', () => setReviewIndex(index));
+    elements.reviewMoveList.append(button);
+  });
+
+  if (!move) {
+    elements.reviewMoveDetails.textContent = t('reviewStartPosition');
+    elements.analyseMove.disabled = true;
+    elements.reviewAnalysisResult.textContent = t('analysisNotRun');
+    return;
+  }
+
+  elements.analyseMove.disabled = move.move_type !== 'move' || move.pit_index === null;
+  const facts = moveFacts(move);
+  const lines = [
+    `${facts.side === SOUTH ? playerName(SOUTH) : playerName(NORTH)} · ${translatedPitLabel(facts.pitIndex)}`,
+    `${t('captureTitle', { player: '' }).replace(':', '').trim()} ${facts.capturedSeeds}`,
+    facts.grandSlam ? 'Fogo' : null,
+    facts.frouxo ? 'Frouxo' : null,
+    facts.fedOpponent ? t('feeding') : null,
+    formatDateTime(facts.createdAt),
+  ].filter(Boolean);
+  for (const line of lines) {
+    const p = document.createElement('p');
+    p.textContent = line;
+    elements.reviewMoveDetails.append(p);
+  }
+
+  const analysis = app.reviewAnalysis || (move.classification ? {
+    classification: move.classification,
+    bestMove: move.engine_best_move,
+    completedDepth: move.engine_depth,
+    nodes: move.engine_nodes,
+    timeMs: move.engine_time_ms,
+  } : null);
+  if (!analysis) {
+    elements.reviewAnalysisResult.textContent = t('analysisNotRun');
+  } else {
+    elements.reviewAnalysisResult.textContent = t('analysisSummary', {
+      classification: classificationLabel(analysis.classification),
+      best: analysis.bestMove === null || analysis.bestMove === undefined ? '—' : translatedPitLabel(analysis.bestMove),
+      depth: analysis.completedDepth || 0,
+      nodes: Number(analysis.nodes || 0).toLocaleString(localeForLanguage()),
+      time: analysis.timeMs || 0,
+    });
+  }
+}
+
+async function analyseCurrentMove() {
+  const move = currentReviewMove();
+  if (!move || move.pit_index === null || app.reviewIndex <= 0) return;
+  const beforeGame = cloneValue(app.session.history[app.reviewIndex - 1].game);
+  elements.analyseMove.disabled = true;
+  elements.reviewAnalysisResult.textContent = t('suggestionsLoading');
+  try {
+    app.reviewAnalysis = analysePlayedMove(beforeGame, Number(move.pit_index), {
+      level: 'master', maxDepth: 8, timeMs: 1500,
+    });
+    renderReviewAnalysis();
+    if (app.registered && app.reviewAnalysis) {
+      multiplayer.saveMoveAnalysis(move.id, app.reviewAnalysis).catch(() => {});
+    }
+  } catch (error) {
+    elements.reviewAnalysisResult.textContent = error.message;
+  } finally {
+    elements.analyseMove.disabled = false;
+  }
+}
+
+function renderAiStats() {
+  if (!elements.aiStats) return;
+  const stats = app.lastAiStats;
+  if (!stats) {
+    elements.aiStats.textContent = t('noEngineStats');
+    return;
+  }
+  const pv = (stats.principalVariation || []).map((pit) => translatedPitLabel(pit)).join(' → ') || '—';
+  elements.aiStats.textContent = t('engineStatsSummary', {
+    depth: stats.completedDepth || 0,
+    maxDepth: stats.maxDepth || 0,
+    nodes: Number(stats.nodes || 0).toLocaleString(localeForLanguage()),
+    time: stats.timeMs || 0,
+    pv,
+  });
+}
+
+function renderRoomViewers() {
+  if (!elements.roomViewersCard || !elements.roomViewersList) return;
+  const viewers = app.mode === 'online'
+    ? app.roomViewers.filter((viewer) => viewer.role === 'spectator')
+    : [];
+  elements.roomViewersCard.hidden = viewers.length === 0;
+  elements.roomViewersList.replaceChildren();
+  for (const viewer of viewers) {
+    const row = document.createElement('div');
+    row.className = 'room-viewer';
+    const name = document.createElement('strong');
+    name.textContent = viewer.display_nick || viewer.nick || t('anonymousVisitor');
+    const detail = document.createElement('small');
+    detail.textContent = viewer.registered
+      ? [viewer.country, islandName(viewer.island)].filter(Boolean).join(' · ')
+      : t('anonymousVisitor');
+    row.append(name, detail);
+    elements.roomViewersList.append(row);
+  }
+}
+
+async function refreshLeaderboard() {
+  if (!multiplayer.client) return;
+  try {
+    app.leaderboard = await multiplayer.leaderboard(100);
+    renderLeaderboard();
+  } catch {}
+}
+
+function renderLeaderboard() {
+  if (!elements.leaderboardList) return;
+  elements.leaderboardList.replaceChildren();
+  if (!app.leaderboard.length) {
+    elements.leaderboardList.append(emptyState(t('leaderboardEmpty')));
+    return;
+  }
+  app.leaderboard.forEach((player, index) => {
+    const row = document.createElement('article');
+    row.className = 'leaderboard-row';
+    const rank = document.createElement('b');
+    rank.textContent = String(index + 1);
+    const identity = document.createElement('div');
+    const nick = document.createElement('strong');
+    nick.textContent = player.nick;
+    const location = document.createElement('small');
+    location.textContent = [player.country, islandName(player.island)].filter(Boolean).join(' · ');
+    identity.append(nick, location);
+    const record = document.createElement('span');
+    record.textContent = `${player.wins}-${player.draws}-${player.losses}`;
+    const elo = document.createElement('strong');
+    elo.textContent = `${player.elo}${player.elo_provisional ? ` ${t('eloProvisional')}` : ''}`;
+    row.append(rank, identity, record, elo);
+    elements.leaderboardList.append(row);
+  });
+}
+
+async function refreshCalibrationProgress() {
+  if (!app.registered || !multiplayer.client) {
+    app.calibrationProgress = [];
+    elements.calibrationBox.hidden = true;
+    return;
+  }
+  try {
+    app.calibrationProgress = await multiplayer.calibrationProgress();
+  } catch {
+    app.calibrationProgress = [];
+  }
+  elements.calibrationBox.hidden = app.calibrationProgress.length >= 3;
+  elements.calibrationStatus.textContent = app.calibrationProgress.length >= 3
+    ? t('calibrationComplete', { elo: app.profile.elo || 1200 })
+    : t('calibrationProgress', { current: app.calibrationProgress.length });
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  elements.loginStatus.textContent = '';
+  try {
+    await multiplayer.signIn(elements.loginEmail.value, elements.loginPassword.value);
+    elements.authDialog.close();
+    toast(t('signedIn', { nick: multiplayer.profile?.nick || '' }));
+  } catch (error) {
+    elements.loginStatus.textContent = error.message;
+  }
+}
+
+async function handleRegistration(event) {
+  event.preventDefault();
+  elements.registerStatus.textContent = '';
+  if (elements.registerPassword.value !== elements.registerPasswordConfirm.value) {
+    elements.registerStatus.textContent = t('passwordsDiffer');
+    return;
+  }
+  const country = elements.registerCountry.value.trim();
+  const island = isCapeVerdeCountry(country) ? elements.registerIsland.value : null;
+  try {
+    const result = await multiplayer.signUp({
+      fullName: elements.registerFullName.value,
+      nick: elements.registerNick.value,
+      country,
+      island,
+      email: elements.registerEmail.value,
+      password: elements.registerPassword.value,
+    });
+    elements.registerStatus.textContent = multiplayer.registered ? t('signedIn', { nick: elements.registerNick.value }) : t('accountCreatedCheckEmail');
+    if (multiplayer.registered) elements.authDialog.close();
+  } catch (error) {
+    elements.registerStatus.textContent = error.message;
+  }
+}
+
+async function handleSignOut() {
+  if (app.mode) await leaveGame();
+  await multiplayer.signOut();
+  toast(t('signedOut'));
 }
 
 function renderRoundResult() {
@@ -1758,7 +2172,7 @@ function renderStatus() {
     elements.statusMessage.textContent = t('playerTurn', { player: playerName(game.currentPlayer) });
     return;
   }
-  if (app.mode === 'pc' && game.currentPlayer === NORTH) {
+  if (['pc', 'calibration'].includes(app.mode) && game.currentPlayer === NORTH) {
     elements.statusTitle.textContent = t('computerThinking');
     elements.statusMessage.textContent = t('evaluatingMoves');
     return;
@@ -1801,22 +2215,28 @@ async function playMove(index) {
   try {
     app.busy = true;
     const previous = cloneValue(app.session);
-    let next = cloneValue(app.session);
-    next.game = applyMove(next.game, index);
-    next = settleRound(next);
-    appendSessionHistory(next, 'move');
+    let next;
 
     if (hasSyncedBank()) {
-      // Grava e transmite primeiro. Assim os navegadores reproduzem a
-      // sementeira praticamente ao mesmo tempo, sem esperar pelo fim da
-      // animação de quem jogou.
-      app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
+      const response = await multiplayer.submitOfficialAction(app.room.id, 'move', index);
+      app.room = response.room;
       app.lastRoomFingerprint = roomFingerprint(app.room);
       next = normaliseSession(app.room.game_state);
+      if (response.rating?.rated) {
+        await multiplayer.loadIdentity();
+        applyAuthenticatedIdentity({ profile: multiplayer.profile, account: multiplayer.account, registered: multiplayer.registered });
+        refreshLeaderboard().catch(() => {});
+      }
+    } else {
+      next = cloneValue(app.session);
+      next.game = applyMove(next.game, index);
+      next = settleRound(next);
+      appendSessionHistory(next, 'move');
     }
 
     await animateMove(previous.game, next.game);
     app.session = next;
+    await maybeRecordCalibration();
     renderGame();
   } catch (error) {
     if (hasSyncedBank()) {
@@ -1832,14 +2252,14 @@ async function playMove(index) {
   }
 }
 
-function chooseMoveAsync(game, level) {
+function chooseMoveAsync(game, level, options = {}) {
   if (typeof Worker === 'undefined') {
-    return Promise.resolve(chooseMove(game, level));
+    return Promise.resolve(analysePosition(game, level, options));
   }
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=0.0.35', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.0', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -1854,7 +2274,7 @@ function chooseMoveAsync(game, level) {
 
     worker.addEventListener('message', (event) => {
       finish();
-      if (event.data?.ok) resolve(event.data.move);
+      if (event.data?.ok) resolve(event.data.analysis);
       else reject(new Error(event.data?.error || t('aiFailed')));
     }, { once: true });
 
@@ -1863,14 +2283,14 @@ function chooseMoveAsync(game, level) {
       reject(new Error(event.message || t('aiStartFailed')));
     }, { once: true });
 
-    worker.postMessage({ game: cloneValue(game), level });
+    worker.postMessage({ game: cloneValue(game), level, options });
   });
 }
 
 function maybeRunAI() {
   clearTimeout(app.aiTimer);
   if (
-    app.mode !== 'pc' || app.busy || app.session.game.status !== 'playing' ||
+    !['pc', 'calibration'].includes(app.mode) || app.busy || app.session.game.status !== 'playing' ||
     app.session.game.currentPlayer !== NORTH
   ) return;
 
@@ -1884,29 +2304,21 @@ function maybeRunAI() {
           next.game = resignGame(next.game, NORTH);
           next = settleRound(next);
           appendSessionHistory(next, 'resignation');
-          if (hasPublicPcBank()) {
-            app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
-            app.lastRoomFingerprint = roomFingerprint(app.room);
-            next = normaliseSession(app.room.game_state);
-          }
           app.session = next;
           return;
         }
         app.session.aiResignationDeclined = true;
       }
 
-      const move = await chooseMoveAsync(app.session.game, app.aiLevel);
+      const analysis = await chooseMoveAsync(app.session.game, app.aiLevel);
+      app.lastAiStats = analysis;
+      const move = analysis?.move ?? null;
       if (move !== null) {
         const previous = cloneValue(app.session);
         let next = cloneValue(app.session);
         next.game = applyMove(next.game, move);
         next = settleRound(next);
         appendSessionHistory(next, 'move');
-        if (hasPublicPcBank()) {
-          app.room = await multiplayer.updateRoomState(app.room, next, app.room.status);
-          app.lastRoomFingerprint = roomFingerprint(app.room);
-          next = normaliseSession(app.room.game_state);
-        }
         await animateMove(previous.game, next.game);
         app.session = next;
       }
@@ -1944,7 +2356,9 @@ async function newRound(options = {}) {
 
   try {
     if (hasSyncedBank()) {
-      app.room = await multiplayer.updateRoomState(app.room, next, 'playing');
+      const response = await multiplayer.submitOfficialAction(app.room.id, 'new_round');
+      app.room = response.room;
+      app.lastRoomFingerprint = roomFingerprint(app.room);
       app.session = normaliseSession(app.room.game_state);
     } else {
       app.session = next;
@@ -1972,8 +2386,8 @@ async function leaveGame() {
   app.remoteUpdateQueue = Promise.resolve();
   app.animationGame = null;
   app.animation = null;
-  if (app.room && ['online', 'pc'].includes(app.mode)) {
-    if (!app.spectator && app.room?.host_id === multiplayer.user?.id) {
+  if (app.room && app.mode === 'online') {
+    if (!app.spectator && app.room.host_id === multiplayer.user?.id && app.session.game.status === 'finished') {
       await multiplayer.closeRoom(app.room).catch(() => {});
     }
     await multiplayer.leaveRoomChannel();
@@ -1981,6 +2395,12 @@ async function leaveGame() {
   app.mode = null;
   app.reviewMode = false;
   app.reviewIndex = 0;
+  app.reviewMoves = [];
+  app.reviewAnalysis = null;
+  app.roomViewers = [];
+  app.lastAiStats = null;
+  app.calibrationMode = false;
+  app.calibrationLevel = null;
   document.body.dataset.onlinePlayer = 'false';
   app.room = null;
   resetChat();
@@ -2001,8 +2421,13 @@ function toast(message) {
 
 function updateSuggestionAuthorPreview() {
   if (!elements.suggestionNickPreview) return;
-  const nick = elements.nick?.value?.trim() || app.profile.nick || t('guest');
-  elements.suggestionNickPreview.textContent = `${nick} · ${islandName(elements.island?.value || app.profile.island)}`;
+  if (!app.registered) {
+    elements.suggestionNickPreview.textContent = t('anonymousVisitor');
+    elements.suggestionSubmit.disabled = true;
+    return;
+  }
+  elements.suggestionNickPreview.textContent = [app.profile.nick, app.profile.country, islandName(app.profile.island)].filter(Boolean).join(' · ');
+  elements.suggestionSubmit.disabled = app.suggestionsLoading;
 }
 
 function suggestionDate(value) {
@@ -2087,7 +2512,7 @@ function createReplyForm(suggestion) {
   });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!requireProfile()) return;
+    if (!requireRegistered()) return;
     const text = textarea.value.trim();
     if (!text) {
       toast(t('replyEmpty'));
@@ -2167,7 +2592,7 @@ async function refreshSuggestions({ silent = false } = {}) {
   try {
     app.suggestions = await multiplayer.listSuggestions();
     app.suggestionsReady = true;
-    elements.suggestionSubmit.disabled = false;
+    elements.suggestionSubmit.disabled = !app.registered;
     setSuggestionsStatus(t('suggestionsPublicNote'));
   } catch (error) {
     app.suggestionsReady = false;
@@ -2195,7 +2620,7 @@ function openSuggestions() {
 
 async function submitSuggestion(event) {
   event?.preventDefault?.();
-  if (!requireProfile()) return;
+  if (!requireRegistered()) return;
   const text = elements.suggestionText.value.trim();
   if (text.length < 4) {
     toast(t('suggestionEmpty'));
@@ -2211,22 +2636,29 @@ async function submitSuggestion(event) {
   } catch (error) {
     toast(suggestionServiceMissing(error) ? t('suggestionsMigrationNeeded') : t('suggestionPublishError', { error: error.message }));
   } finally {
-    elements.suggestionSubmit.disabled = !app.suggestionsReady;
+    elements.suggestionSubmit.disabled = !app.suggestionsReady || !app.registered;
   }
 }
 
 function bindEvents() {
-  elements.nick.value = app.profile.nick;
-  elements.island.value = app.profile.island;
-  document.body.dataset.island = app.profile.island;
+  document.body.dataset.island = app.profile.island || 'santiago';
   elements.language.addEventListener('change', () => applyLanguage(elements.language.value));
-  elements.island.addEventListener('change', saveProfile);
-  elements.nick.addEventListener('change', saveProfile);
-  elements.nick.addEventListener('input', updateSuggestionAuthorPreview);
-  $('#startPcButton').addEventListener('click', startPcGame);
+  $('#startPcButton').addEventListener('click', () => startPcGame());
+  elements.startCalibration.addEventListener('click', startCalibrationGame);
   $('#startLocalButton').addEventListener('click', startLocalGame);
   $('#openRoomsButton').addEventListener('click', openRooms);
   $('#refreshRoomsButton').addEventListener('click', refreshRooms);
+  elements.searchRooms.addEventListener('click', () => {
+    app.roomSearch = elements.roomSearch.value.trim();
+    app.roomDateFrom = elements.roomDateFrom.value ? new Date(`${elements.roomDateFrom.value}T00:00:00`).toISOString() : null;
+    app.roomDateTo = elements.roomDateTo.value ? new Date(`${elements.roomDateTo.value}T23:59:59`).toISOString() : null;
+    app.roomResult = elements.roomResult.value;
+    app.roomEvent = elements.roomEvent.value;
+    app.roomPage = 0;
+    refreshRooms();
+  });
+  elements.roomsPreviousPage.addEventListener('click', () => { if (app.roomPage > 0) { app.roomPage -= 1; refreshRooms(); } });
+  elements.roomsNextPage.addEventListener('click', () => { app.roomPage += 1; refreshRooms(); });
   elements.roomFilters?.addEventListener('click', (event) => {
     const button = event.target.closest('[data-room-filter]');
     if (button) setRoomFilter(button.dataset.roomFilter);
@@ -2245,6 +2677,7 @@ function bindEvents() {
   elements.reviewNext.addEventListener('click', () => setReviewIndex(app.reviewIndex + 1));
   elements.reviewLast.addEventListener('click', () => setReviewIndex((app.session.history?.length || 1) - 1));
   elements.reviewSlider.addEventListener('input', () => setReviewIndex(Number(elements.reviewSlider.value)));
+  elements.analyseMove.addEventListener('click', analyseCurrentMove);
   elements.resign.addEventListener('click', openResignDialog);
   elements.resignCancel.addEventListener('click', closeResignDialog);
   elements.resignConfirm.addEventListener('click', confirmResignation);
@@ -2255,6 +2688,21 @@ function bindEvents() {
   $('#suggestionsButton').addEventListener('click', openSuggestions);
   elements.refreshSuggestions.addEventListener('click', () => refreshSuggestions());
   elements.suggestionForm.addEventListener('submit', submitSuggestion);
+  elements.refreshLeaderboard.addEventListener('click', refreshLeaderboard);
+
+  elements.signIn.addEventListener('click', () => openAuthDialog('login'));
+  elements.register.addEventListener('click', () => openAuthDialog('register'));
+  elements.identityRegister.addEventListener('click', () => openAuthDialog('register'));
+  elements.playerChip.addEventListener('click', () => openAuthDialog('login'));
+  elements.signOut.addEventListener('click', handleSignOut);
+  elements.closeAuth.addEventListener('click', () => elements.authDialog.close());
+  elements.authDialog.addEventListener('click', (event) => { if (event.target === elements.authDialog) elements.authDialog.close(); });
+  document.querySelectorAll('[data-auth-tab]').forEach((button) => button.addEventListener('click', () => setAuthTab(button.dataset.authTab)));
+  elements.loginForm.addEventListener('submit', handleLogin);
+  elements.registerForm.addEventListener('submit', handleRegistration);
+  elements.registerCountry.addEventListener('input', updateRegistrationIslandVisibility);
+  updateRegistrationIslandVisibility();
+
   $('#brandHome').addEventListener('click', () => app.mode ? leaveGame() : showScreen('home'));
   for (const selector of ['#rulesButton', '#sidebarRulesButton']) {
     $(selector).addEventListener('click', () => elements.rules.showModal());
@@ -2269,16 +2717,19 @@ async function init() {
   bindEvents();
   if (app.sharedInvite?.language) app.language = app.sharedInvite.language;
   applyLanguage(app.language);
+  renderIdentity();
   await preloadClassicSprites();
   renderGame();
   renderOnlinePlayers();
   renderSuggestions();
+  renderLeaderboard();
   updateSuggestionAuthorPreview();
   try {
     const result = await multiplayer.init(app.profile);
     elements.setupNotice.hidden = result.configured;
     if (result.configured) {
-      await Promise.all([refreshRooms(), refreshSuggestions()]);
+      applyAuthenticatedIdentity(result);
+      await Promise.all([refreshRooms(), refreshSuggestions(), refreshLeaderboard(), refreshCalibrationProgress()]);
       await prepareSharedInvite();
     } else {
       await refreshSuggestions();
