@@ -13,15 +13,15 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.11';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.11';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.11';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.11';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.11';
-import { MultiplayerService } from './multiplayer.js?v=1.0.11';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.11';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.11';
-import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.11';
+} from './engine.js?v=1.0.12';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.12';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.12';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.12';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.12';
+import { MultiplayerService } from './multiplayer.js?v=1.0.12';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.12';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.12';
+import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.12';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -2775,13 +2775,13 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.11', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.12', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
       worker.terminate();
       reject(new Error(t('aiTimeout')));
-    }, level === 'grandmaster' ? 15000 : level === 'master' ? 5000 : 3500);
+    }, level === 'grandmaster' ? 7000 : level === 'master' ? 5000 : 3500);
 
     const finish = () => {
       window.clearTimeout(timeout);

@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.11', () => {
-  assert.match(html, /Versão 1\.0\.11/);
-  assert.match(html, /AJUDA V1\.0\.11/);
-  assert.match(html, /styles\.css\?v=1\.0\.11/);
-  assert.match(html, /app\.js\?v=1\.0\.11/);
+test('a interface está identificada como versão 1.0.12', () => {
+  assert.match(html, /Versão 1\.0\.12/);
+  assert.match(html, /AJUDA V1\.0\.12/);
+  assert.match(html, /styles\.css\?v=1\.0\.12/);
+  assert.match(html, /app\.js\?v=1\.0\.12/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {

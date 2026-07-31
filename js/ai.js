@@ -6,7 +6,7 @@ import {
   otherPlayer,
   playerPits,
   rowSeedCount,
-} from './engine.js?v=1.0.11';
+} from './engine.js?v=1.0.12';
 
 const LEVELS = {
   apprentice: {
@@ -29,8 +29,8 @@ const LEVELS = {
   },
   grandmaster: {
     label: 'Grande Mestre',
-    maxDepth: 24,
-    timeMs: 12000,
+    maxDepth: 18,
+    timeMs: 4800,
     randomness: 0,
   },
 };
