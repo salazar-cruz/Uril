@@ -6,7 +6,7 @@ import {
   createEndgameDrillGame,
   validateEndgameDrills,
 } from '../js/drills.js';
-import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.12';
+import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.13';
 
 test('existem catorze Drills públicos distribuídos por três níveis', () => {
   assert.equal(ENDGAME_DRILLS.length, 14);

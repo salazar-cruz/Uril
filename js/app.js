@@ -13,15 +13,15 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.12';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.12';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.12';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.12';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.12';
-import { MultiplayerService } from './multiplayer.js?v=1.0.12';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.12';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.12';
-import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.12';
+} from './engine.js?v=1.0.13';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.13';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.13';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.13';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.13';
+import { MultiplayerService } from './multiplayer.js?v=1.0.13';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.13';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.13';
+import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.13';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -39,7 +39,7 @@ const ISLANDS = {
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   home: $('#homeScreen'), game: $('#gameScreen'), language: $('#languageSelect'),
-  level: $('#levelSelect'), signIn: $('#signInButton'), register: $('#registerButton'), signOut: $('#signOutButton'),
+  level: $('#levelSelect'), starter: $('#starterSelect'), signIn: $('#signInButton'), register: $('#registerButton'), signOut: $('#signOutButton'),
   playerChip: $('#playerChip'), playerChipNick: $('#playerChipNick'), playerChipElo: $('#playerChipElo'),
   identityName: $('#identityName'), identityDescription: $('#identityDescription'), identityRating: $('#identityRating'),
   identityElo: $('#identityElo'), identityRecord: $('#identityRecord'), identityRegister: $('#identityRegisterButton'),
@@ -1516,6 +1516,7 @@ async function startPcGame(options = {}) {
   app.roomViewers = [];
   app.lastAiStats = null;
   app.aiLevel = options.level || elements.level.value;
+  const firstPlayer = options.firstPlayer ?? (calibration ? SOUTH : elements.starter?.value === 'computer' ? NORTH : SOUTH);
   app.side = SOUTH;
   app.spectator = false;
   app.room = null;
@@ -1528,7 +1529,7 @@ async function startPcGame(options = {}) {
     [SOUTH]: human,
     [NORTH]: { nick: computerNick, island: 'santa-luzia', country: 'Cabo Verde' },
   };
-  app.session = createPcSession(SOUTH, createMatch(), null, app.aiLevel);
+  app.session = createPcSession(firstPlayer, createMatch(), null, app.aiLevel);
   showScreen('game');
   renderGame();
   syncPresence();
@@ -2775,7 +2776,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.12', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.13', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {

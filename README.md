@@ -1,4 +1,4 @@
-# Uril de Cabo Verde — 1.0.12
+# Uril de Cabo Verde — 1.0.13
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
@@ -117,6 +117,6 @@ O painel explicativo e todos os controlos dos Drills Corri Oro passam a surgir i
 
 Os Drills passam a estar divididos em Iniciante, Médio e Avançado. Foram acrescentados os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4, todos com explicação própria, pista e solução automática dos dois lados até 25–23.
 
-## Versão 1.0.12
+## Versão 1.0.13
 
 O nível Grande Mestre passa a responder muito mais depressa: o tempo máximo de pesquisa desce de 12 para 4,8 segundos e a profundidade máxima é ajustada de 24 para 18. O Mestre mantém 12 níveis e 2,6 segundos, conservando-se uma diferença efectiva entre os dois níveis sem deixar o jogador à espera demasiado tempo.

@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.12', () => {
-  assert.match(html, /Versão 1\.0\.12/);
-  assert.match(html, /AJUDA V1\.0\.12/);
-  assert.match(html, /styles\.css\?v=1\.0\.12/);
-  assert.match(html, /app\.js\?v=1\.0\.12/);
+test('a interface está identificada como versão 1.0.13', () => {
+  assert.match(html, /Versão 1\.0\.13/);
+  assert.match(html, /AJUDA V1\.0\.13/);
+  assert.match(html, /styles\.css\?v=1\.0\.13/);
+  assert.match(html, /app\.js\?v=1\.0\.13/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -35,6 +35,16 @@ test('visitantes anónimos ficam limitados a treino e consulta', () => {
   assert.match(app, /function requireCompetitiveReady/);
   assert.match(app, /Só jogadores inscritos|registrationRequired/);
   assert.match(app, /app\.mode = calibration \? 'calibration' : 'pc'/);
+});
+
+test('o treino contra o computador deixa escolher quem joga primeiro', () => {
+  assert.match(html, /id="starterSelect"/);
+  assert.match(html, /value="human"/);
+  assert.match(html, /value="computer"/);
+  assert.match(app, /elements\.starter\?\.value === 'computer' \? NORTH : SOUTH/);
+  assert.match(app, /createPcSession\(firstPlayer, createMatch\(\), null, app\.aiLevel\)/);
+  assert.match(i18n, /humanStarts: 'Eu jogo primeiro'/);
+  assert.match(i18n, /computerStarts: 'Computador joga primeiro'/);
 });
 
 test('a calibração é exigida antes das partidas oficiais', () => {

@@ -91,7 +91,8 @@ input:focus, select:focus { border-color: rgba(230,184,92,.7); box-shadow: 0 0 0
 .mode-tag { font-size: 9px; letter-spacing: .18em; font-weight: 800; color: var(--gold-strong); }
 .mode-card h2 { margin: 7px 0 10px; font-family: Georgia, serif; font-weight: 600; font-size: 28px; }
 .mode-card p { color: var(--muted); line-height: 1.55; margin: 0 0 18px; }
-.mode-card label { margin-top: auto; }
+.mode-card label { margin-top: 16px; }
+.mode-card label:first-of-type { margin-top: auto; }
 .mode-card select { margin-bottom: 12px; }
 .primary-button, .secondary-button, .danger-button { border-radius: 13px; padding: 13px 18px; border: 1px solid transparent; cursor: pointer; font-weight: 800; transition: transform .15s ease, filter .15s ease, background .15s ease; }
 .primary-button { background: linear-gradient(180deg, #f1c96e, #c58b2d); color: #2b1c08; box-shadow: 0 10px 24px rgba(197,139,45,.2); }

@@ -98,4 +98,4 @@ Sem esta Edge Function, o treino contra a IA e a consulta continuam disponíveis
 
 ## 7. Actualizações do GitHub
 
-Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.12` nos módulos principais para reduzir problemas de cache.
+Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.13` nos módulos principais para reduzir problemas de cache.
