@@ -13,15 +13,15 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.13';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.13';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.13';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.13';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.13';
-import { MultiplayerService } from './multiplayer.js?v=1.0.13';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.13';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.13';
-import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.13';
+} from './engine.js?v=1.0.14';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.14';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.14';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.14';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.14';
+import { MultiplayerService } from './multiplayer.js?v=1.0.14';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.14';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.14';
+import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.14';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -211,6 +211,7 @@ const multiplayer = new MultiplayerService({
     syncObservedPcGame(players);
   },
   onInvitation: (invitation) => receiveInvitation(invitation),
+  onInvitationResponse: (response) => receiveInvitationResponse(response),
   onSuggestionsChange: () => scheduleSuggestionRefresh(),
   onAuthChange: (identity) => applyAuthenticatedIdentity(identity),
   onRoomPresenceChange: ({ viewers = [] } = {}) => { app.roomViewers = viewers; renderRoomViewers(); },
@@ -878,6 +879,7 @@ function presencePayload() {
     status,
     bank_id: bankId,
     bank_name: bankName,
+    bank_private: Boolean(app.room?.private_room),
     registered: app.registered,
     elo: app.profile.elo || null,
     country: app.profile.country || null,
@@ -943,7 +945,7 @@ function renderOnlinePlayers() {
 
     const info = document.createElement('div');
     const nick = document.createElement('strong');
-    nick.textContent = player.registered ? (player.nick || t('guest')) : t('anonymousVisitor');
+    nick.textContent = player.nick || (player.registered ? t('guest') : t('anonymousVisitor'));
     const detail = document.createElement('small');
     detail.textContent = `${playerLocation(player)} · ${onlineStatus(player)}${player.elo ? ` · Elo ${player.elo}` : ''}`;
     info.append(nick, detail);
@@ -958,11 +960,12 @@ function renderOnlinePlayers() {
     } else if (player.status === 'pc' && player.pc_game_id && validPcPresenceSnapshot(player)) {
       action.textContent = t('watchPlay');
       action.addEventListener('click', () => watchPlayerPcGame(player));
-    } else if (player.status === 'playing' && player.bank_id) {
+    } else if (player.status === 'playing' && player.bank_id && !player.bank_private) {
       action.textContent = t('watchPlay');
       action.addEventListener('click', () => watchPlayerBank(player));
-    } else if ((player.status || 'free') === 'free' && player.registered && app.registered) {
-      const lockedInMatch = app.mode === 'online' && !app.spectator && app.room?.status === 'playing';
+    } else if ((player.status || 'free') === 'free'
+      && ((player.registered && app.registered) || (!player.registered && !app.registered))) {
+      const lockedInMatch = app.mode === 'online' && !app.spectator && ['waiting', 'playing', 'interrupted'].includes(app.room?.status);
       action.textContent = lockedInMatch ? t('inGame') : t('invite');
       action.disabled = lockedInMatch;
       if (!lockedInMatch) action.addEventListener('click', () => inviteOnlinePlayer(player));
@@ -990,14 +993,46 @@ async function watchPlayerBank(player) {
 
 function receiveInvitation(invitation) {
   if (!invitation?.bank_id) return;
+  const guestInvite = invitation.invite_kind === 'guest';
+  if (guestInvite && app.registered) return;
+  if (!guestInvite && !app.registered) {
+    toast(t('officialInviteNeedsAccount'));
+    return;
+  }
   app.currentInvitation = invitation;
-  elements.inviteText.textContent = t('invitedToBank', { nick: invitation.inviter_nick, bank: invitation.bank_name });
+  elements.inviteText.textContent = t(
+    guestInvite ? 'invitedToGuestBank' : 'invitedToBank',
+    { nick: invitation.inviter_nick, bank: invitation.bank_name },
+  );
   elements.invitePopup.hidden = false;
+}
+
+function receiveInvitationResponse(response) {
+  if (!response?.decision) return;
+  if (response.decision === 'accepted') {
+    toast(t('invitationAcceptedBy', { nick: response.responder_nick || t('anonymousVisitor') }));
+    return;
+  }
+  toast(t('invitationDeclinedBy', { nick: response.responder_nick || t('anonymousVisitor') }));
+  if (app.room?.id === response.bank_id && app.room?.private_room && app.room.host_id === multiplayer.user?.id) {
+    leaveGame().catch(() => {});
+  }
 }
 
 function closeInvitation() {
   app.currentInvitation = null;
   elements.invitePopup.hidden = true;
+}
+
+async function declineInvitation() {
+  const invitation = app.currentInvitation;
+  closeInvitation();
+  if (!invitation) return;
+  try {
+    await multiplayer.sendInvitationResponse(invitation, 'declined');
+  } catch {
+    // A recusa local mantém-se mesmo se o outro navegador já tiver saído.
+  }
 }
 
 function bankInviteUrl(action) {
@@ -1031,7 +1066,7 @@ function shareBankViaWhatsApp(action) {
 
 function renderShareCard() {
   if (!elements.shareCard) return;
-  const enabled = !app.reviewMode && app.mode === 'online' && Boolean(app.room);
+  const enabled = !app.reviewMode && app.mode === 'online' && Boolean(app.room) && !app.room.private_room;
   elements.shareCard.hidden = !enabled;
   if (!enabled) return;
   const canInvitePlayer = app.mode === 'online' && !app.spectator && app.room.status === 'waiting' && !app.room.guest_id;
@@ -1194,7 +1229,13 @@ async function sendChatMessage(event) {
 
 async function acceptInvitation() {
   const invitation = app.currentInvitation;
-  if (!invitation || !requireCompetitiveReady()) return;
+  if (!invitation) return;
+  const guestInvite = invitation.invite_kind === 'guest';
+  if (!guestInvite && !requireCompetitiveReady()) return;
+  if (guestInvite && app.registered) {
+    toast(t('guestInviteAnonymousOnly'));
+    return;
+  }
   closeInvitation();
 
   try {
@@ -1203,15 +1244,19 @@ async function acceptInvitation() {
     if (bank.status !== 'waiting' || bank.guest_id) {
       throw new Error(t('bankNotFree'));
     }
-    const joined = await multiplayer.joinRoom(bank.id);
+    const joined = guestInvite
+      ? await multiplayer.joinGuestRoom(bank.id, invitation.invite_token)
+      : await multiplayer.joinRoom(bank.id);
     await enterOnlineRoom(joined, false);
+    await multiplayer.sendInvitationResponse(invitation, 'accepted').catch(() => {});
   } catch (error) {
     toast(t('acceptInviteError', { error: error.message }));
   }
 }
 
 async function inviteOnlinePlayer(player) {
-  if (!requireCompetitiveReady()) return;
+  const guestInvite = !app.registered && !player.registered;
+  if (!guestInvite && !requireCompetitiveReady()) return;
   if (!multiplayer.client || !multiplayer.user) {
     toast(t('onlineNotReady'));
     return;
@@ -1220,19 +1265,31 @@ async function inviteOnlinePlayer(player) {
     toast(t('playerAlreadyBusy', { nick: player.nick }));
     return;
   }
+  if (guestInvite && !multiplayer.user.is_anonymous) {
+    toast(t('guestInviteAnonymousOnly'));
+    return;
+  }
 
   try {
-    let bank = app.mode === 'online' && !app.spectator && app.room?.host_id === multiplayer.user.id && app.room.status === 'waiting'
-      ? app.room
-      : app.rooms.find((candidate) => candidate.host_id === multiplayer.user.id && candidate.status === 'waiting');
-
-    if (!bank) {
-      bank = await multiplayer.createRoom({
-        name: t('defaultBankName', { nick: app.profile.nick }),
+    let bank;
+    if (guestInvite) {
+      bank = await multiplayer.createGuestRoom({
         session: createSession(SOUTH),
+        targetPlayer: player,
       });
     } else {
-      bank = await multiplayer.getRoom(bank.id);
+      bank = app.mode === 'online' && !app.spectator && app.room?.host_id === multiplayer.user.id && app.room.status === 'waiting'
+        ? app.room
+        : app.rooms.find((candidate) => candidate.host_id === multiplayer.user.id && candidate.status === 'waiting');
+
+      if (!bank) {
+        bank = await multiplayer.createRoom({
+          name: t('defaultBankName', { nick: app.profile.nick }),
+          session: createSession(SOUTH),
+        });
+      } else {
+        bank = await multiplayer.getRoom(bank.id);
+      }
     }
 
     if (app.room?.id !== bank.id || app.mode !== 'online') {
@@ -1850,7 +1907,12 @@ async function enterRoomFromList(room, isPlayer) {
 }
 
 async function enterOnlineRoom(room, spectator) {
-  if (!spectator && !requireCompetitiveReady()) return;
+  const guestRoom = room?.room_kind === 'guest' || room?.private_room;
+  if (!spectator && !guestRoom && !requireCompetitiveReady()) return;
+  if (!spectator && guestRoom && app.registered) {
+    toast(t('guestInviteAnonymousOnly'));
+    return;
+  }
   app.remoteUpdateQueue = Promise.resolve();
   app.mode = 'online';
   app.reviewMode = false;
@@ -2776,7 +2838,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.13', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.14', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -2930,7 +2992,8 @@ async function leaveGame() {
   app.animationGame = null;
   app.animation = null;
   if (app.room && app.mode === 'online') {
-    if (!app.spectator && app.room.host_id === multiplayer.user?.id && app.session.game.status === 'finished') {
+    if (!app.spectator && app.room.host_id === multiplayer.user?.id
+      && (app.session.game.status === 'finished' || app.room.private_room)) {
       await multiplayer.closeRoom(app.room).catch(() => {});
     }
     await multiplayer.leaveRoomChannel();
@@ -3226,7 +3289,7 @@ function bindEvents() {
   });
   $('#createRoomButton').addEventListener('click', createRoom);
   elements.acceptInvite.addEventListener('click', acceptInvitation);
-  elements.declineInvite.addEventListener('click', closeInvitation);
+  elements.declineInvite.addEventListener('click', declineInvitation);
   elements.chatForm.addEventListener('submit', sendChatMessage);
   elements.openSharedInvite.addEventListener('click', openSharedInvite);
   elements.sharePlay.addEventListener('click', () => shareBankViaWhatsApp('play'));

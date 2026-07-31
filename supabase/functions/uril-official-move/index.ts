@@ -87,20 +87,8 @@ Deno.serve(async (request) => {
     const service = createClient(url, serviceRole, { auth: { persistSession: false } });
 
     const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData.user || userData.user.is_anonymous) {
-      return json({ error: 'Só jogadores inscritos fazem jogadas oficiais.' }, 401);
-    }
-
-    const { data: playerProfile, error: profileError } = await service
-      .from('uril_profiles')
-      .select('id,calibration_games')
-      .eq('id', userData.user.id)
-      .maybeSingle();
-    if (profileError || !playerProfile) {
-      return json({ error: 'Perfil oficial de jogador inexistente.' }, 403);
-    }
-    if (Number(playerProfile.calibration_games || 0) < 3) {
-      return json({ error: 'Conclui os três testes de calibração antes de jogares partidas oficiais.' }, 403);
+    if (userError || !userData.user) {
+      return json({ error: 'A sessão de jogador não é válida.' }, 401);
     }
 
     const body = await request.json().catch(() => ({}));
@@ -115,6 +103,28 @@ Deno.serve(async (request) => {
       .eq('id', roomId)
       .single();
     if (roomError || !room) return json({ error: 'Banco de Uril não encontrado.' }, 404);
+
+    const guestRoom = room.room_kind === 'guest' || room.private_room === true;
+    if (guestRoom) {
+      if (!userData.user.is_anonymous || room.rated || !room.private_room) {
+        return json({ error: 'Este banco privado destina-se a jogadores anónimos.' }, 403);
+      }
+    } else {
+      if (userData.user.is_anonymous) {
+        return json({ error: 'Só jogadores inscritos fazem jogadas oficiais.' }, 401);
+      }
+      const { data: playerProfile, error: profileError } = await service
+        .from('uril_profiles')
+        .select('id,calibration_games')
+        .eq('id', userData.user.id)
+        .maybeSingle();
+      if (profileError || !playerProfile) {
+        return json({ error: 'Perfil oficial de jogador inexistente.' }, 403);
+      }
+      if (Number(playerProfile.calibration_games || 0) < 3) {
+        return json({ error: 'Conclui os três testes de calibração antes de jogares partidas oficiais.' }, 403);
+      }
+    }
 
     const side = playerSide(room, userData.user.id);
     if (!side) return json({ error: 'O jogador não pertence a esta partida.' }, 403);
@@ -258,7 +268,7 @@ Deno.serve(async (request) => {
     }
 
     let insertedMove = null;
-    if (moveRow) {
+    if (moveRow && !guestRoom) {
       const { data, error } = await service
         .from('uril_moves')
         .insert(moveRow)

@@ -1,4 +1,4 @@
-# Uril de Cabo Verde — 1.0.13
+# Uril de Cabo Verde — 1.0.14
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
@@ -9,8 +9,10 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 
 - treino privado contra a IA nos níveis Aprendiz, Amador, Mestre e Grande Mestre;
 - registo de jogadores com nome, nick, país, ilha para residentes em Cabo Verde e email;
-- visitantes sem conta limitados ao treino contra a IA, visualização Live e consulta do arquivo;
-- espectadores anónimos identificados dentro de cada banco como `Anónimo 01`, `Anónimo 02`, etc.;
+- visitantes sem conta identificados temporariamente como `Anónimo A7C2`, sem recolha de nome ou email;
+- convites directos entre dois jogadores anónimos livres, com alerta para aceitar ou recusar;
+- bancos privados não classificados entre anónimos, com tabuleiro sincronizado e chat em tempo real;
+- bancos privados invisíveis no arquivo e inacessíveis a terceiros;
 - três partidas de calibração contra a IA para estimar o Elo inicial;
 - bancos oficiais criados e disputados apenas por jogadores inscritos e calibrados;
 - Elo inspirado no xadrez, actualizado no fim de cada partida oficial entre dois jogadores;
@@ -21,7 +23,7 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - arquivo paginado com pesquisa por banco, jogador, país ou ilha, datas, resultado e ocorrências como Capote, Frouxo e Quatro;
 - uma linha própria por jogada oficial na base de dados;
 - consulta cronológica com controlador, lista de jogadas e análise Minimax;
-- validação das jogadas oficiais numa Supabase Edge Function;
+- validação das jogadas oficiais e privadas numa Supabase Edge Function;
 - chat em tempo real não arquivado;
 - Português, Francês e Inglês;
 - design adaptado a computador e telemóvel;
@@ -45,8 +47,9 @@ Durante os primeiros dez jogos oficiais, o jogador mantém Elo provisório e usa
 
 ## Ficheiros de instalação
 
-- `supabase-v1.0.0.sql` — migração integral da base de dados;
-- `supabase.sql` — cópia da mesma migração;
+- `supabase-v1.0.0.sql` — instalação integral da base de dados já incluindo a versão 1.0.14;
+- `supabase-v1.0.14.sql` — actualização incremental para instalações existentes;
+- `supabase.sql` — cópia da instalação integral;
 - `supabase/functions/uril-official-move/` — validação oficial das jogadas;
 - `js/config.js` — URL e chave pública do Supabase;
 - `GUIA-GITHUB.md` — publicação e activação.
@@ -57,7 +60,7 @@ Durante os primeiros dez jogos oficiais, o jogador mantém Elo provisório e usa
 npm test
 ```
 
-Os testes cobrem o motor, Fogo/Frouxo, alimentação, Capote, Quatro, perspectivas, IA, Elo, calibração, contas, presença, arquivo, consulta, análise e estrutura do backend oficial.
+Os testes cobrem o motor, Fogo/Frouxo, alimentação, Capote, Quatro, perspectivas, IA, Elo, calibração, contas, presença, convites anónimos, bancos privados, arquivo, consulta, análise e estrutura do backend.
 
 ## Regras específicas já implementadas
 
@@ -117,6 +120,13 @@ O painel explicativo e todos os controlos dos Drills Corri Oro passam a surgir i
 
 Os Drills passam a estar divididos em Iniciante, Médio e Avançado. Foram acrescentados os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4, todos com explicação própria, pista e solução automática dos dois lados até 25–23.
 
-## Versão 1.0.13
+## Versão 1.0.14
 
-O nível Grande Mestre passa a responder muito mais depressa: o tempo máximo de pesquisa desce de 12 para 4,8 segundos e a profundidade máxima é ajustada de 24 para 18. O Mestre mantém 12 níveis e 2,6 segundos, conservando-se uma diferença efectiva entre os dois níveis sem deixar o jogador à espera demasiado tempo.
+- Cada visitante anónimo recebe uma designação temporária estável, como `Anónimo A7C2`.
+- Um anónimo livre consegue convidar directamente outro anónimo livre na lista de jogadores online.
+- O destinatário recebe um alerta com as opções **Aceitar** e **Recusar**.
+- Ao aceitar, é criado um banco privado, não classificado e restrito aos dois participantes.
+- A partida usa o mesmo tabuleiro sincronizado, animações, regras, desistência, partidas seguintes e chat em tempo real.
+- A aceitação ou recusa é comunicada ao jogador que enviou o convite.
+- Os bancos privados não surgem no arquivo público, não alteram o Elo e não admitem espectadores.
+- A actualização exige executar `supabase-v1.0.14.sql` e voltar a publicar a Edge Function `uril-official-move`.

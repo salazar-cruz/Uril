@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.13', () => {
-  assert.match(html, /Versão 1\.0\.13/);
-  assert.match(html, /AJUDA V1\.0\.13/);
-  assert.match(html, /styles\.css\?v=1\.0\.13/);
-  assert.match(html, /app\.js\?v=1\.0\.13/);
+test('a interface está identificada como versão 1.0.14', () => {
+  assert.match(html, /Versão 1\.0\.14/);
+  assert.match(html, /AJUDA V1\.0\.14/);
+  assert.match(html, /styles\.css\?v=1\.0\.14/);
+  assert.match(html, /app\.js\?v=1\.0\.14/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -30,11 +30,12 @@ test('o registo recolhe nome, nick, país, ilha condicional e email', () => {
   assert.match(app, /const island = isCapeVerdeCountry\(country\) \? elements\.registerIsland\.value : null/);
 });
 
-test('visitantes anónimos ficam limitados a treino e consulta', () => {
-  assert.match(i18n, /Treino contra a IA e consulta de partidas/);
-  assert.match(app, /function requireCompetitiveReady/);
-  assert.match(app, /Só jogadores inscritos|registrationRequired/);
-  assert.match(app, /app\.mode = calibration \? 'calibration' : 'pc'/);
+test('visitantes anónimos conseguem convidar outro anónimo para uma partida privada', () => {
+  assert.match(i18n, /convites privados entre anónimos/);
+  assert.match(app, /const guestInvite = !app\.registered && !player\.registered/);
+  assert.match(app, /multiplayer\.createGuestRoom/);
+  assert.match(app, /multiplayer\.joinGuestRoom/);
+  assert.match(app, /sendInvitationResponse\(invitation, 'declined'\)/);
 });
 
 test('o treino contra o computador deixa escolher quem joga primeiro', () => {

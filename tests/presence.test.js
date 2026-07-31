@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { MultiplayerService } from '../js/multiplayer.js?v=1.0.13';
+import { MultiplayerService } from '../js/multiplayer.js?v=1.0.14';
 
 function service() {
   const instance = new MultiplayerService({ url: 'x', anonKey: 'y' });
@@ -73,4 +73,13 @@ test('a presença conserva o estado compacto de um jogo contra o computador', ()
 test('o estado Drill é publicado como Drill e não como livre', () => {
   const multiplayer = service();
   assert.equal(multiplayer.normalisePresence({ status: 'drill' }).status, 'drill');
+});
+
+test('cada sessão anónima recebe uma designação estável para convites', () => {
+  const multiplayer = service();
+  multiplayer.user = { id: 'ab123456-0000-0000-0000-000000000000', is_anonymous: true };
+  assert.equal(multiplayer.anonymousNick(), 'Anónimo AB12');
+  const presence = multiplayer.normalisePresence({ nick: 'Anónimo', bank_private: true });
+  assert.equal(presence.nick, 'Anónimo AB12');
+  assert.equal(presence.bank_private, true);
 });

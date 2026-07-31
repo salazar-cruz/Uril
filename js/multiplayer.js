@@ -23,12 +23,13 @@ function seenTime(value) {
 }
 
 export class MultiplayerService {
-  constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation, onSuggestionsChange, onAuthChange, onRoomPresenceChange }) {
+  constructor({ url, anonKey, onLobbyChange, onPresenceChange, onInvitation, onInvitationResponse, onSuggestionsChange, onAuthChange, onRoomPresenceChange }) {
     this.url = url;
     this.anonKey = anonKey;
     this.onLobbyChange = onLobbyChange;
     this.onPresenceChange = onPresenceChange;
     this.onInvitation = onInvitation;
+    this.onInvitationResponse = onInvitationResponse;
     this.onSuggestionsChange = onSuggestionsChange;
     this.onAuthChange = onAuthChange;
     this.onRoomPresenceChange = onRoomPresenceChange;
@@ -94,6 +95,17 @@ export class MultiplayerService {
     return Boolean(this.user && !this.user.is_anonymous && this.profile?.id === this.user.id);
   }
 
+  anonymousNick() {
+    const userCode = String(this.user?.id || '').replaceAll('-', '').slice(0, 4).toUpperCase();
+    if (userCode) return `Anónimo ${userCode}`;
+    const source = String(this.connectionId || 'anonimo');
+    let hash = 0;
+    for (let index = 0; index < source.length; index += 1) {
+      hash = ((hash << 5) - hash + source.charCodeAt(index)) | 0;
+    }
+    return `Anónimo ${String((Math.abs(hash) % 90) + 10).padStart(2, '0')}`;
+  }
+
   identityPresence(fallback = {}) {
     if (this.registered) {
       return {
@@ -107,7 +119,7 @@ export class MultiplayerService {
     }
     return {
       ...fallback,
-      nick: 'Anónimo',
+      nick: this.anonymousNick(),
       island: null,
       country: null,
       elo: null,
@@ -251,12 +263,12 @@ export class MultiplayerService {
   }
 
   normalisePresence(profile = {}) {
-    const fallback = this.registered ? this.profile.nick : 'Anónimo';
+    const fallback = this.registered ? this.profile.nick : this.anonymousNick();
     const status = PRESENCE_STATUSES.has(profile.status) ? profile.status : 'free';
     return {
       connection_id: this.connectionId,
       user_id: this.user?.id || null,
-      nick: String(profile.nick || '').trim() || fallback,
+      nick: this.registered ? (String(profile.nick || '').trim() || fallback) : this.anonymousNick(),
       island: profile.island || null,
       country: profile.country || null,
       elo: Number(profile.elo || 0) || null,
@@ -264,6 +276,7 @@ export class MultiplayerService {
       status,
       bank_id: profile.bank_id || null,
       bank_name: profile.bank_name || null,
+      bank_private: Boolean(profile.bank_private),
       pc_game_id: profile.pc_game_id || null,
       pc_level: profile.pc_level || null,
       pc_state_version: Number(profile.pc_state_version || 0) || 0,
@@ -425,6 +438,12 @@ export class MultiplayerService {
         const addressedToUser = payload?.target_user_id && payload.target_user_id === this.user?.id;
         if (addressedToConnection || addressedToUser) this.onInvitation?.(payload);
       })
+      .on('broadcast', { event: 'invite_response' }, ({ payload }) => {
+        const addressedToConnection = payload?.target_connection_id === this.connectionId
+          || payload?.target_id === this.connectionId;
+        const addressedToUser = payload?.target_user_id && payload.target_user_id === this.user?.id;
+        if (addressedToConnection || addressedToUser) this.onInvitationResponse?.(payload);
+      })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'uril_rooms' },
@@ -463,13 +482,17 @@ export class MultiplayerService {
       event: 'invite',
       payload: {
         invite_id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+        invite_kind: room.room_kind === 'guest' ? 'guest' : 'official',
+        invite_token: room.invite_token || null,
         target_id: targetConnectionId,
         target_connection_id: targetConnectionId,
         target_user_id: target.user_id || null,
         inviter_id: this.user?.id,
         inviter_connection_id: this.connectionId,
-        inviter_nick: String(profile?.nick || room.host_nick || 'Jogador'),
-        inviter_island: String(profile?.island || room.host_island || 'santiago'),
+        inviter_nick: this.registered
+          ? String(profile?.nick || room.host_nick || 'Jogador')
+          : this.anonymousNick(),
+        inviter_island: this.registered ? (profile?.island || room.host_island || null) : null,
         bank_id: room.id,
         bank_name: room.name,
         sent_at: new Date().toISOString(),
@@ -477,6 +500,27 @@ export class MultiplayerService {
     });
 
     if (response !== 'ok') throw new Error('O serviço em tempo real não confirmou o convite.');
+  }
+
+  async sendInvitationResponse(invitation, decision) {
+    if (!this.lobbyChannel || !invitation?.inviter_connection_id) return;
+    const response = await this.lobbyChannel.send({
+      type: 'broadcast',
+      event: 'invite_response',
+      payload: {
+        invite_id: invitation.invite_id,
+        bank_id: invitation.bank_id,
+        decision: decision === 'accepted' ? 'accepted' : 'declined',
+        target_id: invitation.inviter_connection_id,
+        target_connection_id: invitation.inviter_connection_id,
+        target_user_id: invitation.inviter_id || null,
+        responder_id: this.user?.id || null,
+        responder_connection_id: this.connectionId,
+        responder_nick: this.registered ? this.profile?.nick : this.anonymousNick(),
+        sent_at: new Date().toISOString(),
+      },
+    });
+    if (response !== 'ok') throw new Error('O serviço em tempo real não confirmou a resposta ao convite.');
   }
 
   subscribeSuggestions() {
@@ -604,6 +648,7 @@ export class MultiplayerService {
     let query = this.client
       .from('uril_rooms')
       .select('*', { count: 'exact' })
+      .eq('private_room', false)
       .in('status', statuses)
       .order('updated_at', { ascending: false });
 
@@ -637,9 +682,36 @@ export class MultiplayerService {
     return data;
   }
 
+  async createGuestRoom({ session, targetPlayer }) {
+    if (!this.client || !this.user?.is_anonymous) {
+      throw new Error('Este convite privado destina-se a jogadores anónimos.');
+    }
+    if (!targetPlayer?.user_id || targetPlayer.registered) {
+      throw new Error('Selecciona outro jogador anónimo disponível.');
+    }
+    const { data, error } = await this.client.rpc('uril_create_guest_room', {
+      p_game_state: session,
+      p_invited_user_id: targetPlayer.user_id,
+    });
+    if (error) throw error;
+    return data;
+  }
+
   async joinRoom(roomId) {
     if (!this.registered) throw new Error('Só jogadores inscritos entram em partidas oficiais.');
     const { data, error } = await this.client.rpc('uril_join_room', { p_room_id: roomId });
+    if (error) throw error;
+    return data;
+  }
+
+  async joinGuestRoom(roomId, inviteToken) {
+    if (!this.client || !this.user?.is_anonymous) {
+      throw new Error('Este banco privado destina-se a jogadores anónimos.');
+    }
+    const { data, error } = await this.client.rpc('uril_join_guest_room', {
+      p_room_id: roomId,
+      p_invite_token: inviteToken,
+    });
     if (error) throw error;
     return data;
   }
@@ -678,14 +750,14 @@ export class MultiplayerService {
 
   startRoomHeartbeat(roomId) {
     window.clearInterval(this.roomHeartbeatTimer);
-    if (!this.registered) return;
+    if (!this.user) return;
     const beat = () => this.heartbeatRoom(roomId).catch(() => {});
     beat();
     this.roomHeartbeatTimer = window.setInterval(beat, 15000);
   }
 
   async heartbeatRoom(roomId) {
-    if (!this.registered || !roomId) return null;
+    if (!this.user || !roomId) return null;
     const { data, error } = await this.client.rpc('uril_room_heartbeat', { p_room_id: roomId });
     if (error) throw error;
     return data;
@@ -698,7 +770,7 @@ export class MultiplayerService {
     this.roomPresenceProfile = {
       connection_id: this.connectionId,
       user_id: this.user?.id || null,
-      nick: this.registered ? this.profile.nick : 'Anónimo',
+      nick: this.registered ? this.profile.nick : this.anonymousNick(),
       registered: this.registered,
       island: this.registered ? this.profile.island : null,
       country: this.registered ? this.profile.country : null,
@@ -798,7 +870,9 @@ export class MultiplayerService {
       id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
       room_id: room.id,
       user_id: this.user?.id || null,
-      nick: String(profile?.nick || 'Convidado').trim().slice(0, 18) || 'Convidado',
+      nick: this.registered
+        ? (String(profile?.nick || 'Convidado').trim().slice(0, 18) || 'Convidado')
+        : this.anonymousNick(),
       island: profile?.island || null,
       text: content,
       sent_at: new Date().toISOString(),
@@ -833,14 +907,14 @@ export class MultiplayerService {
   }
 
   async closeRoom(room) {
-    if (!room || room.host_id !== this.user?.id || !this.registered) return null;
+    if (!room || room.host_id !== this.user?.id || !this.user) return null;
     const { data, error } = await this.client.rpc('uril_close_room', { p_room_id: room.id });
     if (error) throw error;
     return data;
   }
 
   async submitOfficialAction(roomId, action, pitIndex = null) {
-    if (!this.registered) throw new Error('Só jogadores inscritos participam em partidas oficiais.');
+    if (!this.user) throw new Error('A sessão de jogador não está ligada.');
     const { data, error } = await this.client.functions.invoke('uril-official-move', {
       body: { roomId, action, pitIndex },
     });

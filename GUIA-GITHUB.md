@@ -1,4 +1,4 @@
-# Publicação do Uril 1.0.0
+# Publicação do Uril 1.0.14
 
 ## 1. GitHub Pages
 
@@ -23,16 +23,16 @@ no ficheiro `CNAME`. O DNS deve manter:
 
 No projecto Supabase:
 
-1. activa autenticação anónima, usada apenas para visitantes e espectadores;
+1. activa autenticação anónima, usada por visitantes, espectadores e partidas privadas entre jogadores anónimos;
 2. activa Email/Password para contas permanentes;
 3. decide se o email exige confirmação;
 4. acrescenta o domínio publicado à lista de URLs permitidos na autenticação.
 
-## 3. Criar a base de dados 1.0.0
+## 3. Criar ou actualizar a base de dados
 
 1. Abre o **SQL Editor** do Supabase.
-2. Cola integralmente `supabase-v1.0.0.sql`.
-3. Executa a migração uma única vez.
+2. Numa instalação nova, cola e executa integralmente `supabase-v1.0.0.sql`.
+3. Numa instalação que já tinha a versão 1.0.13, executa apenas `supabase-v1.0.14.sql`.
 
 A migração cria ou actualiza:
 
@@ -44,7 +44,9 @@ A migração cria ou actualiza:
 - histórico Elo;
 - calibração inicial;
 - sugestões e respostas;
-- políticas RLS e canais Realtime.
+- políticas RLS e canais Realtime;
+- bancos privados não classificados entre jogadores anónimos;
+- tokens de convite e restrição do banco aos dois participantes.
 
 Os bancos antigos permanecem consultáveis, mas não entram retroactivamente no Elo.
 
@@ -81,21 +83,21 @@ O ambiente gerido pelo Supabase deve disponibilizar à função:
 
 A service role fica no ambiente protegido da função. Não é copiada para o GitHub.
 
-Sem esta Edge Function, o treino contra a IA e a consulta continuam disponíveis, mas as jogadas oficiais são recusadas.
+Sem esta Edge Function actualizada, o treino contra a IA e a consulta continuam disponíveis, mas as jogadas oficiais e as partidas privadas entre anónimos são recusadas.
 
 ## 6. Verificação após a publicação
 
-1. Cria duas contas de teste com emails diferentes.
-2. Conclui os três testes de calibração em cada conta.
-3. Na primeira conta, cria um banco oficial.
-4. Na segunda, entra no banco.
-5. Abre um terceiro navegador sem login e confirma `Anónimo 01` na lista de espectadores.
-6. Faz uma jogada e confirma uma linha em `uril_moves`.
-7. Termina uma partida e confirma duas linhas em `uril_rating_history`.
-8. Fecha um navegador durante mais de 90 segundos e confirma o estado `interrupted`.
-9. Reabre os dois jogadores e confirma a recuperação do estado Live.
-10. Consulta a partida e testa o controlador de jogadas e a análise.
+1. Abre dois navegadores com sessões anónimas diferentes, por exemplo Chrome normal e janela anónima.
+2. Confirma que aparecem designações diferentes, como `Anónimo A7C2` e `Anónimo 4F91`.
+3. Num dos navegadores, selecciona o outro jogador e carrega em **Convidar**.
+4. Confirma que o destinatário recebe o alerta para aceitar ou recusar.
+5. Testa primeiro **Recusar** e confirma a mensagem no navegador do anfitrião.
+6. Envia um novo convite, aceita e confirma que os dois entram no mesmo banco privado.
+7. Faz jogadas dos dois lados e confirma sincronização, animações e chat.
+8. Confirma que o banco privado não surge no arquivo e não altera o Elo.
+9. Cria depois duas contas de teste, conclui a calibração e confirma que os bancos oficiais continuam a funcionar.
+10. Faz uma jogada oficial e confirma uma linha em `uril_moves`; termina a partida e confirma o histórico Elo.
 
 ## 7. Actualizações do GitHub
 
-Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.13` nos módulos principais para reduzir problemas de cache.
+Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.14` nos módulos principais para reduzir problemas de cache.
