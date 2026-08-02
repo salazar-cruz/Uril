@@ -1,4 +1,9 @@
-# Publicação do Uril 1.0.14
+# Publicação do Uril 1.0.15
+
+## Actualização da versão 1.0.14
+
+A versão 1.0.15 acrescenta apenas o chat contextual contra o computador. Não exige novo SQL nem nova publicação da Edge Function. Substitui os ficheiros do pacote no ramo `main` e faz uma actualização forçada com **Ctrl + F5**.
+
 
 ## 1. GitHub Pages
 
@@ -100,4 +105,4 @@ Sem esta Edge Function actualizada, o treino contra a IA e a consulta continuam 
 
 ## 7. Actualizações do GitHub
 
-Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.14` nos módulos principais para reduzir problemas de cache.
+Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.15` nos módulos principais para reduzir problemas de cache.

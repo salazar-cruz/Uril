@@ -7,11 +7,11 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const i18n = await readFile(new URL('../js/i18n.js', import.meta.url), 'utf8');
 const app = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 
-test('a interface está identificada como versão 1.0.14', () => {
-  assert.match(html, /Versão 1\.0\.14/);
-  assert.match(html, /AJUDA V1\.0\.14/);
-  assert.match(html, /styles\.css\?v=1\.0\.14/);
-  assert.match(html, /app\.js\?v=1\.0\.14/);
+test('a interface está identificada como versão 1.0.15', () => {
+  assert.match(html, /Versão 1\.0\.15/);
+  assert.match(html, /AJUDA V1\.0\.15/);
+  assert.match(html, /styles\.css\?v=1\.0\.15/);
+  assert.match(html, /app\.js\?v=1\.0\.15/);
 });
 
 test('a página principal já não pede nick nem ilha', () => {
@@ -46,6 +46,17 @@ test('o treino contra o computador deixa escolher quem joga primeiro', () => {
   assert.match(app, /createPcSession\(firstPlayer, createMatch\(\), null, app\.aiLevel\)/);
   assert.match(i18n, /humanStarts: 'Eu jogo primeiro'/);
   assert.match(i18n, /computerStarts: 'Computador joga primeiro'/);
+});
+
+test('o jogo contra o computador inclui chat provocador opcional', () => {
+  assert.match(html, /id="aiChatModeSelect"/);
+  assert.match(html, /value="provocative"/);
+  assert.match(html, /value="off"/);
+  assert.match(app, /app\.mode === 'pc' && app\.aiChatMode !== 'off'/);
+  assert.match(app, /replyToPlayer\(/);
+  assert.match(app, /moveTaunt\(/);
+  assert.match(i18n, /aiChatTitle: 'CHAT COM A IA'/);
+  assert.match(i18n, /nabo.*idiota|idiota.*nabo/);
 });
 
 test('a calibração é exigida antes das partidas oficiais', () => {

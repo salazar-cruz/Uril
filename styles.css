@@ -2297,3 +2297,11 @@ body.game-active .island-background::after {
 
 /* v1.0.11 — observação pública dos treinos contra o PC e níveis de Drills recolhíveis. */
 .online-player.status-pc .roster-action:not(:disabled) { border-color: rgba(245, 204, 117, .42); color: var(--gold-strong); }
+
+/* v1.0.15 — chat contextual com o computador. */
+.chat-message.ai {
+  border-color: rgba(149, 237, 198, .28);
+  background: rgba(47, 143, 106, .13);
+}
+.chat-message.ai strong { color: #95edc6; }
+.chat-message.ai p { font-style: italic; }

@@ -13,15 +13,16 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.14';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.14';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.14';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.14';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.14';
-import { MultiplayerService } from './multiplayer.js?v=1.0.14';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.14';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.14';
-import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.14';
+} from './engine.js?v=1.0.15';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.15';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.15';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.15';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.15';
+import { MultiplayerService } from './multiplayer.js?v=1.0.15';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.15';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.15';
+import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.15';
+import { AI_CHAT_USER_ID, moveTaunt, openingTaunt, replyToPlayer } from './ai-chat.js?v=1.0.15';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -39,7 +40,7 @@ const ISLANDS = {
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   home: $('#homeScreen'), game: $('#gameScreen'), language: $('#languageSelect'),
-  level: $('#levelSelect'), starter: $('#starterSelect'), signIn: $('#signInButton'), register: $('#registerButton'), signOut: $('#signOutButton'),
+  level: $('#levelSelect'), starter: $('#starterSelect'), aiChatMode: $('#aiChatModeSelect'), signIn: $('#signInButton'), register: $('#registerButton'), signOut: $('#signOutButton'),
   playerChip: $('#playerChip'), playerChipNick: $('#playerChipNick'), playerChipElo: $('#playerChipElo'),
   identityName: $('#identityName'), identityDescription: $('#identityDescription'), identityRating: $('#identityRating'),
   identityElo: $('#identityElo'), identityRecord: $('#identityRecord'), identityRegister: $('#identityRegisterButton'),
@@ -87,8 +88,8 @@ const elements = {
   suggestionSubmit: $('#publishSuggestionButton'), refreshSuggestions: $('#refreshSuggestionsButton'),
   roundResult: $('#roundResult'), roundResultTitle: $('#roundResultTitle'),
   roundResultScore: $('#roundResultScore'), roundResultNext: $('#roundResultNext'),
-  chatCard: $('#chatCard'), chatMessages: $('#chatMessages'), chatEmpty: $('#chatEmpty'),
-  chatForm: $('#chatForm'), chatInput: $('#chatInput'), chatSend: $('#chatSendButton'),
+  chatCard: $('#chatCard'), chatTitle: $('#chatTitle'), chatStatus: $('#chatStatus'), chatMessages: $('#chatMessages'), chatEmpty: $('#chatEmpty'),
+  chatForm: $('#chatForm'), chatInput: $('#chatInput'), chatSend: $('#chatSendButton'), chatNote: $('#chatNote'),
   reviewController: $('#reviewController'), reviewPosition: $('#reviewPosition'), reviewTime: $('#reviewTime'),
   reviewSlider: $('#reviewSlider'), reviewFirst: $('#reviewFirstButton'), reviewPrevious: $('#reviewPreviousButton'),
   reviewNext: $('#reviewNextButton'), reviewLast: $('#reviewLastButton'), reviewMoveDetails: $('#reviewMoveDetails'),
@@ -147,6 +148,9 @@ const app = {
   currentInvitation: null,
   chatMessages: [],
   chatIds: new Set(),
+  aiChatMode: 'provocative',
+  aiChatTimers: new Set(),
+  aiChatSequence: 0,
   pitButtons: new Map(),
   spriteCache: new Map(),
   boardPerspective: null,
@@ -1138,9 +1142,22 @@ async function openSharedInvite() {
   }
 }
 
+function currentChatRoomId() {
+  if (app.mode === 'online' && app.room?.id) return app.room.id;
+  if (app.mode === 'pc' && app.pcGameId) return `pc:${app.pcGameId}`;
+  return null;
+}
+
+function clearAiChatTimers() {
+  for (const timer of app.aiChatTimers) window.clearTimeout(timer);
+  app.aiChatTimers.clear();
+}
+
 function resetChat() {
+  clearAiChatTimers();
   app.chatMessages = [];
   app.chatIds = new Set();
+  app.aiChatSequence = 0;
   renderChat();
 }
 
@@ -1149,7 +1166,7 @@ function normaliseChatMessage(message = {}) {
     id: String(message.id || `${message.user_id || 'anon'}-${message.sent_at || Date.now()}`),
     room_id: message.room_id || null,
     user_id: message.user_id || null,
-    nick: String(message.nick || t('guest')).trim().slice(0, 18) || t('guest'),
+    nick: String(message.nick || t('guest')).trim().slice(0, 24) || t('guest'),
     island: message.island || null,
     text: String(message.text || '').trim().slice(0, 280),
     sent_at: message.sent_at || new Date().toISOString(),
@@ -1158,7 +1175,8 @@ function normaliseChatMessage(message = {}) {
 
 function appendChatMessage(rawMessage) {
   const message = normaliseChatMessage(rawMessage);
-  if (!message.text || !app.room || message.room_id !== app.room.id || app.chatIds.has(message.id)) return;
+  const activeRoomId = currentChatRoomId();
+  if (!message.text || !activeRoomId || message.room_id !== activeRoomId || app.chatIds.has(message.id)) return;
 
   app.chatIds.add(message.id);
   app.chatMessages.push(message);
@@ -1169,23 +1187,73 @@ function appendChatMessage(rawMessage) {
   renderChat();
 }
 
+function pcHumanChatUserId() {
+  return multiplayer.user?.id || 'pc-human';
+}
+
+function appendPcHumanMessage(text) {
+  appendChatMessage({
+    id: `pc-human-${Date.now()}-${app.aiChatSequence += 1}`,
+    room_id: currentChatRoomId(),
+    user_id: pcHumanChatUserId(),
+    nick: app.players?.[SOUTH]?.nick || t('anonymousVisitor'),
+    island: app.players?.[SOUTH]?.island || null,
+    text,
+    sent_at: new Date().toISOString(),
+  });
+}
+
+function appendPcAiMessage(text) {
+  if (!text || app.mode !== 'pc' || app.aiChatMode === 'off') return;
+  appendChatMessage({
+    id: `pc-ai-${Date.now()}-${app.aiChatSequence += 1}`,
+    room_id: currentChatRoomId(),
+    user_id: AI_CHAT_USER_ID,
+    nick: app.players?.[NORTH]?.nick || t('computer'),
+    island: 'santa-luzia',
+    text,
+    sent_at: new Date().toISOString(),
+  });
+}
+
+function schedulePcAiMessage(text, delay = 620) {
+  if (!text || app.mode !== 'pc' || app.aiChatMode === 'off') return;
+  const timer = window.setTimeout(() => {
+    app.aiChatTimers.delete(timer);
+    appendPcAiMessage(text);
+  }, delay);
+  app.aiChatTimers.add(timer);
+}
+
 function renderChat() {
   if (!elements.chatCard) return;
-  const enabled = !app.reviewMode && app.mode === 'online' && Boolean(app.room);
+  const onlineEnabled = !app.reviewMode && app.mode === 'online' && Boolean(app.room);
+  const pcEnabled = !app.reviewMode && app.mode === 'pc' && app.aiChatMode !== 'off';
+  const enabled = onlineEnabled || pcEnabled;
   elements.chatCard.hidden = !enabled;
   if (!enabled) return;
 
-  const ready = Boolean(multiplayer.roomChannelReady);
+  const ready = pcEnabled || Boolean(multiplayer.roomChannelReady);
+  if (elements.chatTitle) elements.chatTitle.textContent = t(pcEnabled ? 'aiChatTitle' : 'bankChat');
+  if (elements.chatStatus) elements.chatStatus.textContent = t(pcEnabled ? 'aiChatProvocation' : 'live');
+  if (elements.chatNote) elements.chatNote.textContent = t(pcEnabled ? 'aiChatNote' : 'chatNote');
   elements.chatInput.disabled = !ready;
   elements.chatSend.disabled = !ready;
-  elements.chatInput.placeholder = ready ? t('chatReady') : t('chatConnecting');
+  elements.chatInput.placeholder = ready
+    ? t(pcEnabled ? 'aiChatReady' : 'chatReady')
+    : t('chatConnecting');
   elements.chatMessages.replaceChildren();
   elements.chatEmpty.hidden = app.chatMessages.length > 0;
+  elements.chatEmpty.textContent = t(pcEnabled ? 'aiChatEmpty' : 'chatEmpty');
 
   for (const message of app.chatMessages) {
     const article = document.createElement('article');
     article.className = 'chat-message';
-    article.classList.toggle('mine', message.user_id === multiplayer.user?.id);
+    const mine = onlineEnabled
+      ? message.user_id === multiplayer.user?.id
+      : message.user_id === pcHumanChatUserId();
+    article.classList.toggle('mine', mine);
+    article.classList.toggle('ai', message.user_id === AI_CHAT_USER_ID);
 
     const head = document.createElement('div');
     head.className = 'chat-message-head';
@@ -1209,10 +1277,24 @@ function renderChat() {
 
 async function sendChatMessage(event) {
   event?.preventDefault?.();
-  if (app.mode !== 'online' || !app.room) return;
   const text = elements.chatInput.value.trim();
   if (!text) return;
 
+  if (app.mode === 'pc' && app.aiChatMode !== 'off') {
+    appendPcHumanMessage(text);
+    elements.chatInput.value = '';
+    const reply = replyToPlayer({
+      language: app.language,
+      text,
+      game: app.session.game,
+      level: app.aiLevel,
+    });
+    schedulePcAiMessage(reply, 480 + Math.min(900, text.length * 12));
+    elements.chatInput.focus();
+    return;
+  }
+
+  if (app.mode !== 'online' || !app.room) return;
   elements.chatInput.disabled = true;
   elements.chatSend.disabled = true;
   try {
@@ -1573,6 +1655,7 @@ async function startPcGame(options = {}) {
   app.roomViewers = [];
   app.lastAiStats = null;
   app.aiLevel = options.level || elements.level.value;
+  app.aiChatMode = calibration ? 'off' : (options.aiChatMode || elements.aiChatMode?.value || 'provocative');
   const firstPlayer = options.firstPlayer ?? (calibration ? SOUTH : elements.starter?.value === 'computer' ? NORTH : SOUTH);
   app.side = SOUTH;
   app.spectator = false;
@@ -1589,6 +1672,9 @@ async function startPcGame(options = {}) {
   app.session = createPcSession(firstPlayer, createMatch(), null, app.aiLevel);
   showScreen('game');
   renderGame();
+  if (!calibration && app.aiChatMode !== 'off') {
+    schedulePcAiMessage(openingTaunt({ language: app.language, level: app.aiLevel, firstPlayer }), 360);
+  }
   syncPresence();
   toast(calibration ? t('initialEloTest') : t('trainingOnly'));
 }
@@ -2216,6 +2302,11 @@ async function performResignation(player) {
       appendSessionHistory(next, 'resignation');
     }
     app.session = next;
+    if (app.mode === 'pc' && player === SOUTH && app.aiChatMode !== 'off') {
+      schedulePcAiMessage(moveTaunt({
+        language: app.language, actor: SOUTH, beforeGame: null, afterGame: next.game, level: app.aiLevel,
+      }), 260);
+    }
     publishPcGameState();
     await maybeRecordCalibration();
     clearRoundTransition();
@@ -2808,6 +2899,11 @@ async function playMove(index) {
 
     await animateMove(previous.game, next.game);
     app.session = next;
+    if (app.mode === 'pc' && app.aiChatMode !== 'off') {
+      schedulePcAiMessage(moveTaunt({
+        language: app.language, actor: SOUTH, beforeGame: previous.game, afterGame: next.game, level: app.aiLevel,
+      }), 420);
+    }
     publishPcGameState();
     if (drill) {
       app.drillAttemptMoves += 1;
@@ -2838,7 +2934,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.14', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.15', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -2921,6 +3017,11 @@ function maybeRunAI() {
         appendSessionHistory(next, 'move');
         await animateMove(previous.game, next.game);
         app.session = next;
+        if (app.mode === 'pc' && app.aiChatMode !== 'off') {
+          schedulePcAiMessage(moveTaunt({
+            language: app.language, actor: NORTH, beforeGame: previous.game, afterGame: next.game, level: app.aiLevel, analysis,
+          }), 360);
+        }
       }
     } catch (error) {
       toast(t('computerError', { error: error.message }));
@@ -2966,6 +3067,9 @@ async function newRound(options = {}) {
     }
     publishPcGameState();
     clearRoundTransition();
+    if (app.mode === 'pc' && app.aiChatMode !== 'off') {
+      schedulePcAiMessage(openingTaunt({ language: app.language, level: app.aiLevel, firstPlayer: nextFirst }), 420);
+    }
   } catch (error) {
     if (hasSyncedBank()) {
       try {
@@ -3021,6 +3125,7 @@ async function leaveGame() {
   app.observedPcConnectionId = null;
   app.pcWatchVersion = 0;
   app.pcWatchEnding = false;
+  app.aiChatMode = 'provocative';
   resetChat();
   app.spectator = false;
   app.lastRoomFingerprint = null;

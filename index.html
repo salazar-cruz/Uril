@@ -9,7 +9,7 @@
 <title>Uril de Cabo Verde</title>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="assets/icons/favicon.svg" rel="icon" type="image/svg+xml"/>
-<link href="styles.css?v=1.0.14" rel="stylesheet"/>
+<link href="styles.css?v=1.0.15" rel="stylesheet"/>
 </head>
 <body data-island="santiago">
 <div aria-hidden="true" class="island-background"></div>
@@ -85,6 +85,11 @@
 <select id="starterSelect">
 <option data-i18n="humanStarts" selected="" value="human">Eu jogo primeiro</option>
 <option data-i18n="computerStarts" value="computer">Computador joga primeiro</option>
+</select>
+<label data-i18n="aiChatMode" for="aiChatModeSelect">Chat da IA</label>
+<select id="aiChatModeSelect">
+<option data-i18n="aiChatProvocative" selected="" value="provocative">Provocador</option>
+<option data-i18n="aiChatOff" value="off">Desligado</option>
 </select>
 <button class="primary-button" data-i18n="startMatch" id="startPcButton" type="button">Começar partida</button>
 <div class="calibration-box" hidden id="calibrationBox">
@@ -257,8 +262,8 @@
 </section>
 <section class="glass sidebar-card chat-card" hidden="" id="chatCard">
 <div class="chat-head">
-<span class="eyebrow" data-i18n="bankChat">CHAT DO BANCO</span>
-<small data-i18n="live">AO VIVO</small>
+<span class="eyebrow" data-i18n="bankChat" id="chatTitle">CHAT DO BANCO</span>
+<small data-i18n="live" id="chatStatus">AO VIVO</small>
 </div>
 <div aria-live="polite" class="chat-messages" id="chatMessages"></div>
 <p class="chat-empty" data-i18n="chatEmpty" id="chatEmpty">Ainda não há mensagens neste banco.</p>
@@ -266,7 +271,7 @@
 <input aria-label="Mensagem para o chat" autocomplete="off" data-i18n-aria="chatAria" data-i18n-placeholder="chatPlaceholder" id="chatInput" maxlength="280" placeholder="Escrever no banco…"/>
 <button class="primary-button compact" data-i18n="send" id="chatSendButton" type="submit">Enviar</button>
 </form>
-<p class="chat-note" data-i18n="chatNote">As mensagens são transmitidas em tempo real e não ficam arquivadas.</p>
+<p class="chat-note" data-i18n="chatNote" id="chatNote">As mensagens são transmitidas em tempo real e não ficam arquivadas.</p>
 </section>
 <section class="glass sidebar-card share-card" hidden="" id="shareCard">
 <span class="eyebrow" data-i18n="whatsappShare">CONVIDAR VIA WHATSAPP</span>
@@ -328,7 +333,7 @@
 </section>
 <footer class="site-footer glass">
   <div><strong data-i18n="footerCopyright">© 2026 DevNexus Digital</strong><span data-i18n="footerConcept">Conceito, desenvolvimento e direcção</span></div>
-  <div class="footer-actions"><span data-i18n="versionLabel">Versão 1.0.14</span><button class="text-button" data-i18n="suggestions" id="suggestionsButton" type="button">Sugestões</button></div>
+  <div class="footer-actions"><span data-i18n="versionLabel">Versão 1.0.15</span><button class="text-button" data-i18n="suggestions" id="suggestionsButton" type="button">Sugestões</button></div>
 </footer>
 </div>
 <section aria-live="assertive" class="invite-popup glass" hidden="" id="invitePopup" role="alertdialog">
@@ -361,7 +366,7 @@
 </dialog>
 <dialog id="rulesDialog">
 <div class="dialog-head">
-<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V1.0.14</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
+<div><span class="eyebrow" data-i18n="helpVersion">AJUDA V1.0.15</span><h2 data-i18n="helpTitle">Ajuda, bancos e regras</h2></div>
 <button class="icon-button" data-i18n-aria="close" id="closeRulesButton" type="button">×</button>
 </div>
 <div class="rules-content help-content" data-i18n-html="helpContent"><section><h3>O que é o Uril</h3><p>O Uril é a variante cabo-verdiana da família Ayo/Awalé/Oware.</p></section></div>
@@ -376,6 +381,6 @@
   <div class="action-dialog-body"><p id="aiResignWarning"></p><div class="dialog-actions"><button class="secondary-button" data-i18n="rejectAIResign" id="aiResignRejectButton" type="button">Não aceitar</button><button class="primary-button" data-i18n="acceptAIResign" id="aiResignAcceptButton" type="button">Aceitar desistência</button></div></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
-<script src="js/app.js?v=1.0.14" type="module"></script>
+<script src="js/app.js?v=1.0.15" type="module"></script>
 </body>
 </html>

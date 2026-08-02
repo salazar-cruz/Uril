@@ -1,4 +1,4 @@
-# Uril de Cabo Verde — 1.0.14
+# Uril de Cabo Verde — 1.0.15
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
@@ -119,6 +119,15 @@ O painel explicativo e todos os controlos dos Drills Corri Oro passam a surgir i
 ## Versão 1.0.11
 
 Os Drills passam a estar divididos em Iniciante, Médio e Avançado. Foram acrescentados os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4, todos com explicação própria, pista e solução automática dos dois lados até 25–23.
+
+## Versão 1.0.15
+
+- O modo contra o computador inclui agora um chat local com a IA.
+- A opção **Provocador** fica seleccionada por defeito e também existe a opção **Desligado**.
+- As respostas consideram o texto escrito pelo jogador, o marcador, as colheitas, a pressão da posição, o Frouxo, a desistência e o resultado final.
+- O computador usa troça e insultos ligeiros de jogo, incluindo “nabo” e “idiota”, sem ameaças nem ataques discriminatórios.
+- O motor conversacional funciona integralmente no navegador: não envia as mensagens para serviços externos, não exige chave de API e não acrescenta custos de servidor.
+- Não existe alteração de base de dados nesta versão. Quem já instalou a 1.0.14 substitui apenas os ficheiros do site.
 
 ## Versão 1.0.14
 

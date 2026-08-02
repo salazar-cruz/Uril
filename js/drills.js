@@ -1,4 +1,4 @@
-import { SOUTH, createGame, positionKey } from './engine.js?v=1.0.14';
+import { SOUTH, createGame, positionKey } from './engine.js?v=1.0.15';
 
 export const DRILL_LEVELS = Object.freeze([
   Object.freeze({ id: 'beginner', labelKey: 'drillLevelBeginner', introKey: 'drillLevelBeginnerIntro' }),
