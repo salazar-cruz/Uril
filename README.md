@@ -1,4 +1,4 @@
-# Uril de Cabo Verde — 1.0.15
+# Uril de Cabo Verde — 1.0.16
 
 Aplicação web do Uril de Cabo Verde, preparada para GitHub Pages e Supabase.
 
@@ -28,7 +28,7 @@ Desenvolvimento assistido por ferramentas de inteligência artificial.
 - Português, Francês e Inglês;
 - design adaptado a computador e telemóvel;
 - 12 casas jogáveis e dois depósitos laterais para as sementes ganhas;
-- catorze Drills públicos de fim de jogo, organizados em Iniciante, Médio e Avançado, incluindo os casos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4;
+- vinte Drills públicos de fim de jogo, organizados em Iniciante, Médio e Avançado; o nível Avançado inclui finais independentes 6–3, 6–4, 6–5, 5–4, 5–3, 4–3, 5–5, 4–4, 7–4 e 7–5;
 
 ## Segurança e classificação
 
@@ -119,6 +119,15 @@ O painel explicativo e todos os controlos dos Drills Corri Oro passam a surgir i
 ## Versão 1.0.11
 
 Os Drills passam a estar divididos em Iniciante, Médio e Avançado. Foram acrescentados os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4, todos com explicação própria, pista e solução automática dos dois lados até 25–23.
+
+## Versão 1.0.16
+
+- O nível Avançado passa a ter dez finais independentes, com distribuições 6–3, 6–4, 6–5, 5–4, 5–3, 4–3, 5–5, 4–4, 7–4 e 7–5.
+- Cada posição avançada tem tabuleiro, linha de referência e explicação próprios.
+- O treino contra o computador abre por defeito em **Mestre**.
+- O chat da IA abre por defeito em **Desligado**.
+- Quando o PC começa, as seis casas de Norte ficam seleccionáveis durante cinco segundos. Um toque define a casa de saída; sem escolha, o computador executa automaticamente a abertura calculada.
+- Não existe alteração de base de dados nem da Edge Function nesta versão.
 
 ## Versão 1.0.15
 

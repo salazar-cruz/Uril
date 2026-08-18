@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { moveTaunt, openingTaunt, replyToPlayer } from '../js/ai-chat.js?v=1.0.15';
-import { NORTH, SOUTH, createGame } from '../js/engine.js?v=1.0.15';
+import { moveTaunt, openingTaunt, replyToPlayer } from '../js/ai-chat.js?v=1.0.16';
+import { NORTH, SOUTH, createGame } from '../js/engine.js?v=1.0.16';
 
 test('o computador inicia o chat com uma provocação contextual', () => {
   const message = openingTaunt({ language: 'pt', level: 'grandmaster', firstPlayer: SOUTH });

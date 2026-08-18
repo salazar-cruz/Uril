@@ -13,16 +13,16 @@ import {
   registerGameResult,
   resignGame,
   resignationValue,
-} from './engine.js?v=1.0.15';
-import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.15';
-import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.15';
-import { CALIBRATION_LEVELS } from './rating.js?v=1.0.15';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.15';
-import { MultiplayerService } from './multiplayer.js?v=1.0.15';
-import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.15';
-import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.15';
-import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.15';
-import { AI_CHAT_USER_ID, moveTaunt, openingTaunt, replyToPlayer } from './ai-chat.js?v=1.0.15';
+} from './engine.js?v=1.0.16';
+import { analysePosition, chooseMove, shouldOfferResignation } from './ai.js?v=1.0.16';
+import { analysePlayedMove, moveFacts } from './analysis.js?v=1.0.16';
+import { CALIBRATION_LEVELS } from './rating.js?v=1.0.16';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=1.0.16';
+import { MultiplayerService } from './multiplayer.js?v=1.0.16';
+import { boardRowsForPerspective, seatPlayers } from './perspective.js?v=1.0.16';
+import { applyTranslations, getLanguage, localeForLanguage, setLanguage, t } from './i18n.js?v=1.0.16';
+import { DRILL_LEVELS, ENDGAME_DRILLS, createEndgameDrillGame, getEndgameDrill } from './drills.js?v=1.0.16';
+import { AI_CHAT_USER_ID, moveTaunt, openingTaunt, replyToPlayer } from './ai-chat.js?v=1.0.16';
 
 const ISLANDS = {
   'santiago': 'Santiago',
@@ -109,7 +109,7 @@ const app = {
   sharedInvite: parseSharedInvite(),
   sharedInviteRoom: null,
   mode: null,
-  aiLevel: 'amateur',
+  aiLevel: 'master',
   session: createSession(),
   players: defaultPlayers(),
   room: null,
@@ -148,7 +148,7 @@ const app = {
   currentInvitation: null,
   chatMessages: [],
   chatIds: new Set(),
-  aiChatMode: 'provocative',
+  aiChatMode: 'off',
   aiChatTimers: new Set(),
   aiChatSequence: 0,
   pitButtons: new Map(),
@@ -175,6 +175,10 @@ const app = {
   observedPcConnectionId: null,
   pcWatchVersion: 0,
   pcWatchEnding: false,
+  pcOpeningChoiceActive: false,
+  pcOpeningChoiceDeadline: 0,
+  pcOpeningTicker: null,
+  pcOpeningAnalysisPromise: null,
 };
 
 const ROUND_TRANSITION_TIMING = {
@@ -1636,6 +1640,74 @@ function settleRound(session) {
   return session;
 }
 
+function pcOpeningSecondsLeft() {
+  if (!app.pcOpeningChoiceActive || !app.pcOpeningChoiceDeadline) return 0;
+  return Math.max(0, Math.ceil((app.pcOpeningChoiceDeadline - Date.now()) / 1000));
+}
+
+function stopPcOpeningChoice({ discardAnalysis = false } = {}) {
+  app.pcOpeningChoiceActive = false;
+  app.pcOpeningChoiceDeadline = 0;
+  window.clearInterval(app.pcOpeningTicker);
+  app.pcOpeningTicker = null;
+  if (discardAnalysis) app.pcOpeningAnalysisPromise = null;
+}
+
+function beginPcOpeningChoice() {
+  stopPcOpeningChoice({ discardAnalysis: true });
+  if (app.mode !== 'pc' || app.session.game.status !== 'playing' || app.session.game.currentPlayer !== NORTH) return;
+  app.pcOpeningChoiceActive = true;
+  app.pcOpeningChoiceDeadline = Date.now() + 5000;
+  const snapshot = cloneValue(app.session.game);
+  const level = app.aiLevel;
+  app.pcOpeningAnalysisPromise = chooseMoveAsync(snapshot, level).catch(() => null);
+  app.pcOpeningTicker = window.setInterval(() => {
+    if (!app.pcOpeningChoiceActive) return;
+    const seconds = pcOpeningSecondsLeft();
+    elements.statusTitle.textContent = t('pcOpeningTitle');
+    elements.statusMessage.textContent = t('pcOpeningChoose', { seconds });
+    elements.roomStatus.textContent = t('pcOpeningChoose', { seconds });
+  }, 200);
+}
+
+function canChoosePcOpening(index) {
+  return app.mode === 'pc'
+    && app.pcOpeningChoiceActive
+    && !app.busy
+    && app.session.game.status === 'playing'
+    && app.session.game.currentPlayer === NORTH
+    && legalMoves(app.session.game).includes(index);
+}
+
+async function playPcOpeningMove(index) {
+  if (!canChoosePcOpening(index)) return;
+  clearTimeout(app.aiTimer);
+  stopPcOpeningChoice({ discardAnalysis: true });
+  app.busy = true;
+  try {
+    const previous = cloneValue(app.session);
+    let next = cloneValue(app.session);
+    next.game = applyMove(next.game, index);
+    next = settleRound(next);
+    appendSessionHistory(next, 'move');
+    await animateMove(previous.game, next.game);
+    app.session = next;
+    app.lastAiStats = null;
+    if (app.aiChatMode !== 'off') {
+      schedulePcAiMessage(moveTaunt({
+        language: app.language, actor: NORTH, beforeGame: previous.game, afterGame: next.game, level: app.aiLevel,
+      }), 280);
+    }
+    publishPcGameState();
+    toast(t('pcOpeningChosen', { pit: translatedPitLabel(index) }));
+  } catch (error) {
+    toast(t('computerError', { error: error.message }));
+  } finally {
+    app.busy = false;
+    renderGame();
+  }
+}
+
 async function startPcGame(options = {}) {
   const calibration = Boolean(options.calibration);
   if (calibration && !requireRegistered()) return;
@@ -1655,7 +1727,7 @@ async function startPcGame(options = {}) {
   app.roomViewers = [];
   app.lastAiStats = null;
   app.aiLevel = options.level || elements.level.value;
-  app.aiChatMode = calibration ? 'off' : (options.aiChatMode || elements.aiChatMode?.value || 'provocative');
+  app.aiChatMode = calibration ? 'off' : (options.aiChatMode || elements.aiChatMode?.value || 'off');
   const firstPlayer = options.firstPlayer ?? (calibration ? SOUTH : elements.starter?.value === 'computer' ? NORTH : SOUTH);
   app.side = SOUTH;
   app.spectator = false;
@@ -1671,6 +1743,7 @@ async function startPcGame(options = {}) {
   };
   app.session = createPcSession(firstPlayer, createMatch(), null, app.aiLevel);
   showScreen('game');
+  if (!calibration && firstPlayer === NORTH) beginPcOpeningChoice();
   renderGame();
   if (!calibration && app.aiChatMode !== 'off') {
     schedulePcAiMessage(openingTaunt({ language: app.language, level: app.aiLevel, firstPlayer }), 360);
@@ -2243,7 +2316,9 @@ function canLocalPlayerAct() {
 function renderBoard() {
   ensurePitElements();
   const game = displayedGame();
-  const moves = canLocalPlayerAct() ? legalMoves(app.session.game) : [];
+  const moves = canLocalPlayerAct() || (app.mode === 'pc' && app.pcOpeningChoiceActive && app.session.game.currentPlayer === NORTH)
+    ? legalMoves(app.session.game)
+    : [];
   const lastPit = app.animation ? null : game.lastMove?.lastPit;
 
   for (let index = 0; index < 12; index += 1) {
@@ -2422,9 +2497,11 @@ function renderGame() {
   } else if (app.mode === 'pc-watch') {
     elements.roomStatus.textContent = t('watchingPcGame', { nick: playerName(SOUTH) });
   } else if (['pc', 'calibration'].includes(app.mode)) {
-    elements.roomStatus.textContent = app.mode === 'calibration'
-      ? t('initialEloTest')
-      : t('computerLevel', { level: translatedLevelLabel(app.aiLevel) });
+    elements.roomStatus.textContent = app.mode === 'pc' && app.pcOpeningChoiceActive
+      ? t('pcOpeningChoose', { seconds: pcOpeningSecondsLeft() })
+      : app.mode === 'calibration'
+        ? t('initialEloTest')
+        : t('computerLevel', { level: translatedLevelLabel(app.aiLevel) });
   } else {
     elements.roomStatus.textContent = t('localBank');
   }
@@ -2833,6 +2910,11 @@ function renderStatus() {
     elements.statusMessage.textContent = t('playerTurn', { player: playerName(game.currentPlayer) });
     return;
   }
+  if (app.mode === 'pc' && app.pcOpeningChoiceActive && game.currentPlayer === NORTH) {
+    elements.statusTitle.textContent = t('pcOpeningTitle');
+    elements.statusMessage.textContent = t('pcOpeningChoose', { seconds: pcOpeningSecondsLeft() });
+    return;
+  }
   if (['pc', 'calibration'].includes(app.mode) && game.currentPlayer === NORTH) {
     elements.statusTitle.textContent = t('computerThinking');
     elements.statusMessage.textContent = t('evaluatingMoves');
@@ -2872,6 +2954,10 @@ function renderLastMove() {
 }
 
 async function playMove(index) {
+  if (canChoosePcOpening(index)) {
+    await playPcOpeningMove(index);
+    return;
+  }
   if (!canLocalPlayerAct()) return;
   try {
     app.busy = true;
@@ -2934,7 +3020,7 @@ function chooseMoveAsync(game, level, options = {}) {
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(
-      new URL('./ai-worker.js?v=1.0.15', import.meta.url),
+      new URL('./ai-worker.js?v=1.0.16', import.meta.url),
       { type: 'module' },
     );
     const timeout = window.setTimeout(() => {
@@ -2972,7 +3058,17 @@ function maybeRunAI() {
     app.session.game.currentPlayer !== aiPlayer
   ) return;
 
+  const openingChoice = app.mode === 'pc' && app.pcOpeningChoiceActive && aiPlayer === NORTH;
+  const aiDelay = openingChoice
+    ? Math.max(0, app.pcOpeningChoiceDeadline - Date.now())
+    : app.mode === 'drill' ? 360 : 520;
+
   app.aiTimer = window.setTimeout(async () => {
+    const preparedOpening = openingChoice ? app.pcOpeningAnalysisPromise : null;
+    if (openingChoice && app.pcOpeningChoiceActive) {
+      stopPcOpeningChoice();
+      toast(t('pcOpeningAuto'));
+    }
     app.busy = true;
     try {
       if (app.mode !== 'drill' && !app.session.aiResignationDeclined && shouldOfferResignation(app.session.game, NORTH)) {
@@ -3004,7 +3100,9 @@ function maybeRunAI() {
         const options = app.mode === 'drill'
           ? { maxDepth: 40, timeMs: 8000, allowRandom: false }
           : {};
-        analysis = await chooseMoveAsync(app.session.game, app.aiLevel, options);
+        analysis = preparedOpening ? await preparedOpening : null;
+        if (!analysis) analysis = await chooseMoveAsync(app.session.game, app.aiLevel, options);
+        app.pcOpeningAnalysisPromise = null;
         app.lastAiStats = analysis;
         move = analysis?.move ?? null;
       }
@@ -3030,7 +3128,7 @@ function maybeRunAI() {
       publishPcGameState();
       renderGame();
     }
-  }, app.mode === 'drill' ? 360 : 520);
+  }, aiDelay);
 }
 
 async function newRound(options = {}) {
@@ -3067,6 +3165,7 @@ async function newRound(options = {}) {
     }
     publishPcGameState();
     clearRoundTransition();
+    if (app.mode === 'pc' && nextFirst === NORTH) beginPcOpeningChoice();
     if (app.mode === 'pc' && app.aiChatMode !== 'off') {
       schedulePcAiMessage(openingTaunt({ language: app.language, level: app.aiLevel, firstPlayer: nextFirst }), 420);
     }
@@ -3091,6 +3190,7 @@ async function leaveGame() {
   app.drillSolutionPlaying = false;
   app.drillSolutionStep = 0;
   clearTimeout(app.aiTimer);
+  stopPcOpeningChoice({ discardAnalysis: true });
   clearRoundTransition();
   app.remoteUpdateQueue = Promise.resolve();
   app.animationGame = null;
@@ -3125,7 +3225,7 @@ async function leaveGame() {
   app.observedPcConnectionId = null;
   app.pcWatchVersion = 0;
   app.pcWatchEnding = false;
-  app.aiChatMode = 'provocative';
+  app.aiChatMode = 'off';
   resetChat();
   app.spectator = false;
   app.lastRoomFingerprint = null;

@@ -24,3 +24,20 @@ test('visitantes anónimos continuam autorizados a iniciar treino', () => {
   assert.match(app, /const human = app\.registered[\s\S]*anonymousVisitor/);
   assert.doesNotMatch(app, /startPcGame[\s\S]{0,180}requireCompetitiveReady/);
 });
+
+
+test('o treino abre por defeito em Mestre e com mensagens da IA desligadas', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /levelMaster" selected="" value="master"/);
+  assert.match(html, /aiChatOff" selected="" value="off"/);
+  assert.match(app, /aiLevel: 'master'/);
+  assert.match(app, /aiChatMode: 'off'/);
+});
+
+test('quando o computador começa existe uma janela de cinco segundos para escolher a casa', () => {
+  assert.match(app, /app\.pcOpeningChoiceDeadline = Date\.now\(\) \+ 5000/);
+  assert.match(app, /legalMoves\(app\.session\.game\)\.includes\(index\)/);
+  assert.match(app, /await playPcOpeningMove\(index\)/);
+  assert.match(app, /const preparedOpening = openingChoice \? app\.pcOpeningAnalysisPromise : null/);
+  assert.match(app, /toast\(t\('pcOpeningAuto'\)\)/);
+});

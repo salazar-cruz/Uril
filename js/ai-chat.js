@@ -1,4 +1,4 @@
-import { NORTH, SOUTH, legalMoves, rowSeedCount } from './engine.js?v=1.0.15';
+import { NORTH, SOUTH, legalMoves, rowSeedCount } from './engine.js?v=1.0.16';
 
 export const AI_CHAT_USER_ID = 'uril-ai';
 

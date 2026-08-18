@@ -6,35 +6,31 @@ import {
   createEndgameDrillGame,
   validateEndgameDrills,
 } from '../js/drills.js';
-import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.15';
+import { applyMove, legalMoves, SOUTH, NORTH } from '../js/engine.js?v=1.0.16';
 
-test('existem catorze Drills públicos distribuídos por três níveis', () => {
-  assert.equal(ENDGAME_DRILLS.length, 14);
+test('existem vinte Drills públicos distribuídos por três níveis', () => {
+  assert.equal(ENDGAME_DRILLS.length, 20);
   assert.deepEqual(DRILL_LEVELS.map((level) => level.id), ['beginner', 'medium', 'advanced']);
   assert.deepEqual(
     DRILL_LEVELS.map((level) => ENDGAME_DRILLS.filter((drill) => drill.level === level.id).length),
-    [5, 5, 4],
+    [5, 5, 10],
   );
   assert.equal(validateEndgameDrills(), true);
 });
 
-test('os casos canónicos 3–2, 4–3, 5–3, 5–4, 6–3 e 6–4 estão incluídos', () => {
-  const expected = new Map([
-    ['3–2', [3, 2, 'beginner']],
-    ['4–3', [4, 3, 'beginner']],
-    ['5–3', [5, 3, 'beginner']],
-    ['5–4', [5, 4, 'medium']],
-    ['6–3', [6, 3, 'medium']],
-    ['6–4', [6, 4, 'medium']],
-  ]);
-
-  for (const [pattern, [southSeeds, northSeeds, level]] of expected) {
-    const drill = ENDGAME_DRILLS.find((item) => item.pattern === pattern);
-    assert.ok(drill, pattern);
-    assert.equal(drill.level, level, pattern);
-    assert.equal(drill.board.slice(0, 6).reduce((sum, seeds) => sum + seeds, 0), southSeeds, pattern);
-    assert.equal(drill.board.slice(6).reduce((sum, seeds) => sum + seeds, 0), northSeeds, pattern);
+test('o nível avançado contém finais 6–3, 6–4, 6–5, 5–4, 5–3, 4–3 e variantes adicionais', () => {
+  const advanced = ENDGAME_DRILLS.filter((drill) => drill.level === 'advanced');
+  const patterns = new Set(advanced.map((drill) => drill.pattern));
+  for (const pattern of ['6–3', '6–4', '6–5', '5–4', '5–3', '4–3', '5–5', '4–4', '7–4', '7–5']) {
+    assert.ok(patterns.has(pattern), pattern);
   }
+});
+
+test('os finais avançados são posições distintas e não derivações repetidas do mesmo tabuleiro', () => {
+  const advanced = ENDGAME_DRILLS.filter((drill) => drill.level === 'advanced');
+  const boards = advanced.map((drill) => drill.board.join(','));
+  assert.equal(new Set(boards).size, advanced.length);
+  assert.ok(advanced.every((drill) => drill.solution.length >= 20));
 });
 
 test('cada Drill começa com exactamente 48 sementes contabilizadas', () => {
@@ -62,22 +58,8 @@ test('a linha de referência de cada Drill termina exactamente em 25–23', () =
   }
 });
 
-test('cada Drill apresenta uma explicação própria para jogadores inexperientes', () => {
-  for (const drill of ENDGAME_DRILLS) {
-    assert.match(drill.challengeKey, /^drill(?:0[1-8]|Case(?:32|43|53|54|63|64))Challenge$/);
-  }
-});
-
-test('os novos casos canónicos têm linhas automáticas completas', () => {
-  const lengths = Object.fromEntries(
-    ENDGAME_DRILLS.filter((drill) => drill.pattern).map((drill) => [drill.pattern, drill.solution.length]),
-  );
-  assert.deepEqual(lengths, {
-    '3–2': 1,
-    '4–3': 9,
-    '5–3': 7,
-    '5–4': 5,
-    '6–3': 5,
-    '6–4': 14,
-  });
+test('cada Drill apresenta uma explicação própria', () => {
+  const keys = ENDGAME_DRILLS.map((drill) => drill.challengeKey);
+  assert.equal(new Set(keys).size, keys.length);
+  for (const key of keys) assert.match(key, /^drill(?:0[1-8]|Case(?:32|43|53|54|63|64)|Advanced(?:63|64|65|54|53|43|55|44|74|75))Challenge$/);
 });

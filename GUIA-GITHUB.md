@@ -1,8 +1,8 @@
-# Publicação do Uril 1.0.15
+# Publicação do Uril 1.0.16
 
-## Actualização da versão 1.0.14
+## Actualização da versão 1.0.15
 
-A versão 1.0.15 acrescenta apenas o chat contextual contra o computador. Não exige novo SQL nem nova publicação da Edge Function. Substitui os ficheiros do pacote no ramo `main` e faz uma actualização forçada com **Ctrl + F5**.
+A versão 1.0.16 altera apenas ficheiros do site: novos finais avançados, Mestre e chat desligado por defeito, e selecção da casa de saída do PC durante cinco segundos. Não exige novo SQL nem nova publicação da Edge Function. Substitui os ficheiros do pacote no ramo `main` e faz uma actualização forçada com **Ctrl + F5**.
 
 
 ## 1. GitHub Pages
@@ -102,7 +102,9 @@ Sem esta Edge Function actualizada, o treino contra a IA e a consulta continuam 
 8. Confirma que o banco privado não surge no arquivo e não altera o Elo.
 9. Cria depois duas contas de teste, conclui a calibração e confirma que os bancos oficiais continuam a funcionar.
 10. Faz uma jogada oficial e confirma uma linha em `uril_moves`; termina a partida e confirma o histórico Elo.
+11. No treino contra o PC, confirma que **Mestre** e **Chat desligado** surgem seleccionados por defeito.
+12. Escolhe **Computador joga primeiro**, inicia a partida e confirma que as casas de Norte ficam activas durante cinco segundos; testa uma abertura escolhida manualmente e outra sem tocar em nenhuma casa.
 
 ## 7. Actualizações do GitHub
 
-Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.15` nos módulos principais para reduzir problemas de cache.
+Depois de substituir ficheiros no repositório, actualiza ambos os navegadores com **Ctrl + F5**. A aplicação usa `?v=1.0.16` nos módulos principais para reduzir problemas de cache.
